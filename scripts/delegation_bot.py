@@ -25,17 +25,13 @@ def as_list(v):
     return v if isinstance(v, list) else [v]
 
 def validate_and_normalize(meta, path):
-    """Return (ok, normalized_meta)."""
     title = (meta.get("title") or "").strip()
     if not title:
         print(f"[ERROR] {path}: missing required field 'title'; skipping")
         return False, None
-
     norm = dict(meta)
     norm["assign"] = as_list(meta.get("assign"))
     norm["labels"] = as_list(meta.get("labels"))
-
-    # Light type checks
     for k in ("assign", "labels"):
         if not all(isinstance(x, str) for x in norm[k]):
             print(f"[ERROR] {path}: '{k}' must be a string or list of strings; skipping")
@@ -43,24 +39,23 @@ def validate_and_normalize(meta, path):
     return True, norm
 
 def ensure_labels(repo, labels):
-    if not labels:
-        return
+    if not labels: return
     try:
         url = f"https://api.github.com/repos/{repo}/labels"
-        r = requests.get(url, headers=HEADERS)
-        r.raise_for_status()
+        r = requests.get(url, headers=HEADERS); r.raise_for_status()
         existing = {l["name"] for l in r.json()}
-        to_create = [name for name in labels if name not in existing]
-        for name in to_create:
-            cr = requests.post(url, headers=HEADERS, json={"name": name})
-            if cr.status_code not in (200, 201):
-                print(f"[WARN] Could not create label '{name}' ({cr.status_code})")
+        for name in labels:
+            if name not in existing:
+                cr = requests.post(url, headers=HEADERS, json={"name": name})
+                if cr.status_code not in (200, 201):
+                    print(f"[WARN] Could not create label '{name}' ({cr.status_code})")
     except Exception as e:
         print(f"[WARN] ensure_labels failed: {e}")
 
-def search_issue_by_fingerprint(repo, fingerprint):
-    # Look for an OPEN issue with this fingerprint hidden in the body
-    q = f'repo:{repo} in:body state:open "{fingerprint}"'
+def search_issue_by_fingerprint(repo, fingerprint, state="open"):
+    # state: "open" | "closed" | "all"
+    state_q = "is:open" if state == "open" else ("is:closed" if state == "closed" else "")
+    q = f'repo:{repo} in:body is:issue {state_q} "{fingerprint}"'
     url = f"https://api.github.com/search/issues?q={requests.utils.quote(q, safe='')}"
     r = requests.get(url, headers=HEADERS)
     r.raise_for_status()
@@ -68,17 +63,13 @@ def search_issue_by_fingerprint(repo, fingerprint):
     return items[0] if items else None
 
 def safe_create_issue(repo, title, body, labels, assignees):
-    """Create issue; if assignees are invalid, retry without them."""
     url = f"https://api.github.com/repos/{repo}/issues"
     payload = {"title": title, "body": body}
-    if labels:
-        payload["labels"] = labels
-    if assignees:
-        payload["assignees"] = assignees
-
+    if labels: payload["labels"] = labels
+    if assignees: payload["assignees"] = assignees
     r = requests.post(url, headers=HEADERS, json=payload)
     if r.status_code == 422 and "assignees" in (r.json().get("errors", [{}])[0].get("field", "")):
-        print(f"[WARN] Assignee not permitted; creating issue without assignees.")
+        print("[WARN] Assignee not permitted; creating issue without assignees.")
         payload.pop("assignees", None)
         r = requests.post(url, headers=HEADERS, json=payload)
     r.raise_for_status()
@@ -96,13 +87,14 @@ if not paths:
 for path in paths:
     post = frontmatter.load(path)
     ok, m = validate_and_normalize(post.metadata, path)
-    if not ok:
+    if not ok: 
         continue
 
     repo = m.get("repository") or DEFAULT_REPO
     title = m.get("title", "(no title)")
     assignees = m.get("assign", [])
     labels = m.get("labels", [])
+    once = str(m.get("once", "false")).lower() in ("true", "1", "yes")
     active = iso(m.get("date_active"))
     due = iso(m.get("due_date"))
 
@@ -110,7 +102,6 @@ for path in paths:
         print(f"[SKIP] {path}: not active until {active}")
         continue
 
-    # Fingerprint for idempotency (stable per path+title)
     fp = hashlib.sha1(f"{path}::{title}".encode("utf-8")).hexdigest()[:12]
     body = f"""{post.content}
 
@@ -122,18 +113,24 @@ for path in paths:
 <!-- task-fingerprint:{fp} -->
 """
 
-    existing = search_issue_by_fingerprint(repo, fp)
-    if existing:
-        print(f"[EXISTS] #{existing['number']} for '{title}' already open (fp={fp})")
+    # 1) Skip if an OPEN copy exists
+    existing_open = search_issue_by_fingerprint(repo, fp, "open")
+    if existing_open:
+        print(f"[EXISTS] #{existing_open['number']} for '{title}' already open (fp={fp})")
         continue
+
+    # 2) If once=true, also skip if it was already done in the past
+    if once:
+        existing_closed = search_issue_by_fingerprint(repo, fp, "closed")
+        if existing_closed:
+            print(f"[SKIP] {path}: once=true and closed issue #{existing_closed['number']} exists (fp={fp})")
+            continue
 
     ensure_labels(repo, labels)
 
     if not APPLY:
-        print(
-            f"[DRY-RUN] Would create issue in {repo}: '{title}', "
-            f"assignees={assignees}, labels={labels}, due={due}, fp={fp}"
-        )
+        print(f"[DRY-RUN] Would create issue in {repo}: '{title}', "
+              f"assignees={assignees}, labels={labels}, due={due}, fp={fp}, once={once}")
         continue
 
     created = safe_create_issue(repo, title, body, labels, assignees)
