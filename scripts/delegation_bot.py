@@ -1,10 +1,9 @@
-# scripts/delegation_bot.py
 import glob, os, hashlib, datetime as dt, sys
 import requests, frontmatter
 
 APPLY = (os.getenv("APPLY", "false").lower() == "true")
 TOKEN = os.getenv("GITHUB_TOKEN")
-DEFAULT_REPO = os.getenv("REPO")  # e.g., "ammar-uni/delegation-bot"
+DEFAULT_REPO = os.getenv("REPO")  # "ammar-uni/delegation-bot"
 
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
@@ -62,7 +61,7 @@ def ensure_labels(repo, labels):
 def search_issue_by_fingerprint(repo, fingerprint):
     # Look for an OPEN issue with this fingerprint hidden in the body
     q = f'repo:{repo} in:body state:open "{fingerprint}"'
-    url = f"https://api.github.com/search/issues?q={requests.utils.quote(q, safe="")}"
+    url = f"https://api.github.com/search/issues?q={requests.utils.quote(q, safe='')}"
     r = requests.get(url, headers=HEADERS)
     r.raise_for_status()
     items = r.json().get("items", [])
@@ -79,7 +78,6 @@ def safe_create_issue(repo, title, body, labels, assignees):
 
     r = requests.post(url, headers=HEADERS, json=payload)
     if r.status_code == 422 and "assignees" in (r.json().get("errors", [{}])[0].get("field", "")):
-        # Retry without assignees
         print(f"[WARN] Assignee not permitted; creating issue without assignees.")
         payload.pop("assignees", None)
         r = requests.post(url, headers=HEADERS, json=payload)
