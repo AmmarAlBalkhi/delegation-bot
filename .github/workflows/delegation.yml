@@ -1,4 +1,5 @@
 name: Delegation Bot
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,7 +8,12 @@ on:
         required: false
         default: "false"
   schedule:
-    - cron: "0 8 * * *"  # daily
+    - cron: "0 8 * * *"  # daily at 08:00 UTC
+
+concurrency:
+  group: delegation-bot
+  cancel-in-progress: true
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -25,4 +31,10 @@ jobs:
           APPLY: ${{ github.event.inputs.apply }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-        run: python scripts/delegation_bot.py
+        run: |
+          python scripts/delegation_bot.py | tee bot.log
+          echo "### Delegation Bot summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -n 200 bot.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
