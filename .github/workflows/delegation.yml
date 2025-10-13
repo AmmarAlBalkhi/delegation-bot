@@ -31,6 +31,8 @@ jobs:
           APPLY: ${{ github.event.inputs.apply }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          PROJECT_LOGIN: ammar-uni
+          PROJECT_TITLE: Delegation Bot - PoC
         run: |
           python scripts/delegation_bot.py | tee bot.log
           echo "### Delegation Bot summary" >> $GITHUB_STEP_SUMMARY
