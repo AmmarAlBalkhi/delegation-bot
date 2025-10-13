@@ -216,15 +216,18 @@ def add_issue_to_project(project_id: str, issue_node_id: str):
         return get_project_item_id_for_issue(project_id, issue_node_id)
 
 def set_date_field(project_id: str, item_id: str, field_id: str, date_str: str, label: str):
-    if not date_str: return
+    if not date_str:
+        return
+    # NOTE: $val must be Date!, not String!
     m = """
-    mutation($pid:ID!, $iid:ID!, $fid:ID!, $val:String!){
+    mutation($pid:ID!, $iid:ID!, $fid:ID!, $val:Date!){
       updateProjectV2ItemFieldValue(input:{
         projectId:$pid, itemId:$iid, fieldId:$fid, value:{ date:$val }
       }){ projectV2Item{ id } }
     }"""
     gql(m, {"pid": project_id, "iid": item_id, "fid": field_id, "val": date_str})
     print(f"[PROJECT] {label} set => {date_str}")
+
 
 def write_dates_to_project(issue_json: dict, date_active: str, due_date: str):
     try:
