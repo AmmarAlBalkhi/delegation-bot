@@ -100,26 +100,60 @@ def gql(query: str, variables: dict):
 _project_cache = {"id": None, "fields": {}}
 
 def get_project_id():
+    """
+    Look up a ProjectV2 by PROJECT_LOGIN + PROJECT_TITLE.
+    Try the login as a USER first; if not found, try as an ORG.
+    Avoids the GraphQL 'organization not found' error.
+    """
     if not (PROJECT_LOGIN and PROJECT_TITLE):
         print("[PROJECT] PROJECT_LOGIN/PROJECT_TITLE not set; skip")
         return None
-    if _project_cache["id"]:
-        return _project_cache["id"]
-    q = """
-    query($login:String!, $q:String!){
-      user(login:$login){ projectsV2(first:50, query:$q){ nodes{ id title } } }
-      organization(login:$login){ projectsV2(first:50, query:$q){ nodes{ id title } } }
+
+    # --- 1) Try as USER ---
+    q_user = """
+    query($login:String!){
+      user(login:$login){
+        projectsV2(first:50){
+          nodes { id title }
+        }
+      }
     }"""
-    d = gql(q, {"login": PROJECT_LOGIN, "q": PROJECT_TITLE})
-    nodes=[]
-    if d.get("user"): nodes += d["user"]["projectsV2"]["nodes"]
-    if d.get("organization"): nodes += d["organization"]["projectsV2"]["nodes"]
-    for n in nodes:
-        if n["title"] == PROJECT_TITLE:
-            _project_cache["id"] = n["id"]
-            print(f"[PROJECT] Found project id={n['id']}")
-            return n["id"]
-    print(f"[PROJECT] Project not found: {PROJECT_LOGIN}/{PROJECT_TITLE}")
+    try:
+        d = gql(q_user, {"login": PROJECT_LOGIN})
+        nodes = (d.get("user") or {}).get("projectsV2", {}).get("nodes", []) or []
+        match = next((n for n in nodes if n["title"] == PROJECT_TITLE), None)
+        if match:
+            _project_cache["id"] = match["id"]
+            print(f"[PROJECT] Found USER project id={match['id']}")
+            return match["id"]
+        else:
+            print(f"[PROJECT] USER projects found (no exact match): {[n['title'] for n in nodes]}")
+    except Exception as e:
+        print(f"[PROJECT] User lookup failed: {e}")
+
+    # --- 2) Try as ORG ---
+    q_org = """
+    query($login:String!){
+      organization(login:$login){
+        projectsV2(first:50){
+          nodes { id title }
+        }
+      }
+    }"""
+    try:
+        d = gql(q_org, {"login": PROJECT_LOGIN})
+        nodes = (d.get("organization") or {}).get("projectsV2", {}).get("nodes", []) or []
+        match = next((n for n in nodes if n["title"] == PROJECT_TITLE), None)
+        if match:
+            _project_cache["id"] = match["id"]
+            print(f"[PROJECT] Found ORG project id={match['id']}")
+            return match["id"]
+        else:
+            print(f"[PROJECT] ORG projects found (no exact match): {[n['title'] for n in nodes]}")
+    except Exception as e:
+        print(f"[PROJECT] Org lookup failed: {e}")
+
+    print(f"[PROJECT] Project not found for login/title: {PROJECT_LOGIN!r}/{PROJECT_TITLE!r}")
     return None
 
 def get_field_id(project_id: str, name: str):
