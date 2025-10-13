@@ -27,6 +27,8 @@ tasks:
     once: false
     type: issue
 ---
-- [ ] Outline ready (t1)
-- [ ] Email sent (t2)
-- [ ] Board screenshot collected (t3)
+<!-- checklist:auto:start -->
+- [ ] Outline ready (t1-outline)
+- [ ] Email sent (t2-send-expose)
+- [ ] Board screenshot collected (t3-future-proof)
+<!-- checklist:auto:end -->
