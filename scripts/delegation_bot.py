@@ -1,36 +1,47 @@
+# scripts/delegation_bot.py
 import os, re, hashlib
 from datetime import date
 from pathlib import Path
 import requests
 import frontmatter
 
-# --------- REST & GraphQL basics ---------
+# ----------------- Config (from workflow env) -----------------
 REST = "https://api.github.com"
 GRAPHQL = "https://api.github.com/graphql"
 
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
-REPO_ENV = os.environ.get("REPO", "")
+REPO_ENV = os.environ.get("REPO", "")  # default repo (owner/repo)
 APPLY = os.environ.get("APPLY", "false").strip().lower() == "true"
 
-PROJECT_LOGIN = os.environ.get("PROJECT_LOGIN", "").strip()    # e.g., "ammar-uni" or your org
-PROJECT_TITLE = os.environ.get("PROJECT_TITLE", "").strip()    # e.g., "Delegation Bot - PoC"
+# Project info for writing dates to a Project v2 board
+PROJECT_LOGIN = os.environ.get("PROJECT_LOGIN", "").strip()   # user/org login, e.g., "ammar-uni"
+PROJECT_TITLE = os.environ.get("PROJECT_TITLE", "").strip()   # project title exactly, e.g., "Delegation Bot - PoC"
+PROJECT_DEBUG = os.environ.get("PROJECT_DEBUG", "") == "1"
 
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json"}
 
-# --------- helpers ---------
+def dbg(msg: str):
+    if PROJECT_DEBUG:
+        print(f"[PROJECT] {msg}")
+
+# ----------------- Small helpers -----------------
 def today_iso() -> str:
     return date.today().isoformat()
 
 def as_list(v):
-    if v is None: return []
-    if isinstance(v, list): return [str(x).strip() for x in v if str(x).strip()]
+    if v is None:
+        return []
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
     s = str(v).strip()
     return [s] if s else []
 
 def as_bool(v):
-    if isinstance(v, bool): return v
-    if v is None: return False
-    return str(v).strip().lower() in {"true","1","yes","y"}
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    return str(v).strip().lower() in {"true", "1", "yes", "y"}
 
 def slug(s: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
@@ -39,67 +50,82 @@ def slug(s: str) -> str:
 def posix_rel(path: str) -> str:
     return Path(path).as_posix()
 
-# --------- load tasks (single & multi) ---------
+# ----------------- Load tasks (single & multi) -----------------
 def load_task_files():
-    files=[]
-    for root,_,names in os.walk("tasks"):
+    files = []
+    for root, _, names in os.walk("tasks"):
         for n in names:
             if n.endswith(".md"):
-                files.append(os.path.join(root,n))
+                files.append(os.path.join(root, n))
     return sorted(files)
 
 def load_tasks_from_file(path):
+    """
+    Returns (tasks: list[dict], shared_body: str)
+    - Single-task: front-matter IS the task
+    - Multi-task: front-matter has tasks: [ ... ] and top-level keys are defaults
+    """
     post = frontmatter.load(path)
     meta = post.metadata or {}
     body = post.content or ""
     if isinstance(meta.get("tasks"), list):
-        defaults = {k:v for k,v in meta.items() if k!="tasks"}
-        tasks=[]
+        defaults = {k: v for k, v in meta.items() if k != "tasks"}
+        tasks = []
         for t in meta["tasks"]:
-            merged = defaults.copy(); merged.update(t or {})
+            merged = defaults.copy()
+            merged.update(t or {})
             merged["_src"] = path
             tasks.append(merged)
         return tasks, body
-    single = meta.copy(); single["_src"] = path
+    # single
+    single = meta.copy()
+    single["_src"] = path
     return [single], body
 
-# --------- fingerprint (thesis spec) ---------
+# ----------------- Fingerprint & Issues (REST) -----------------
 def compute_fpr(repo: str, src: str, key: str, occ: str) -> str:
+    """Thesis-spec fingerprint: sha256(repo|src|key|occ)"""
     return hashlib.sha256(f"{repo}|{src}|{key}|{occ}".encode("utf-8")).hexdigest()
 
 def fpr_comment(fpr: str, src: str, key: str, occ: str) -> str:
     return f"<!-- 🔑 delegation-bot:fpr=sha256:{fpr}; src={src}; key={key}; occ={occ} -->"
 
 def search_by_fpr(repo: str, fpr: str):
+    """Find issues by our hidden fingerprint. Prefer an open one."""
     q = f'repo:{repo} in:body "delegation-bot:fpr=sha256:{fpr}"'
     r = requests.get(f"{REST}/search/issues", headers=HEADERS, params={"q": q})
-    if not r.ok: return None, None
+    if not r.ok:
+        return None, None
     items = r.json().get("items", [])
-    open_item = next((it for it in items if it.get("state")=="open"), None)
-    closed_item = next((it for it in items if it.get("state")=="closed"), None)
+    open_item = next((it for it in items if it.get("state") == "open"), None)
+    closed_item = next((it for it in items if it.get("state") == "closed"), None)
     return open_item, closed_item
 
 def update_issue(repo: str, number: int, payload: dict):
     r = requests.patch(f"{REST}/repos/{repo}/issues/{number}", headers=HEADERS, json=payload)
-    r.raise_for_status(); return r.json()
+    r.raise_for_status()
+    return r.json()
 
 def create_issue(repo: str, payload: dict):
     r = requests.post(f"{REST}/repos/{repo}/issues", headers=HEADERS, json=payload)
-    r.raise_for_status(); return r.json()
+    r.raise_for_status()
+    return r.json()
 
-# --------- GraphQL for Project v2 (dates in project) ---------
+# ----------------- Project v2 (GraphQL) -----------------
 def gql(query: str, variables: dict):
     r = requests.post(GRAPHQL, headers=HEADERS, json={"query": query, "variables": variables})
     r.raise_for_status()
     data = r.json()
     if "errors" in data:
-        raise Exception(f"GraphQL: {data['errors']}")
+        raise Exception(f"GraphQL error: {data['errors']}")
     return data["data"]
 
 _project_cache = {"id": None, "fields": {}}
 
 def get_project_id():
+    """Find the project by PROJECT_LOGIN + PROJECT_TITLE (user or org). Cache result."""
     if not PROJECT_LOGIN or not PROJECT_TITLE:
+        dbg("PROJECT_LOGIN/PROJECT_TITLE not set; skipping project lookup")
         return None
     if _project_cache["id"]:
         return _project_cache["id"]
@@ -114,10 +140,14 @@ def get_project_id():
     if d.get("organization"): nodes += d["organization"]["projectsV2"]["nodes"]
     for n in nodes:
         if n["title"] == PROJECT_TITLE:
-            _project_cache["id"] = n["id"]; return n["id"]
+            _project_cache["id"] = n["id"]
+            dbg(f'Found project "{PROJECT_TITLE}" id={n["id"]}')
+            return n["id"]
+    dbg(f'Project "{PROJECT_TITLE}" not found for login "{PROJECT_LOGIN}"')
     return None
 
 def get_field_id(project_id: str, name: str):
+    """Get (or create) a Project Date field by name."""
     key = (project_id, name)
     if key in _project_cache["fields"]:
         return _project_cache["fields"][key]
@@ -136,8 +166,10 @@ def get_field_id(project_id: str, name: str):
     d = gql(q, {"id": project_id})
     for n in d["node"]["fields"]["nodes"]:
         if n["name"] == name:
-            _project_cache["fields"][key] = n["id"]; return n["id"]
-    # create a new Date field if missing
+            _project_cache["fields"][key] = n["id"]
+            dbg(f'Field "{name}" exists id={n["id"]}')
+            return n["id"]
+    # Create a new Date field if missing
     m = """
     mutation($pid:ID!, $name:String!){
       createProjectV2Field(input:{projectId:$pid, dataType:DATE, name:$name}){
@@ -147,6 +179,7 @@ def get_field_id(project_id: str, name: str):
     d2 = gql(m, {"pid": project_id, "name": name})
     fid = d2["createProjectV2Field"]["projectV2Field"]["id"]
     _project_cache["fields"][key] = fid
+    dbg(f'Created Date field "{name}" id={fid}')
     return fid
 
 def get_project_item_id_for_issue(project_id: str, issue_node_id: str):
@@ -168,7 +201,6 @@ def get_project_item_id_for_issue(project_id: str, issue_node_id: str):
     return None
 
 def add_issue_to_project(project_id: str, issue_node_id: str):
-    # Try to add; ignore if already present
     m = """
     mutation($pid:ID!, $cid:ID!){
       addProjectV2ItemById(input:{projectId:$pid, contentId:$cid}){
@@ -177,9 +209,11 @@ def add_issue_to_project(project_id: str, issue_node_id: str):
     }"""
     try:
         d = gql(m, {"pid": project_id, "cid": issue_node_id})
-        return d["addProjectV2ItemById"]["item"]["id"]
-    except Exception:
-        # If it already exists, look it up
+        item_id = d["addProjectV2ItemById"]["item"]["id"]
+        dbg(f"Added issue to project item={item_id}")
+        return item_id
+    except Exception as e:
+        dbg(f"addProjectV2ItemById failed (maybe already added): {e}")
         return get_project_item_id_for_issue(project_id, issue_node_id)
 
 def set_date_field(project_id: str, item_id: str, field_id: str, date_str: str):
@@ -194,35 +228,43 @@ def set_date_field(project_id: str, item_id: str, field_id: str, date_str: str):
     gql(m, {"pid": project_id, "iid": item_id, "fid": field_id, "val": date_str})
 
 def write_dates_to_project(issue_json: dict, date_active: str, due_date: str):
+    """Ensure the issue is on the project; write Date active / Due date fields."""
     if not (PROJECT_LOGIN and PROJECT_TITLE):
+        dbg("PROJECT_LOGIN/PROJECT_TITLE not set; skipping project write")
         return
     project_id = get_project_id()
     if not project_id:
+        dbg("Project not found; skipping date write")
         return
     item_id = add_issue_to_project(project_id, issue_json["node_id"])
     if not item_id:
+        dbg("Could not resolve project item id; skipping date write")
         return
-    # Ensure fields exist, then set them
+    dbg(f"item={item_id}  set Date active={date_active or '-'}  Due date={due_date or '-'}")
     fa_id = get_field_id(project_id, "Date active")
     dd_id = get_field_id(project_id, "Due date")
     if date_active:
-        set_date_field(project_id, item_id, fa_id, date_active)
+        set_date_field(project_id, item_id, fa_id, date_active); dbg("Date active set")
     if due_date:
-        set_date_field(project_id, item_id, dd_id, due_date)
+        set_date_field(project_id, item_id, dd_id, due_date); dbg("Due date set")
 
-# --------- main ---------
+# ----------------- Main -----------------
 def main():
     for path in load_task_files():
         tasks, body = load_tasks_from_file(path)
-        for t in tasks:
-            repo = t.get("repository") or REPO_ENV
-            title = t.get("title")
-            if not (repo and title):
-                print(f"[SKIP] {path}: missing repository or title"); continue
 
+        for t in tasks:
+            repo = (t.get("repository") or REPO_ENV).strip()
+            title = (t.get("title") or "").strip()
+            if not (repo and title):
+                print(f"[SKIP] {path}: missing repository or title")
+                continue
+
+            # schedule gate
             da = str(t.get("date_active") or "").strip()
             if da and da > today_iso():
-                print(f"[SKIP] {path}: date_active in future ({da})"); continue
+                print(f"[SKIP] {path}: date_active in future ({da})")
+                continue
 
             labels = as_list(t.get("labels"))
             assignees = as_list(t.get("assign"))
@@ -235,10 +277,13 @@ def main():
             fpr = compute_fpr(repo, src, key, occ)
             marker = fpr_comment(fpr, src, key, occ)
 
+            # issue body (shared body + metadata)
             info = [f"**Task source:** `{src}`", f"**Date active:** {da or 'None'}"]
-            if due: info.append(f"**Due date:** {due}")
+            if due:
+                info.append(f"**Due date:** {due}")
             body_full = f"{body}\n\n{marker}\n\n" + "\n".join(info)
 
+            # idempotency
             open_item, closed_item = search_by_fpr(repo, fpr)
             if open_item:
                 payload = {"title": title, "body": body_full}
@@ -247,7 +292,6 @@ def main():
                 if APPLY:
                     res = update_issue(repo, open_item["number"], payload)
                     print(f"[UPDATE] #{res['number']} {title}")
-                    # write dates into project
                     write_dates_to_project(res, da, due)
                 else:
                     print(f"[DRY-RUN][UPDATE] {title} (#{open_item['number']})")
@@ -265,10 +309,10 @@ def main():
                     res = create_issue(repo, payload)
                     print(f"[CREATE] #{res['number']} {title}")
                 except Exception:
+                    # retry without assignees if assigning fails
                     payload.pop("assignees", None)
                     res = create_issue(repo, payload)
                     print(f"[CREATE] #{res['number']} {title} (assignees skipped)")
-                # write dates into project
                 write_dates_to_project(res, da, due)
             else:
                 print(f"[DRY-RUN][CREATE] {title} in {repo}")
