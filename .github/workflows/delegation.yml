@@ -27,12 +27,15 @@ jobs:
           python-version: "3.11"
       - run: pip install python-frontmatter requests
       - name: Run bot
+      - name: Run bot
         env:
           APPLY: ${{ github.event.inputs.apply }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PROJECT_LOGIN: ammar-uni
           PROJECT_TITLE: Delegation Bot - PoC
+          PROJECT_DEBUG: "1"
+          PYTHONUNBUFFERED: "1"
         run: |
           python scripts/delegation_bot.py | tee bot.log
           echo "### Delegation Bot summary" >> $GITHUB_STEP_SUMMARY
