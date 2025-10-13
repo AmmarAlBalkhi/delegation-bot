@@ -246,19 +246,65 @@ def write_dates_to_project(issue_json: dict, date_active: str, due_date: str):
     except Exception as e:
         print(f"[PROJECT] ERROR while writing dates: {e}")
 
+# === Auto-checklist (Markdown) helpers ===
+CHECK_START = "<!-- checklist:auto:start -->"
+CHECK_END = "<!-- checklist:auto:end -->"
+
+import re
+_CHECK_LINE = re.compile(r"^\s*-\s*\[(?: |x)\]\s*(.*)\(([^)]+)\)\s*$")
+
+def retick_checklist_block(body: str, registry: dict) -> str:
+    """
+    Look for a block delimited by CHECK_START/CHECK_END.
+    For each line like:  - [ ] Some text (task-id)
+    tick to [x] if the issue for task-id is closed, else [ ].
+    """
+    if CHECK_START not in (body or "") or CHECK_END not in (body or ""):
+        return body or ""
+
+    head, rest = body.split(CHECK_START, 1)
+    block, tail = rest.split(CHECK_END, 1)
+
+    new_lines = []
+    for raw in block.splitlines():
+        m = _CHECK_LINE.match(raw.strip())
+        if not m:
+            new_lines.append(raw)
+            continue
+        text, ref_id = m.groups()
+        ref_id = ref_id.strip()
+        entry = registry.get(ref_id)
+        closed = bool(entry and entry.get("issue") and entry["issue"].get("state") == "closed")
+        tick = "x" if closed else " "
+        new_lines.append(f"- [{tick}] {text.strip()} ({ref_id})")
+
+    new_block = "\n" + "\n".join(new_lines) + "\n"
+    return head + CHECK_START + new_block + CHECK_END + tail
+
 # ---------- Main ----------
 def main():
+    # 1) Load tasks
+    file_tasks = []
     for path in load_task_files():
         tasks, body = load_tasks_from_file(path)
+        file_tasks.append((path, tasks, body))
+
+    # 2) Create/update issues and remember them by id (for checklist reticking)
+    registry = {}  # id -> {'issue': json or None, 'title': str, 'repo': str}
+    for path, tasks, body in file_tasks:
         for t in tasks:
             repo = (t.get("repository") or REPO_ENV).strip()
             title = (t.get("title") or "").strip()
             if not (repo and title):
-                print(f"[SKIP] {path}: missing repository or title"); continue
+                print(f"[SKIP] {path}: missing repository or title"); 
+                continue
 
             da = str(t.get("date_active") or "").strip()
             if da and da > today_iso():
-                print(f"[SKIP] {path}: date_active in future ({da})"); continue
+                print(f"[SKIP] {path}: date_active in future ({da})")
+                # still register so the checklist line can render (unchecked) by id
+                registry[t.get("id") or slug(title)] = {"issue": None, "title": title, "repo": repo}
+                continue
 
             labels    = as_list(t.get("labels"))
             assignees = as_list(t.get("assign"))
@@ -267,15 +313,20 @@ def main():
 
             src = posix_rel(t.get("_src", path))
             key = t.get("id") or slug(title)
+            # 'occ' is blank for once=true (don't recreate after close), else include date key
             occ = "" if once else (da or "")
             fpr = compute_fpr(repo, src, key, occ)
             marker = fpr_comment(fpr, src, key, occ)
 
+            # Compose body with marker + meta (keeps your existing content + idempotency)
             info = [f"**Task source:** `{src}`", f"**Date active:** {da or 'None'}"]
-            if due: info.append(f"**Due date:** {due}")
+            if due:
+                info.append(f"**Due date:** {due}")
             body_full = f"{body}\n\n{marker}\n\n" + "\n".join(info)
 
+            # Idempotent search
             open_item, closed_item = search_by_fpr(repo, fpr)
+            res = None
             if open_item:
                 payload = {"title": title, "body": body_full}
                 if labels: payload["labels"] = labels
@@ -286,26 +337,40 @@ def main():
                     write_dates_to_project(res, da, due)
                 else:
                     print(f"[DRY-RUN][UPDATE] {title} (#{open_item['number']})")
-                continue
-
-            if once and closed_item:
-                print(f"[SKIP] {path}: once=true and closed issue exists (#{closed_item['number']})")
-                continue
-
-            payload = {"title": title, "body": body_full}
-            if labels: payload["labels"] = labels
-            if assignees: payload["assignees"] = assignees
-            if APPLY:
-                try:
-                    res = create_issue(repo, payload)
-                    print(f"[CREATE] #{res['number']} {title}")
-                except Exception:
-                    payload.pop("assignees", None)
-                    res = create_issue(repo, payload)
-                    print(f"[CREATE] #{res['number']} {title} (assignees skipped)")
-                write_dates_to_project(res, da, due)
             else:
-                print(f"[DRY-RUN][CREATE] {title} in {repo}")
+                if once and closed_item:
+                    print(f"[SKIP] {path}: once=true and closed issue exists (#{closed_item['number']})")
+                else:
+                    payload = {"title": title, "body": body_full}
+                    if labels: payload["labels"] = labels
+                    if assignees: payload["assignees"] = assignees
+                    if APPLY:
+                        try:
+                            res = create_issue(repo, payload)
+                            print(f"[CREATE] #{res['number']} {title}")
+                        except Exception:
+                            # some repos disallow assigning on create
+                            payload.pop("assignees", None)
+                            res = create_issue(repo, payload)
+                            print(f"[CREATE] #{res['number']} {title} (assignees skipped)")
+                        write_dates_to_project(res, da, due)
+                    else:
+                        print(f"[DRY-RUN][CREATE] {title} in {repo}")
+
+            # Save what we have for this id (created/updated/open/closed)
+            issue_json = res or open_item or closed_item
+            registry[key] = {"issue": issue_json, "title": title, "repo": repo}
+
+    # 3) Retick any auto-checklists found in issue bodies
+    for tid, entry in registry.items():
+        issue = entry.get("issue")
+        if not issue:
+            continue
+        current = issue.get("body") or ""
+        updated = retick_checklist_block(current, registry)
+        if updated != current and APPLY:
+            update_issue(entry["repo"], issue["number"], {"body": updated})
+            print(f"[UPDATE] reticked checklist for #{issue['number']} {issue.get('title','')}")
 
 if __name__ == "__main__":
     main()
