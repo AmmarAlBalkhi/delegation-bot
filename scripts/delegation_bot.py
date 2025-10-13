@@ -1,137 +1,137 @@
-import glob, os, hashlib, datetime as dt, sys
-import requests, frontmatter
+import os
+import hashlib
+from datetime import date
+import requests
+import frontmatter
 
-APPLY = (os.getenv("APPLY", "false").lower() == "true")
-TOKEN = os.getenv("GITHUB_TOKEN")
-DEFAULT_REPO = os.getenv("REPO")  # "ammar-uni/delegation-bot"
+GITHUB = "https://api.github.com"
+TOKEN = os.environ.get("GITHUB_TOKEN", "")
+REPO_ENV = os.environ.get("REPO", "")
+APPLY = os.environ.get("APPLY", "false").strip().lower() == "true"
+HEADERS = {"Authorization": f"Bearer {TOKEN}",
+           "Accept": "application/vnd.github+json"}
 
-HEADERS = {
-    "Authorization": f"Bearer {TOKEN}",
-    "Accept": "application/vnd.github+json",
-}
-
-# ---------- helpers ----------
-def iso(d):
-    if isinstance(d, str):
-        try:
-            return dt.date.fromisoformat(d)
-        except Exception:
-            return None
-    return d
+def today_iso() -> str:
+    return date.today().isoformat()
 
 def as_list(v):
     if v is None:
         return []
-    return v if isinstance(v, list) else [v]
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
+    return [str(v).strip()] if str(v).strip() else []
 
-def validate_and_normalize(meta, path):
-    title = (meta.get("title") or "").strip()
-    if not title:
-        print(f"[ERROR] {path}: missing required field 'title'; skipping")
-        return False, None
-    norm = dict(meta)
-    norm["assign"] = as_list(meta.get("assign"))
-    norm["labels"] = as_list(meta.get("labels"))
-    for k in ("assign", "labels"):
-        if not all(isinstance(x, str) for x in norm[k]):
-            print(f"[ERROR] {path}: '{k}' must be a string or list of strings; skipping")
-            return False, None
-    return True, norm
+def as_bool(v):
+    if isinstance(v, bool):
+        return v
+    if v is None:
+        return False
+    return str(v).strip().lower() in {"true", "yes", "1", "y"}
 
-def ensure_labels(repo, labels):
-    if not labels: return
-    try:
-        url = f"https://api.github.com/repos/{repo}/labels"
-        r = requests.get(url, headers=HEADERS); r.raise_for_status()
-        existing = {l["name"] for l in r.json()}
-        for name in labels:
-            if name not in existing:
-                cr = requests.post(url, headers=HEADERS, json={"name": name})
-                if cr.status_code not in (200, 201):
-                    print(f"[WARN] Could not create label '{name}' ({cr.status_code})")
-    except Exception as e:
-        print(f"[WARN] ensure_labels failed: {e}")
+def load_task_files():
+    files = []
+    for root, _, names in os.walk("tasks"):
+        for n in names:
+            if n.endswith(".md"):
+                files.append(os.path.join(root, n))
+    return sorted(files)
 
-def search_issue_by_fingerprint(repo, fingerprint, state="open"):
-    # state: "open" | "closed" | "all"
-    state_q = "is:open" if state == "open" else ("is:closed" if state == "closed" else "")
-    q = f'repo:{repo} in:body is:issue {state_q} "{fingerprint}"'
-    url = f"https://api.github.com/search/issues?q={requests.utils.quote(q, safe='')}"
-    r = requests.get(url, headers=HEADERS)
-    r.raise_for_status()
+def load_tasks_from_file(path):
+    """Return (tasks:list[dict], shared_body:str) with top-level defaults applied."""
+    post = frontmatter.load(path)
+    meta = post.metadata or {}
+    body = post.content or ""
+
+    # Multi-task: meta['tasks'] is a list of dicts
+    if isinstance(meta.get("tasks"), list):
+        defaults = {k: v for k, v in meta.items() if k != "tasks"}
+        tasks = []
+        for t in meta["tasks"]:
+            merged = defaults.copy()
+            merged.update(t or {})
+            merged["_src"] = path
+            tasks.append(merged)
+        return tasks, body
+
+    # Single-task: treat front-matter as a 1-item list
+    single = meta.copy()
+    single["_src"] = path
+    return [single], body
+
+def search_existing(repo, fp):
+    """Search for issues containing our fingerprint comment; prefer an open one."""
+    q = f'repo:{repo} in:body "task-fingerprint:{fp}"'
+    r = requests.get(f"{GITHUB}/search/issues", headers=HEADERS, params={"q": q})
+    if not r.ok:
+        return None, None
     items = r.json().get("items", [])
-    return items[0] if items else None
+    open_item = next((it for it in items if it.get("state") == "open"), None)
+    closed_item = next((it for it in items if it.get("state") == "closed"), None)
+    return open_item, closed_item
 
-def safe_create_issue(repo, title, body, labels, assignees):
-    url = f"https://api.github.com/repos/{repo}/issues"
-    payload = {"title": title, "body": body}
-    if labels: payload["labels"] = labels
-    if assignees: payload["assignees"] = assignees
-    r = requests.post(url, headers=HEADERS, json=payload)
-    if r.status_code == 422 and "assignees" in (r.json().get("errors", [{}])[0].get("field", "")):
-        print("[WARN] Assignee not permitted; creating issue without assignees.")
-        payload.pop("assignees", None)
-        r = requests.post(url, headers=HEADERS, json=payload)
+def create_issue(repo, payload):
+    r = requests.post(f"{GITHUB}/repos/{repo}/issues", headers=HEADERS, json=payload)
     r.raise_for_status()
     return r.json()
-# ---------- /helpers ----------
 
-today = dt.date.today()
-paths = sorted(glob.glob("tasks/*.md"))
-print(f"[INFO] Today={today} | files={len(paths)}")
+def main():
+    for path in load_task_files():
+        tasks, body = load_tasks_from_file(path)
 
-if not paths:
-    print("[INFO] No files found in tasks/")
-    sys.exit(0)
+        for meta in tasks:
+            repo = meta.get("repository") or REPO_ENV
+            title = meta.get("title")
+            if not (repo and title):
+                print(f"[SKIP] {path}: missing repository or title")
+                continue
 
-for path in paths:
-    post = frontmatter.load(path)
-    ok, m = validate_and_normalize(post.metadata, path)
-    if not ok: 
-        continue
+            # date gating
+            da = str(meta.get("date_active") or "").strip()
+            if da and da > today_iso():
+                print(f"[SKIP] {path}: date_active in future ({da})")
+                continue
 
-    repo = m.get("repository") or DEFAULT_REPO
-    title = m.get("title", "(no title)")
-    assignees = m.get("assign", [])
-    labels = m.get("labels", [])
-    once = str(m.get("once", "false")).lower() in ("true", "1", "yes")
-    active = iso(m.get("date_active"))
-    due = iso(m.get("due_date"))
+            labels = as_list(meta.get("labels"))
+            assignees = as_list(meta.get("assign"))
+            once = as_bool(meta.get("once"))
 
-    if active and active > today:
-        print(f"[SKIP] {path}: not active until {active}")
-        continue
+            # fingerprint (same as your current logic)
+            fp_src = f"{path}::{title}"
+            fp = hashlib.sha1(fp_src.encode("utf-8")).hexdigest()[:12]
+            fp_comment = f"<!-- task-fingerprint:{fp} -->"
 
-    fp = hashlib.sha1(f"{path}::{title}".encode("utf-8")).hexdigest()[:12]
-    body = f"""{post.content}
+            # full issue body (shared body + info block)
+            info = [f"**Task source:** `{path}`",
+                    f"**Date active:** {da or 'None'}"]
+            if meta.get("due_date"):
+                info.append(f"**Due date:** {meta['due_date']}")
+            body_full = f"{body}\n\n{fp_comment}\n\n" + "\n".join(info)
 
----
+            # idempotency
+            open_item, closed_item = search_existing(repo, fp)
+            if open_item:
+                print(f"[SKIP] {path}: issue already open (#{open_item['number']})")
+                continue
+            if once and closed_item:
+                print(f"[SKIP] {path}: once=true and closed issue exists (#{closed_item['number']})")
+                continue
 
-**Task source:** `{path}`
-**Date active:** {active}
-**Due date:** {due}
-<!-- task-fingerprint:{fp} -->
-"""
+            payload = {"title": title, "body": body_full}
+            if labels:
+                payload["labels"] = labels
+            if assignees:
+                payload["assignees"] = assignees
 
-    # 1) Skip if an OPEN copy exists
-    existing_open = search_issue_by_fingerprint(repo, fp, "open")
-    if existing_open:
-        print(f"[EXISTS] #{existing_open['number']} for '{title}' already open (fp={fp})")
-        continue
+            if APPLY:
+                try:
+                    res = create_issue(repo, payload)
+                    print(f"[CREATE] #{res['number']} {title}")
+                except Exception:
+                    payload.pop("assignees", None)
+                    res = create_issue(repo, payload)
+                    print(f"[CREATE] #{res['number']} {title} (assignees skipped)")
+            else:
+                print(f"[DRY-RUN] would create: {title} in {repo}")
 
-    # 2) If once=true, also skip if it was already done in the past
-    if once:
-        existing_closed = search_issue_by_fingerprint(repo, fp, "closed")
-        if existing_closed:
-            print(f"[SKIP] {path}: once=true and closed issue #{existing_closed['number']} exists (fp={fp})")
-            continue
-
-    ensure_labels(repo, labels)
-
-    if not APPLY:
-        print(f"[DRY-RUN] Would create issue in {repo}: '{title}', "
-              f"assignees={assignees}, labels={labels}, due={due}, fp={fp}, once={once}")
-        continue
-
-    created = safe_create_issue(repo, title, body, labels, assignees)
-    print(f"[CREATED] #{created['number']} '{title}' in {repo} (fp={fp})")
+if __name__ == "__main__":
+    main()
