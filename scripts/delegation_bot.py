@@ -1,16 +1,19 @@
-import os
-import hashlib
+import os, re, hashlib
 from datetime import date
 import requests
 import frontmatter
+from pathlib import Path
 
 GITHUB = "https://api.github.com"
 TOKEN = os.environ.get("GITHUB_TOKEN", "")
 REPO_ENV = os.environ.get("REPO", "")
 APPLY = os.environ.get("APPLY", "false").strip().lower() == "true"
-HEADERS = {"Authorization": f"Bearer {TOKEN}",
-           "Accept": "application/vnd.github+json"}
+HEADERS = {
+    "Authorization": f"Bearer {TOKEN}",
+    "Accept": "application/vnd.github+json"
+}
 
+# ---------- helpers ----------
 def today_iso() -> str:
     return date.today().isoformat()
 
@@ -19,15 +22,25 @@ def as_list(v):
         return []
     if isinstance(v, list):
         return [str(x).strip() for x in v if str(x).strip()]
-    return [str(v).strip()] if str(v).strip() else []
+    s = str(v).strip()
+    return [s] if s else []
 
 def as_bool(v):
     if isinstance(v, bool):
         return v
     if v is None:
         return False
-    return str(v).strip().lower() in {"true", "yes", "1", "y"}
+    return str(v).strip().lower() in {"true", "1", "yes", "y"}
 
+def slug(s: str) -> str:
+    s = s.lower()
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")
+    return s or "task"
+
+def posix_rel(path: str) -> str:
+    return Path(path).as_posix()
+
+# ---------- task loading ----------
 def load_task_files():
     files = []
     for root, _, names in os.walk("tasks"):
@@ -37,12 +50,12 @@ def load_task_files():
     return sorted(files)
 
 def load_tasks_from_file(path):
-    """Return (tasks:list[dict], shared_body:str) with top-level defaults applied."""
+    """Return (tasks:list[dict], shared_body:str) with top-level defaults applied.
+       Supports single-task (front-matter is the task) and multi-task (tasks:[...])."""
     post = frontmatter.load(path)
     meta = post.metadata or {}
     body = post.content or ""
-
-    # Multi-task: meta['tasks'] is a list of dicts
+    # multi
     if isinstance(meta.get("tasks"), list):
         defaults = {k: v for k, v in meta.items() if k != "tasks"}
         tasks = []
@@ -52,15 +65,22 @@ def load_tasks_from_file(path):
             merged["_src"] = path
             tasks.append(merged)
         return tasks, body
-
-    # Single-task: treat front-matter as a 1-item list
+    # single
     single = meta.copy()
     single["_src"] = path
     return [single], body
 
-def search_existing(repo, fp):
-    """Search for issues containing our fingerprint comment; prefer an open one."""
-    q = f'repo:{repo} in:body "task-fingerprint:{fp}"'
+# ---------- fingerprint (thesis spec) ----------
+def compute_fpr(repo: str, src: str, key: str, occ: str) -> str:
+    base = f"{repo}|{src}|{key}|{occ}"
+    return hashlib.sha256(base.encode("utf-8")).hexdigest()
+
+def fpr_comment(fpr: str, src: str, key: str, occ: str) -> str:
+    return f"<!-- 🔑 delegation-bot:fpr=sha256:{fpr}; src={src}; key={key}; occ={occ} -->"
+
+def search_by_fpr(repo: str, fpr: str):
+    """Find issues containing our 🔑 fingerprint. Prefer open."""
+    q = f'repo:{repo} in:body "delegation-bot:fpr=sha256:{fpr}"'
     r = requests.get(f"{GITHUB}/search/issues", headers=HEADERS, params={"q": q})
     if not r.ok:
         return None, None
@@ -69,69 +89,83 @@ def search_existing(repo, fp):
     closed_item = next((it for it in items if it.get("state") == "closed"), None)
     return open_item, closed_item
 
-def create_issue(repo, payload):
+def update_issue(repo: str, number: int, payload: dict):
+    r = requests.patch(f"{GITHUB}/repos/{repo}/issues/{number}", headers=HEADERS, json=payload)
+    r.raise_for_status()
+    return r.json()
+
+def create_issue(repo: str, payload: dict):
     r = requests.post(f"{GITHUB}/repos/{repo}/issues", headers=HEADERS, json=payload)
     r.raise_for_status()
     return r.json()
 
+# ---------- main ----------
 def main():
     for path in load_task_files():
         tasks, body = load_tasks_from_file(path)
 
-        for meta in tasks:
-            repo = meta.get("repository") or REPO_ENV
-            title = meta.get("title")
+        for t in tasks:
+            repo = t.get("repository") or REPO_ENV
+            title = t.get("title")
             if not (repo and title):
                 print(f"[SKIP] {path}: missing repository or title")
                 continue
 
             # date gating
-            da = str(meta.get("date_active") or "").strip()
+            da = str(t.get("date_active") or "").strip()
             if da and da > today_iso():
                 print(f"[SKIP] {path}: date_active in future ({da})")
                 continue
 
-            labels = as_list(meta.get("labels"))
-            assignees = as_list(meta.get("assign"))
-            once = as_bool(meta.get("once"))
+            labels = as_list(t.get("labels"))
+            assignees = as_list(t.get("assign"))
+            once = as_bool(t.get("once"))
 
-            # fingerprint (same as your current logic)
-            fp_src = f"{path}::{title}"
-            fp = hashlib.sha1(fp_src.encode("utf-8")).hexdigest()[:12]
-            fp_comment = f"<!-- task-fingerprint:{fp} -->"
+            src = posix_rel(t.get("_src", path))
+            key = t.get("id") or slug(title)
+            occ = "" if once else (da or "")
+            fpr = compute_fpr(repo, src, key, occ)
+            marker = fpr_comment(fpr, src, key, occ)
 
-            # full issue body (shared body + info block)
-            info = [f"**Task source:** `{path}`",
-                    f"**Date active:** {da or 'None'}"]
-            if meta.get("due_date"):
-                info.append(f"**Due date:** {meta['due_date']}")
-            body_full = f"{body}\n\n{fp_comment}\n\n" + "\n".join(info)
+            # body (shared body + info)
+            info = [f"**Task source:** `{src}`", f"**Date active:** {da or 'None'}"]
+            if t.get("due_date"):
+                info.append(f"**Due date:** {t['due_date']}")
+            body_full = f"{body}\n\n{marker}\n\n" + "\n".join(info)
 
             # idempotency
-            open_item, closed_item = search_existing(repo, fp)
+            open_item, closed_item = search_by_fpr(repo, fpr)
             if open_item:
-                print(f"[SKIP] {path}: issue already open (#{open_item['number']})")
+                # Update the existing open issue to reflect latest fields/body
+                payload = {"title": title, "body": body_full}
+                if labels: payload["labels"] = labels
+                if assignees: payload["assignees"] = assignees
+                if APPLY:
+                    res = update_issue(repo, open_item["number"], payload)
+                    print(f"[UPDATE] #{res['number']} {title}")
+                else:
+                    print(f"[DRY-RUN][UPDATE] {title} (#{open_item['number']})")
                 continue
+
             if once and closed_item:
                 print(f"[SKIP] {path}: once=true and closed issue exists (#{closed_item['number']})")
                 continue
 
             payload = {"title": title, "body": body_full}
-            if labels:
-                payload["labels"] = labels
-            if assignees:
-                payload["assignees"] = assignees
+            if labels: payload["labels"] = labels
+            if assignees: payload["assignees"] = assignees
 
             if APPLY:
                 try:
                     res = create_issue(repo, payload)
                     print(f"[CREATE] #{res['number']} {title}")
                 except Exception:
+                    # Retry without assignees if assigning fails
                     payload.pop("assignees", None)
                     res = create_issue(repo, payload)
                     print(f"[CREATE] #{res['number']} {title} (assignees skipped)")
             else:
-                print(f"[DRY-RUN] would create: {title} in {repo}")
+                print(f"[DRY-RUN][CREATE] {title} in {repo}")
 
 if __name__ == "__main__":
     main()
