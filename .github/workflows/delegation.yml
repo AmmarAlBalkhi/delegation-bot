@@ -1,3 +1,4 @@
+# .github/workflows/delegation.yml
 name: Delegation Bot
 
 on:
@@ -22,19 +23,22 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install python-frontmatter requests
-      - name: Run bot
+
+      - name: Install dependencies
+        run: pip install python-frontmatter requests
+
       - name: Run bot
         env:
           APPLY: ${{ github.event.inputs.apply }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PROJECT_LOGIN: ammar-uni
-          PROJECT_TITLE: Delegation Bot - PoC
-          PROJECT_DEBUG: "1"
+          PROJECT_LOGIN: ammar-uni               # <- owner login (user or org)
+          PROJECT_TITLE: Delegation Bot - PoC     # <- project title EXACTLY
+          PROJECT_DEBUG: "1"                      # optional: show project logs
           PYTHONUNBUFFERED: "1"
         run: |
           python scripts/delegation_bot.py | tee bot.log
