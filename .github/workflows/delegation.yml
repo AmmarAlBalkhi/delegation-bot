@@ -34,11 +34,12 @@ jobs:
       - name: Run bot
         env:
           APPLY: ${{ github.event.inputs.apply }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}         # still used for Issues
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}       # <- PAT for Project writes
           REPO: ${{ github.repository }}
-          PROJECT_LOGIN: ammar-uni               # <- owner login (user or org)
-          PROJECT_TITLE: Delegation Bot - PoC     # <- project title EXACTLY
-          PROJECT_DEBUG: "1"                      # optional: show project logs
+          PROJECT_LOGIN: ammar-uni
+          PROJECT_TITLE: Delegation Bot - PoC
+          PROJECT_DEBUG: "1"
           PYTHONUNBUFFERED: "1"
         run: |
           python scripts/delegation_bot.py | tee bot.log
