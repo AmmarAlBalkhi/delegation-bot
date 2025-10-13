@@ -9,7 +9,8 @@ import frontmatter
 REST = "https://api.github.com"
 GRAPHQL = "https://api.github.com/graphql"
 
-TOKEN = os.environ.get("GITHUB_TOKEN", "")
+# Prefer a PAT with project scope if provided; fall back to GITHUB_TOKEN.
+TOKEN = os.environ.get("PROJECT_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
 REPO_ENV = os.environ.get("REPO", "")  # default repo (owner/repo)
 APPLY = os.environ.get("APPLY", "false").strip().lower() == "true"
 
