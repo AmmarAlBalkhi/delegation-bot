@@ -1,4 +1,3 @@
-# .github/workflows/delegation.yml
 name: Delegation Bot
 
 on:
@@ -21,6 +20,7 @@ jobs:
     permissions:
       contents: read
       issues: write
+      # (projects permission in Actions is for "Projects classic"; we use a PAT for Projects v2)
     steps:
       - uses: actions/checkout@v4
 
@@ -34,17 +34,17 @@ jobs:
       - name: Run bot
         env:
           APPLY: ${{ github.event.inputs.apply }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}         # still used for Issues
-          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}       # <- PAT for Project writes
-          REPO: ${{ github.repository }}
-          PROJECT_LOGIN: ammar-uni
-          PROJECT_TITLE: Delegation Bot - PoC
-          PROJECT_DEBUG: "1"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}           # Issues API
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}         # PAT with repo+project scopes
+          REPO: ${{ github.repository }}                      # owner/repo
+          PROJECT_LOGIN: ammar-uni                            # owner of the Project (user or org)
+          PROJECT_TITLE: Delegation Bot - PoC                 # EXACT project title
           PYTHONUNBUFFERED: "1"
         run: |
+          echo "ENV project login/title: $PROJECT_LOGIN / $PROJECT_TITLE"
           python scripts/delegation_bot.py | tee bot.log
           echo "### Delegation Bot summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 200 bot.log >> $GITHUB_STEP_SUMMARY
+          tail -n 300 bot.log >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
