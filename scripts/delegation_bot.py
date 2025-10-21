@@ -1,376 +1,508 @@
-import os, re, hashlib
-from datetime import date
-from pathlib import Path
-import requests
+#!/usr/bin/env python3
+"""
+Delegation Bot — parent + real sub-issues + interval scheduling + project dates
+
+What this script does
+---------------------
+1) Reads task specs from tasks/*.md (YAML front-matter + Markdown body).
+2) Creates/updates a **parent** Issue per task.
+3) If `subtasks:` are present, creates a **real Issue** for each subtask
+   and inserts a tracked task list in the parent body that references them
+   (e.g., "- [ ] #123 Title"). GitHub automatically shows the linkage.
+4) Reticks the parent’s task list: when a child Issue is closed, the item
+   in the parent becomes checked "- [x]".
+5) Supports `interval`: "once" | "daily" | "weekly" | "monthly" | "every:N".
+6) Optionally writes ProjectV2 custom dates ("Date active" / "Due date")
+   using GraphQL if you provide PROJECT_TOKEN.
+
+Required env:
+-------------
+- GITHUB_TOKEN  (repo-scoped; Actions' default works for same-repo writes)
+Optional:
+- PROJECT_TOKEN (a classic PAT with project: write) for ProjectV2 date sync.
+- REPO          (owner/name). Defaults to the Actions repo if unset.
+- APPLY         ("true" to create/update; otherwise dry-run)
+
+Task schema (front-matter)
+--------------------------
+id: string (stable id)
+repository: owner/name (optional; defaults to env REPO)
+title: string
+assign: <login> | [logins]
+labels: [label, ...]
+date_active: YYYY-MM-DD
+due_date: YYYY-MM-DD              # OR
+due_in: 7                         # days from creation
+interval: once|daily|weekly|monthly|every:N
+project: { owner: "...", title: "Delegation Bot - PoC" }   # optional
+subtasks:
+  - id: string
+    title: string
+    assign: login or [logins] (optional; falls back to parent)
+    labels: [ ... ]               (optional; falls back to parent)
+    due_in: N                     (optional; defaults to parent's due_in)
+"""
+
+import os
+import re
+import sys
+import json
+import glob
+import time
+import datetime as dt
+from typing import Dict, Any, List, Tuple, Optional
+
 import frontmatter
+import requests
 
-REST = "https://api.github.com"
-GRAPHQL = "https://api.github.com/graphql"
+ISO_DATE = "%Y-%m-%d"
+SESSION = requests.Session()
+SESSION.headers.update({
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+})
 
-# Prefer PAT for Projects v2 writes; fall back to GITHUB_TOKEN (issues).
-TOKEN = os.environ.get("PROJECT_TOKEN") or os.environ.get("GITHUB_TOKEN", "")
-REPO_ENV = os.environ.get("REPO", "")
-APPLY = os.environ.get("APPLY", "false").strip().lower() == "true"
+# ---------- Helpers -----------------------------------------------------------
 
-PROJECT_LOGIN = os.environ.get("PROJECT_LOGIN", "").strip()
-PROJECT_TITLE = os.environ.get("PROJECT_TITLE", "").strip()
+def getenv(name: str, default: Optional[str] = None) -> Optional[str]:
+    v = os.getenv(name, default)
+    return v if v not in ("", None) else default
 
-HEADERS = {"Authorization": f"Bearer {TOKEN}", "Accept": "application/vnd.github+json"}
+def today_utc_date() -> dt.date:
+    return dt.datetime.utcnow().date()
 
-print(f"[PROJECT] token_source={'PROJECT_TOKEN' if os.environ.get('PROJECT_TOKEN') else 'GITHUB_TOKEN'}")
-print(f"[PROJECT] target login/title: {PROJECT_LOGIN!r} / {PROJECT_TITLE!r}")
+def parse_date(s: Optional[str]) -> Optional[dt.date]:
+    if not s:
+        return None
+    return dt.datetime.strptime(str(s), ISO_DATE).date()
 
-def today_iso() -> str:
-    return date.today().isoformat()
+def parse_interval(s: Optional[str]) -> Tuple[str, Optional[int]]:
+    """
+    Returns (kind, n) where kind in {"once","daily","weekly","monthly","every"}
+    and n is only used for "every".
+    """
+    if not s:
+        return ("once", None)
+    s = s.strip().lower()
+    if s in ("once", "daily", "weekly", "monthly"):
+        return (s, None)
+    m = re.match(r"every\:(\d+)", s)
+    if m:
+        return ("every", int(m.group(1)))
+    return ("once", None)
 
-def as_list(v):
-    if v is None: return []
-    if isinstance(v, list): return [str(x).strip() for x in v if str(x).strip()]
-    s = str(v).strip()
-    return [s] if s else []
+def gh_rest(method: str, url: str, token: str, **kw) -> requests.Response:
+    h = kw.pop("headers", {})
+    h["Authorization"] = f"Bearer {token}"
+    return SESSION.request(method, url, headers=h, **kw)
 
-def as_bool(v):
-    if isinstance(v, bool): return v
-    if v is None: return False
-    return str(v).strip().lower() in {"true","1","yes","y"}
-
-def slug(s: str) -> str:
-    s = re.sub(r"[^a-z0-9]+","-", s.lower()).strip("-")
-    return s or "task"
-
-def posix_rel(path: str) -> str:
-    return Path(path).as_posix()
-
-# ---------- Load tasks (single + multi) ----------
-def load_task_files():
-    files=[]
-    for root,_,names in os.walk("tasks"):
-        for n in names:
-            if n.endswith(".md"): files.append(os.path.join(root,n))
-    return sorted(files)
-
-def load_tasks_from_file(path):
-    post = frontmatter.load(path)
-    meta = post.metadata or {}
-    body = post.content or ""
-    if isinstance(meta.get("tasks"), list):
-        defaults = {k:v for k,v in meta.items() if k!="tasks"}
-        tasks=[]
-        for t in meta["tasks"]:
-            merged = defaults.copy(); merged.update(t or {})
-            merged["_src"] = path
-            tasks.append(merged)
-        return tasks, body
-    single = meta.copy(); single["_src"] = path
-    return [single], body
-
-# ---------- Fingerprint + Issues ----------
-def compute_fpr(repo: str, src: str, key: str, occ: str) -> str:
-    return hashlib.sha256(f"{repo}|{src}|{key}|{occ}".encode("utf-8")).hexdigest()
-
-def fpr_comment(fpr: str, src: str, key: str, occ: str) -> str:
-    return f"<!-- 🔑 delegation-bot:fpr=sha256:{fpr}; src={src}; key={key}; occ={occ} -->"
-
-def search_by_fpr(repo: str, fpr: str):
-    q = f'repo:{repo} in:body "delegation-bot:fpr=sha256:{fpr}"'
-    r = requests.get(f"{REST}/search/issues", headers=HEADERS, params={"q": q})
-    if not r.ok: return None, None
-    items = r.json().get("items", [])
-    open_item  = next((it for it in items if it.get("state")=="open"), None)
-    closed_item= next((it for it in items if it.get("state")=="closed"), None)
-    return open_item, closed_item
-
-def update_issue(repo: str, number: int, payload: dict):
-    r = requests.patch(f"{REST}/repos/{repo}/issues/{number}", headers=HEADERS, json=payload)
-    r.raise_for_status(); return r.json()
-
-def create_issue(repo: str, payload: dict):
-    r = requests.post(f"{REST}/repos/{repo}/issues", headers=HEADERS, json=payload)
-    r.raise_for_status(); return r.json()
-
-# ---------- GraphQL helpers for Project v2 ----------
-def gql(query: str, variables: dict):
-    r = requests.post(GRAPHQL, headers=HEADERS, json={"query": query, "variables": variables})
-    r.raise_for_status()
+def gh_graphql(query: str, variables: Dict[str, Any], token: str) -> Dict[str, Any]:
+    r = gh_rest("POST", "https://api.github.com/graphql", token,
+                json={"query": query, "variables": variables})
+    if r.status_code >= 300:
+        raise RuntimeError(f"GraphQL HTTP {r.status_code}: {r.text}")
     data = r.json()
     if "errors" in data:
-        raise Exception(f"GraphQL error: {data['errors']}")
+        raise RuntimeError(f"GraphQL error: {data['errors']}")
     return data["data"]
 
-_project_cache = {"id": None, "fields": {}}
+def ensure_list(x):
+    if x is None:
+        return []
+    return x if isinstance(x, list) else [x]
 
-def get_project_id():
+def normalized_repo(repo: Optional[str]) -> str:
+    if repo:
+        return repo
+    return getenv("REPO") or getenv("GITHUB_REPOSITORY") or ""
+
+def debug(msg: str):
+    print(msg, flush=True)
+
+# ---------- Fingerprints & body stitching ------------------------------------
+
+def make_fingerprint(task_id: str) -> str:
+    return f"<!-- delegation-fingerprint:{task_id} -->"
+
+def make_sub_fingerprint(parent_id: str, sub_id: str) -> str:
+    return f"<!-- delegation-sub:{parent_id}:{sub_id} -->"
+
+def splice_section(body: str, heading: str, content: str) -> str:
     """
-    Look up a ProjectV2 by PROJECT_LOGIN + PROJECT_TITLE.
-    Try the login as a USER first; if not found, try as an ORG.
-    Avoids the GraphQL 'organization not found' error.
+    Ensure a '### heading' section exists exactly once with content below it.
     """
-    if not (PROJECT_LOGIN and PROJECT_TITLE):
-        print("[PROJECT] PROJECT_LOGIN/PROJECT_TITLE not set; skip")
-        return None
+    pattern = re.compile(rf"(?ms)^### {re.escape(heading)}\s*\n.*?(?=^### |\Z)")
+    block = f"### {heading}\n{content}\n"
+    if pattern.search(body):
+        return pattern.sub(block, body)
+    if body.endswith("\n") is False:
+        body += "\n"
+    return body + "\n" + block
 
-    # --- 1) Try as USER ---
-    q_user = """
-    query($login:String!){
-      user(login:$login){
-        projectsV2(first:50){
-          nodes { id title }
-        }
-      }
-    }"""
-    try:
-        d = gql(q_user, {"login": PROJECT_LOGIN})
-        nodes = (d.get("user") or {}).get("projectsV2", {}).get("nodes", []) or []
-        match = next((n for n in nodes if n["title"] == PROJECT_TITLE), None)
-        if match:
-            _project_cache["id"] = match["id"]
-            print(f"[PROJECT] Found USER project id={match['id']}")
-            return match["id"]
-        else:
-            print(f"[PROJECT] USER projects found (no exact match): {[n['title'] for n in nodes]}")
-    except Exception as e:
-        print(f"[PROJECT] User lookup failed: {e}")
-
-    # --- 2) Try as ORG ---
-    q_org = """
-    query($login:String!){
-      organization(login:$login){
-        projectsV2(first:50){
-          nodes { id title }
-        }
-      }
-    }"""
-    try:
-        d = gql(q_org, {"login": PROJECT_LOGIN})
-        nodes = (d.get("organization") or {}).get("projectsV2", {}).get("nodes", []) or []
-        match = next((n for n in nodes if n["title"] == PROJECT_TITLE), None)
-        if match:
-            _project_cache["id"] = match["id"]
-            print(f"[PROJECT] Found ORG project id={match['id']}")
-            return match["id"]
-        else:
-            print(f"[PROJECT] ORG projects found (no exact match): {[n['title'] for n in nodes]}")
-    except Exception as e:
-        print(f"[PROJECT] Org lookup failed: {e}")
-
-    print(f"[PROJECT] Project not found for login/title: {PROJECT_LOGIN!r}/{PROJECT_TITLE!r}")
-    return None
-
-def get_field_id(project_id: str, name: str):
-    key = (project_id, name)
-    if key in _project_cache["fields"]:
-        return _project_cache["fields"][key]
-    q = """
-    query($id:ID!){
-      node(id:$id){
-        ... on ProjectV2{
-          fields(first:100){ nodes{ ... on ProjectV2FieldCommon { id name dataType } } }
-        }
-      }
-    }"""
-    d = gql(q, {"id": project_id})
-    for n in d["node"]["fields"]["nodes"]:
-        if n["name"] == name:
-            _project_cache["fields"][key] = n["id"]
-            print(f"[PROJECT] Field exists {name} id={n['id']} type={n.get('dataType')}")
-            return n["id"]
-    m = """
-    mutation($pid:ID!, $name:String!){
-      createProjectV2Field(input:{projectId:$pid, dataType:DATE, name:$name}){
-        projectV2Field{ ... on ProjectV2FieldCommon { id name } }
-      }
-    }"""
-    d2 = gql(m, {"pid": project_id, "name": name})
-    fid = d2["createProjectV2Field"]["projectV2Field"]["id"]
-    _project_cache["fields"][key] = fid
-    print(f"[PROJECT] Created Date field {name} id={fid}")
-    return fid
-
-def get_project_item_id_for_issue(project_id: str, issue_node_id: str):
-    q = """
-    query($iid:ID!){
-      node(id:$iid){
-        ... on Issue{
-          projectItems(first:50){ nodes{ id project{ id title } } }
-        }
-      }
-    }"""
-    d = gql(q, {"iid": issue_node_id})
-    for n in d["node"]["projectItems"]["nodes"]:
-        if n["project"]["id"] == project_id:
-            return n["id"]
-    return None
-
-def add_issue_to_project(project_id: str, issue_node_id: str):
-    m = """
-    mutation($pid:ID!, $cid:ID!){
-      addProjectV2ItemById(input:{projectId:$pid, contentId:$cid}){ item{ id } }
-    }"""
-    try:
-        d = gql(m, {"pid": project_id, "cid": issue_node_id})
-        item_id = d["addProjectV2ItemById"]["item"]["id"]
-        print(f"[PROJECT] Added to project item={item_id}")
-        return item_id
-    except Exception as e:
-        print(f"[PROJECT] addProjectV2ItemById failed (maybe exists): {e}")
-        return get_project_item_id_for_issue(project_id, issue_node_id)
-
-def set_date_field(project_id: str, item_id: str, field_id: str, date_str: str, label: str):
-    if not date_str:
-        return
-    # NOTE: $val must be Date!, not String!
-    m = """
-    mutation($pid:ID!, $iid:ID!, $fid:ID!, $val:Date!){
-      updateProjectV2ItemFieldValue(input:{
-        projectId:$pid, itemId:$iid, fieldId:$fid, value:{ date:$val }
-      }){ projectV2Item{ id } }
-    }"""
-    gql(m, {"pid": project_id, "iid": item_id, "fid": field_id, "val": date_str})
-    print(f"[PROJECT] {label} set => {date_str}")
-
-
-def write_dates_to_project(issue_json: dict, date_active: str, due_date: str):
-    try:
-        project_id = get_project_id()
-        if not project_id:
-            return
-        item_id = add_issue_to_project(project_id, issue_json["node_id"])
-        if not item_id:
-            print("[PROJECT] Could not resolve project item id; skip date write")
-            return
-        print(f"[PROJECT] item={item_id}  Date active={date_active or '-'}  Due date={due_date or '-'}")
-        fa_id = get_field_id(project_id, "Date active")
-        dd_id = get_field_id(project_id, "Due date")
-        if date_active: set_date_field(project_id, item_id, fa_id, date_active, "Date active")
-        if due_date:    set_date_field(project_id, item_id, dd_id, due_date, "Due date")
-    except Exception as e:
-        print(f"[PROJECT] ERROR while writing dates: {e}")
-
-# === Auto-checklist (Markdown) helpers ===
-CHECK_START = "<!-- checklist:auto:start -->"
-CHECK_END = "<!-- checklist:auto:end -->"
-
-import re
-_CHECK_LINE = re.compile(r"^\s*-\s*\[(?: |x)\]\s*(.*)\(([^)]+)\)\s*$")
-
-def retick_checklist_block(body: str, registry: dict) -> str:
+def render_parent_body(original_md: str,
+                       parent_fp: str,
+                       subtasks: List[Tuple[int, str]]) -> str:
     """
-    Look for a block delimited by CHECK_START/CHECK_END.
-    For each line like:  - [ ] Some text (task-id)
-    tick to [x] if the issue for task-id is closed, else [ ].
+    Build the parent body: original markdown + fingerprint + Subtasks section.
+    subtasks: list of (issue_number, title)
     """
-    if CHECK_START not in (body or "") or CHECK_END not in (body or ""):
-        return body or ""
+    lines = []
+    lines.append(original_md.strip())
+    lines.append("")
+    lines.append(parent_fp)
+    if subtasks:
+        items = "\n".join([f"- [ ] #{num} {title}" for num, title in subtasks])
+        body = "\n".join(lines)
+        return splice_section(body, "Subtasks", items)
+    else:
+        return "\n".join(lines).strip() + "\n"
 
-    head, rest = body.split(CHECK_START, 1)
-    block, tail = rest.split(CHECK_END, 1)
+def retick_checklist(body: str, token: str, repo: str) -> str:
+    """
+    If a line contains "- [ ] #123 ..." or "- [x] #123 ...", tick based on child state.
+    """
+    def child_state(num: int) -> str:
+        r = gh_rest("GET", f"https://api.github.com/repos/{repo}/issues/{num}",
+                    token)
+        r.raise_for_status()
+        return r.json()["state"]  # "open" or "closed"
 
+    changed = False
     new_lines = []
-    for raw in block.splitlines():
-        m = _CHECK_LINE.match(raw.strip())
-        if not m:
-            new_lines.append(raw)
-            continue
-        text, ref_id = m.groups()
-        ref_id = ref_id.strip()
-        entry = registry.get(ref_id)
-        closed = bool(entry and entry.get("issue") and entry["issue"].get("state") == "closed")
-        tick = "x" if closed else " "
-        new_lines.append(f"- [{tick}] {text.strip()} ({ref_id})")
-
-    new_block = "\n" + "\n".join(new_lines) + "\n"
-    return head + CHECK_START + new_block + CHECK_END + tail
-
-# ---------- Main ----------
-def main():
-    # 1) Load tasks
-    file_tasks = []
-    for path in load_task_files():
-        tasks, body = load_tasks_from_file(path)
-        file_tasks.append((path, tasks, body))
-
-    # 2) Create/update issues and remember them by id (for checklist reticking)
-    registry = {}  # id -> {'issue': json or None, 'title': str, 'repo': str}
-    for path, tasks, body in file_tasks:
-        for t in tasks:
-            repo = (t.get("repository") or REPO_ENV).strip()
-            title = (t.get("title") or "").strip()
-            if not (repo and title):
-                print(f"[SKIP] {path}: missing repository or title"); 
-                continue
-
-            da = str(t.get("date_active") or "").strip()
-            if da and da > today_iso():
-                print(f"[SKIP] {path}: date_active in future ({da})")
-                # still register so the checklist line can render (unchecked) by id
-                registry[t.get("id") or slug(title)] = {"issue": None, "title": title, "repo": repo}
-                continue
-
-            labels    = as_list(t.get("labels"))
-            assignees = as_list(t.get("assign"))
-            once      = as_bool(t.get("once"))
-            due       = str(t.get("due_date") or "").strip()
-
-            src = posix_rel(t.get("_src", path))
-            key = t.get("id") or slug(title)
-            # 'occ' is blank for once=true (don't recreate after close), else include date key
-            occ = "" if once else (da or "")
-            fpr = compute_fpr(repo, src, key, occ)
-            marker = fpr_comment(fpr, src, key, occ)
-
-            # Compose body with marker + meta (keeps your existing content + idempotency)
-            info = [f"**Task source:** `{src}`", f"**Date active:** {da or 'None'}"]
-            if due:
-                info.append(f"**Due date:** {due}")
-            body_full = f"{body}\n\n{marker}\n\n" + "\n".join(info)
-
-            # Idempotent search
-            open_item, closed_item = search_by_fpr(repo, fpr)
-            res = None
-            if open_item:
-                payload = {"title": title, "body": body_full}
-                if labels: payload["labels"] = labels
-                if assignees: payload["assignees"] = assignees
-                if APPLY:
-                    res = update_issue(repo, open_item["number"], payload)
-                    print(f"[UPDATE] #{res['number']} {title}")
-                    write_dates_to_project(res, da, due)
-                else:
-                    print(f"[DRY-RUN][UPDATE] {title} (#{open_item['number']})")
+    for line in body.splitlines():
+        m = re.match(r"^-\s*\[( |x)\]\s*#(\d+)\b(.*)$", line.strip())
+        if m:
+            cur = m.group(1)
+            num = int(m.group(2))
+            rest = m.group(3)
+            st = child_state(num)
+            want = "x" if st == "closed" else " "
+            if want != cur:
+                changed = True
+                new_lines.append(f"- [{want}] #{num}{rest}")
             else:
-                if once and closed_item:
-                    print(f"[SKIP] {path}: once=true and closed issue exists (#{closed_item['number']})")
-                else:
-                    payload = {"title": title, "body": body_full}
-                    if labels: payload["labels"] = labels
-                    if assignees: payload["assignees"] = assignees
-                    if APPLY:
-                        try:
-                            res = create_issue(repo, payload)
-                            print(f"[CREATE] #{res['number']} {title}")
-                        except Exception:
-                            # some repos disallow assigning on create
-                            payload.pop("assignees", None)
-                            res = create_issue(repo, payload)
-                            print(f"[CREATE] #{res['number']} {title} (assignees skipped)")
-                        write_dates_to_project(res, da, due)
-                    else:
-                        print(f"[DRY-RUN][CREATE] {title} in {repo}")
+                new_lines.append(line)
+        else:
+            new_lines.append(line)
+    if changed:
+        debug("[UPDATE] reticked checklist based on child issues")
+    return "\n".join(new_lines)
 
-            # Save what we have for this id (created/updated/open/closed)
-            issue_json = res or open_item or closed_item
-            registry[key] = {"issue": issue_json, "title": title, "repo": repo}
+# ---------- ProjectV2 date helpers (optional) ---------------------------------
 
-    # 3) Retick any auto-checklists found in issue bodies
-    for tid, entry in registry.items():
-        issue = entry.get("issue")
-        if not issue:
+GQL_FIND_PROJECT = """
+query($owner:String!, $title:String!) {
+  user(login:$owner) { projectsV2(first: 20, query:$title) { nodes { id title } } }
+  organization(login:$owner) { projectsV2(first: 20, query:$title) { nodes { id title } } }
+}
+"""
+
+GQL_ADD_ITEM = """
+mutation($projectId:ID!, $contentId:ID!) {
+  addProjectV2ItemById(input:{projectId:$projectId, contentId:$contentId}) { item { id } }
+}
+"""
+
+GQL_FIELDS = """
+query($projectId:ID!) {
+  node(id:$projectId) {
+    ... on ProjectV2 {
+      fields(first:50) { nodes { ... on ProjectV2Field { id name dataType } } }
+    }
+  }
+}
+"""
+
+GQL_WRITE_DATE = """
+mutation($projectId:ID!, $itemId:ID!, $fieldId:ID!, $val:Date!) {
+  updateProjectV2ItemFieldValue(input:{
+    projectId:$projectId, itemId:$itemId,
+    fieldId:$fieldId, value:{ date:$val }
+  }) { projectV2Item { id } }
+}
+"""
+
+def find_user_or_org_project(owner: str, title: str, token: str) -> Optional[str]:
+    data = gh_graphql(GQL_FIND_PROJECT, {"owner": owner, "title": title}, token)
+    for k in ("user", "organization"):
+        node = data.get(k)
+        if node and node["projectsV2"]["nodes"]:
+            for p in node["projectsV2"]["nodes"]:
+                if p["title"].lower() == title.lower():
+                    return p["id"]
+    return None
+
+def set_project_dates(repo: str, issue_num: int,
+                      date_active: Optional[dt.date],
+                      due_date: Optional[dt.date],
+                      project_spec: Dict[str, Any],
+                      token: str):
+    """
+    Best-effort: add to project, then set Date active / Due date if fields exist.
+    """
+    if not project_spec:
+        return
+
+    owner = repo.split("/")[0]
+    project_id = find_user_or_org_project(project_spec.get("owner", owner),
+                                          project_spec["title"], token)
+    if not project_id:
+        debug("[PROJECT] No matching project found; skipping")
+        return
+
+    # get Issue node id
+    r = gh_rest("GET", f"https://api.github.com/repos/{repo}/issues/{issue_num}", token)
+    r.raise_for_status()
+    content_node_id = r.json()["node_id"]
+
+    # add item
+    try:
+        data = gh_graphql(GQL_ADD_ITEM, {"projectId": project_id, "contentId": content_node_id}, token)
+        item_id = data["addProjectV2ItemById"]["item"]["id"]
+    except Exception as e:
+        # Item might already be there; try to discover item id by listing is overkill—skip.
+        debug(f"[PROJECT] add item warning: {e}; continuing")
+        item_id = None
+
+    # fetch fields
+    fields = gh_graphql(GQL_FIELDS, {"projectId": project_id}, token)["node"]["fields"]["nodes"]
+    field_map = {f["name"]: f for f in fields if f["dataType"] == "DATE"}
+
+    def write(field_name: str, val: Optional[dt.date]):
+        if not item_id or not val:
+            return
+        fld = field_map.get(field_name)
+        if not fld:
+            return
+        gh_graphql(GQL_WRITE_DATE, {
+            "projectId": project_id,
+            "itemId": item_id,
+            "fieldId": fld["id"],
+            "val": val.strftime(ISO_DATE),
+        }, token)
+        debug(f"[PROJECT] {field_name} set => {val.strftime(ISO_DATE)}")
+
+    write("Date active", date_active)
+    write("Due date", due_date)
+
+# ---------- Core issue operations ---------------------------------------------
+
+def find_existing_issue_by_fp(repo: str, fp: str, token: str) -> Optional[Dict[str, Any]]:
+    q = f'repo:{repo} in:body "{fp}"'
+    r = gh_rest("GET", f"https://api.github.com/search/issues?q={requests.utils.quote(q)}", token)
+    r.raise_for_status()
+    items = r.json().get("items", [])
+    return items[0] if items else None
+
+def create_issue(repo: str, title: str, body: str,
+                 assignees: List[str], labels: List[str],
+                 token: str) -> Dict[str, Any]:
+    payload = {"title": title, "body": body}
+    if assignees:
+        payload["assignees"] = assignees
+    if labels:
+        payload["labels"] = labels
+    r = gh_rest("POST", f"https://api.github.com/repos/{repo}/issues", token, json=payload)
+    r.raise_for_status()
+    return r.json()
+
+def update_issue(repo: str, number: int, body: Optional[str],
+                 title: Optional[str], assignees: Optional[List[str]],
+                 labels: Optional[List[str]], token: str) -> Dict[str, Any]:
+    payload: Dict[str, Any] = {}
+    if body is not None:
+        payload["body"] = body
+    if title is not None:
+        payload["title"] = title
+    if assignees is not None:
+        payload["assignees"] = assignees
+    if labels is not None:
+        payload["labels"] = labels
+    r = gh_rest("PATCH", f"https://api.github.com/repos/{repo}/issues/{number}", token, json=payload)
+    r.raise_for_status()
+    return r.json()
+
+def ensure_parent_issue(repo: str, spec: Dict[str, Any], md_body: str,
+                        token: str) -> Tuple[Dict[str, Any], bool]:
+    """
+    Create/update parent issue with fingerprint. Returns (issue, created_flag).
+    """
+    task_id = spec["id"]
+    fp = make_fingerprint(task_id)
+    assignees = ensure_list(spec.get("assign"))
+    labels = ensure_list(spec.get("labels"))
+    title = spec["title"]
+
+    # First attempt to find an existing issue via fingerprint
+    existing = find_existing_issue_by_fp(repo, fp, token)
+
+    if existing:
+        number = existing["number"]
+        # Retain current body (we will rebuild later including subtasks)
+        r = gh_rest("GET", f"https://api.github.com/repos/{repo}/issues/{number}", token)
+        r.raise_for_status()
+        issue = r.json()
+        return issue, False
+    else:
+        body = f"{md_body.strip()}\n\n{fp}\n"
+        issue = create_issue(repo, title, body, assignees, labels, token)
+        debug(f"[CREATE] #{issue['number']} {title}")
+        return issue, True
+
+def ensure_child_issues(parent: Dict[str, Any], repo: str,
+                        spec: Dict[str, Any], token: str) -> List[Tuple[int, str]]:
+    """
+    For each entry in subtasks, create a real Issue once (by sub-fingerprint).
+    Returns list of (issue_number, title).
+    """
+    sub_specs = spec.get("subtasks") or []
+    if not sub_specs:
+        return []
+
+    results = []
+    parent_id = spec["id"]
+    parent_labels = ensure_list(spec.get("labels"))
+    parent_assign = ensure_list(spec.get("assign"))
+    default_due_in = spec.get("due_in")
+
+    for s in sub_specs:
+        sub_id = s["id"]
+        sub_fp = make_sub_fingerprint(parent_id, sub_id)
+        sub_title = s["title"]
+        sub_assignees = ensure_list(s.get("assign") or parent_assign)
+        sub_labels = ensure_list(s.get("labels") or parent_labels)
+        sub_due_in = s.get("due_in", default_due_in)
+        sub_body = f"{sub_title}\n\n{sub_fp}\n"
+
+        existing = find_existing_issue_by_fp(repo, sub_fp, token)
+        if existing:
+            number = existing["number"]
+            results.append((number, sub_title))
             continue
-        current = issue.get("body") or ""
-        updated = retick_checklist_block(current, registry)
-        if updated != current and APPLY:
-            update_issue(entry["repo"], issue["number"], {"body": updated})
-            print(f"[UPDATE] reticked checklist for #{issue['number']} {issue.get('title','')}")
+
+        child = create_issue(repo, sub_title, sub_body, sub_assignees, sub_labels, token)
+        number = child["number"]
+
+        # set due date if due_in present
+        if isinstance(sub_due_in, int) and sub_due_in > 0:
+            due_date = today_utc_date() + dt.timedelta(days=sub_due_in)
+            gh_rest("PATCH", f"https://api.github.com/repos/{repo}/issues/{number}",
+                    token, json={"due_on": due_date.strftime("%Y-%m-%dT00:00:00Z")})
+        debug(f"[CREATE] sub-issue #{number} {sub_title}")
+        results.append((number, sub_title))
+
+    return results
+
+def parent_body_with_subtasks(parent_issue: Dict[str, Any], spec: Dict[str, Any],
+                              md_body: str, subtasks: List[Tuple[int, str]]) -> str:
+    fp = make_fingerprint(spec["id"])
+    return render_parent_body(md_body, fp, subtasks)
+
+# ---------- Scheduling logic --------------------------------------------------
+
+def should_create_now(spec: Dict[str, Any], repo: str, token: str) -> bool:
+    """
+    Decide whether to (re)create based on interval and open/closed state.
+    Strategy:
+      - if interval == once: create if no issue with fingerprint exists.
+      - else (recurring): if an OPEN issue with fp exists -> skip
+                          else if date_active <= today -> create new
+    """
+    task_id = spec["id"]
+    fp = make_fingerprint(task_id)
+    interval_kind, _ = parse_interval(spec.get("interval", "once"))
+    existing = find_existing_issue_by_fp(repo, fp, token)
+
+    if interval_kind == "once":
+        return existing is None
+
+    # recurring
+    if existing:
+        # If the existing is open, skip. If it's closed, a new one may be created.
+        r = gh_rest("GET",
+                    f"https://api.github.com/repos/{repo}/issues/{existing['number']}",
+                    token)
+        r.raise_for_status()
+        if r.json()["state"] == "open":
+            return False
+
+    date_active = parse_date(spec.get("date_active"))
+    return date_active is None or date_active <= today_utc_date()
+
+def compute_due_date(spec: Dict[str, Any]) -> Optional[dt.date]:
+    if spec.get("due_date"):
+        return parse_date(spec["due_date"])
+    if isinstance(spec.get("due_in"), int) and spec["due_in"] > 0:
+        return today_utc_date() + dt.timedelta(days=int(spec["due_in"]))
+    return None
+
+# ---------- Main --------------------------------------------------------------
+
+def main():
+    APPLY = (getenv("APPLY", "false").lower() == "true")
+    GH_TOKEN = getenv("GITHUB_TOKEN")
+    if not GH_TOKEN:
+        print("GITHUB_TOKEN missing", file=sys.stderr)
+        sys.exit(1)
+
+    PROJ_TOKEN = getenv("PROJECT_TOKEN") or GH_TOKEN  # fallback to GH_TOKEN
+    repo_env = normalized_repo(None)
+
+    files = sorted(glob.glob("tasks/*.md"))
+    if not files:
+        debug("[INFO] No task files found")
+        return
+
+    for path in files:
+        post = frontmatter.load(path)
+        spec = dict(post.metadata)
+        md_body = (post.content or "").strip()
+        repo = normalized_repo(spec.get("repository")) or repo_env
+        if not repo:
+            debug(f"[SKIP] {path}: no repository set")
+            continue
+
+        # Schedule decision
+        if not should_create_now(spec, repo, GH_TOKEN):
+            debug(f"[SKIP] {path}: interval/date says not now")
+            continue
+
+        if not APPLY:
+            debug(f"[DRY-RUN][CREATE] {spec['title']} in {repo}")
+            # show intended subtasks
+            for s in ensure_list(spec.get("subtasks")):
+                debug(f"[DRY-RUN]  └ sub: {s['title']}")
+            continue
+
+        # Ensure parent
+        parent_issue, created = ensure_parent_issue(repo, spec, md_body, GH_TOKEN)
+
+        # Ensure children
+        child_pairs = ensure_child_issues(parent_issue, repo, spec, GH_TOKEN)
+
+        # Build & write the parent body (with subtasks)
+        parent_number = parent_issue["number"]
+        new_body = parent_body_with_subtasks(parent_issue, spec, md_body, child_pairs)
+        # Retick based on child state
+        new_body = retick_checklist(new_body, GH_TOKEN, repo)
+
+        update_issue(repo, parent_number, new_body, None, None, None, GH_TOKEN)
+        if created:
+            debug(f"[UPDATE] #{parent_number} body -> added subtasks & fingerprint")
+        else:
+            debug(f"[UPDATE] #{parent_number} body -> refreshed")
+
+        # Dates (repository issues due_on is only in projects/milestones; do project fields instead)
+        date_active = parse_date(spec.get("date_active"))
+        due_date = compute_due_date(spec)
+        if spec.get("project"):
+            try:
+                set_project_dates(repo, parent_number, date_active, due_date, spec["project"], PROJ_TOKEN)
+            except Exception as e:
+                debug(f"[PROJECT] date write warning: {e}")
+
+    debug("[DONE]")
+
 
 if __name__ == "__main__":
     main()
