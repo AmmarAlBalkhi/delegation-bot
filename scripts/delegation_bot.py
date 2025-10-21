@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 """
 Delegation Bot — Intervals + occurrence-aware sub-issues (incl. per-subtask intervals)
+
+Features
+--------
 - Parent intervals: once | daily | weekly | monthly | every:N
 - Subtasks can override interval (e.g., monthly parent with weekly/daily children)
 - One OPEN parent per "task family"; one parent per period (occurrence)
 - Child issues are REAL GitHub issues; parent shows a tracked list (- [ ] #123 Title)
 - Parent checklist auto-reticks from child issue state on each run
 - ProjectV2 dates ("Date active", "Due date") written if PROJECT_TOKEN + project spec
+
+Env
+---
+GITHUB_TOKEN  (required; Actions default ok for issues)
+PROJECT_TOKEN (optional PAT with project scope; falls back to GITHUB_TOKEN)
+REPO          (optional owner/name; defaults to current repo)
+APPLY         ("true" to perform writes; anything else is dry-run)
 """
 
 import os, re, sys, glob, datetime as dt
@@ -25,7 +35,7 @@ SESSION.headers.update({
     "X-GitHub-Api-Version": "2022-11-28",
 })
 
-# ---------- small utils ----------
+# ---------------- small utils ----------------
 
 def getenv(name, default=None):
     v = os.getenv(name, default)
@@ -49,7 +59,7 @@ def normalized_repo(repo_opt: Optional[str]) -> str:
     if repo_opt: return repo_opt
     return getenv("REPO") or getenv("GITHUB_REPOSITORY") or ""
 
-# ---------- GitHub helpers ----------
+# ---------------- GitHub helpers ----------------
 
 def gh_rest(method, url, token, **kw):
     h = kw.pop("headers", {})
@@ -87,7 +97,7 @@ def update_issue(repo: str, number: int, fields: Dict[str, Any], token: str) -> 
     r.raise_for_status()
     return r.json()
 
-# ---------- Markers (family key / occurrence / child) ----------
+# ---------------- Markers (family key / occurrence / child) ----------------
 
 def family_key(task_id: str) -> str:
     return f"<!-- delegation-key:{task_id} -->"
@@ -110,7 +120,7 @@ def sub_marker(parent_id: str,
     parts.append(sub_id)
     return f"<!-- delegation-sub:{':'.join(parts)} -->"
 
-# ---------- Interval logic ----------
+# ---------------- Interval logic ----------------
 
 def parse_interval(s: Optional[str]):
     """
@@ -182,23 +192,34 @@ def should_create_parent_now(repo: str, spec: Dict[str, Any], token: str) -> Tup
     if not parent_occ: return (False, None)
     return (False, parent_occ) if occurrence_exists(repo, tid, parent_occ, token) else (True, parent_occ)
 
-# ---------- ProjectV2 date writing (best-effort) ----------
+# ---------------- ProjectV2 date writing (best-effort) ----------------
 
-GQL_FIND_PROJECT = """
-query($owner:String!, $title:String!){
-  user(login:$owner){ projectsV2(first:50, query:$title){ nodes{ id title } } }
-  organization(login:$owner){ projectsV2(first:50, query:$title){ nodes{ id title } } }
+GQL_FIND_USER_PROJECT = """
+query($login:String!, $title:String!){
+  user(login:$login){
+    projectsV2(first:50, query:$title){ nodes{ id title } }
+  }
 }"""
+
+GQL_FIND_ORG_PROJECT = """
+query($login:String!, $title:String!){
+  organization(login:$login){
+    projectsV2(first:50, query:$title){ nodes{ id title } }
+  }
+}"""
+
 GQL_ADD_ITEM = """
 mutation($pid:ID!,$cid:ID!){
   addProjectV2ItemById(input:{projectId:$pid, contentId:$cid}){ item{ id } }
 }"""
+
 GQL_FIELDS = """
 query($pid:ID!){
   node(id:$pid){
     ... on ProjectV2{ fields(first:100){ nodes{ ... on ProjectV2Field{ id name dataType } } } }
   }
 }"""
+
 GQL_SET_DATE = """
 mutation($pid:ID!,$iid:ID!,$fid:ID!,$val:Date!){
   updateProjectV2ItemFieldValue(input:{
@@ -206,44 +227,73 @@ mutation($pid:ID!,$iid:ID!,$fid:ID!,$val:Date!){
   }){ projectV2Item{ id } }
 }"""
 
+def find_project_id(owner_login: str, title: str, token: str) -> Optional[str]:
+    # Try USER scope
+    try:
+        data = gh_gql(GQL_FIND_USER_PROJECT, {"login": owner_login, "title": title}, token)
+        nodes = (data.get("user") or {}).get("projectsV2", {}).get("nodes", []) or []
+        for p in nodes:
+            if p["title"].lower() == title.lower():
+                return p["id"]
+    except Exception:
+        pass
+    # Try ORG scope
+    try:
+        data = gh_gql(GQL_FIND_ORG_PROJECT, {"login": owner_login, "title": title}, token)
+        nodes = (data.get("organization") or {}).get("projectsV2", {}).get("nodes", []) or []
+        for p in nodes:
+            if p["title"].lower() == title.lower():
+                return p["id"]
+    except Exception:
+        pass
+    return None
+
 def write_project_dates(repo: str, issue_num: int,
                         date_active: Optional[dt.date],
                         due_date: Optional[dt.date],
                         project: Optional[Dict[str, Any]],
                         token: str):
-    if not project: return
-    owner = repo.split("/")[0]
-    data = gh_gql(GQL_FIND_PROJECT, {"owner": project.get("owner", owner), "title": project["title"]}, token)
-    pid = None
-    for scope in ("user","organization"):
-        node = data.get(scope)
-        if node:
-            for p in node["projectsV2"]["nodes"]:
-                if p["title"].lower() == project["title"].lower():
-                    pid = p["id"]; break
+    if not project:
+        return
+    owner_default = repo.split("/")[0]
+    pid = find_project_id(project.get("owner", owner_default), project["title"], token)
     if not pid:
-        debug("[PROJECT] Not found; skip"); return
+        debug("[PROJECT] Not found; skip")
+        return
 
     issue = get_issue(repo, issue_num, token)
-    node_id = issue["node_id"]
+    content_id = issue["node_id"]
 
+    # Ensure project item exists
     try:
-        gh_gql(GQL_ADD_ITEM, {"pid": pid, "cid": node_id}, token)
+        gh_gql(GQL_ADD_ITEM, {"pid": pid, "cid": content_id}, token)
     except Exception as e:
         debug(f"[PROJECT] add warn: {e}")
 
+    # Resolve the item id on that project
     q_items = """query($iid:ID!){ node(id:$iid){ ... on Issue {
         projectItems(first:50){ nodes{ id project{ id title } } }
     }}}"""
-    items = gh_gql(q_items, {"iid": node_id}, token)["node"]["projectItems"]["nodes"]
+    try:
+        items = gh_gql(q_items, {"iid": content_id}, token)["node"]["projectItems"]["nodes"]
+    except Exception as e:
+        debug(f"[PROJECT] item lookup warn: {e}")
+        items = []
+
     item_id = None
     for it in items:
         if it["project"]["id"] == pid:
             item_id = it["id"]; break
     if not item_id:
-        debug("[PROJECT] no item id; skip date writes"); return
+        debug("[PROJECT] no item id; skip date writes")
+        return
 
-    fields = gh_gql(GQL_FIELDS, {"pid": pid}, token)["node"]["fields"]["nodes"]
+    # Fetch date fields and write values
+    try:
+        fields = gh_gql(GQL_FIELDS, {"pid": pid}, token)["node"]["fields"]["nodes"]
+    except Exception as e:
+        debug(f"[PROJECT] fields warn: {e}")
+        fields = []
     f_map = {f["name"]: f for f in fields if f.get("dataType") == "DATE"}
 
     def set_date(name, d: Optional[dt.date]):
@@ -254,7 +304,7 @@ def write_project_dates(repo: str, issue_num: int,
     set_date("Date active", date_active)
     set_date("Due date",   due_date)
 
-# ---------- Parent body (Subtasks section + retick) ----------
+# ---------------- Parent body (Subtasks section + retick) ----------------
 
 SUBSECTION_RE = re.compile(r"(?ms)^### Subtasks\s*\n.*?(?=^### |\Z)")
 
@@ -293,7 +343,7 @@ def retick_from_children(body: str, repo: str, token: str) -> str:
         debug("[UPDATE] reticked checklist from child states")
     return "\n".join(out)
 
-# ---------- Child issues (occurrence-aware, incl. per-subtask interval) ----------
+# ---------------- Child issues (occurrence-aware, incl. per-subtask interval) ----------------
 
 def search_children_for_parent_occ(repo: str, parent_id: str, parent_occ: Optional[str], token: str):
     """
@@ -308,7 +358,6 @@ def search_children_for_parent_occ(repo: str, parent_id: str, parent_occ: Option
     pairs = []
     for it in items:
         pairs.append((it["number"], it.get("title","")))
-    # sort by number for stable display
     pairs.sort(key=lambda x: x[0])
     return pairs
 
@@ -325,7 +374,7 @@ def ensure_subissues(repo: str,
       - compute its own occurrence (from its 'interval', default 'once')
       - create child for *this* parent occurrence + *this* sub-occurrence, if missing
       - decorate child title with [<sub_occ>] for clarity
-    Then return ALL child issues belonging to this parent occurrence (not just the new ones).
+    Then return ALL child issues belonging to this parent occurrence.
     """
     now = today()
     for s in subspecs or []:
@@ -340,25 +389,23 @@ def ensure_subissues(repo: str,
         items = search_issues(repo, q, token)
         if items:
             continue
-        # create child
         labels    = ensure_list(s.get("labels") or parent_labels)
         assignees = ensure_list(s.get("assign")  or parent_assign)
-        # make period explicit in title, if we have one
         final_title = f"{title} [{sub_occ}]" if sub_occ else title
         body = f"{final_title}\n\n{fp}\n"
         child = create_issue(repo, final_title, body, assignees, labels, token)
         debug(f"[CREATE] sub-issue #{child['number']} {final_title}")
 
-    # After ensuring today's/this-period children exist, list *all* children for this parent occurrence
+    # After ensuring children exist for this occurrence, list *all* children for this parent occurrence
     return search_children_for_parent_occ(repo, parent_id, parent_occ, token)
 
-# ---------- Due date (explicit only) ----------
+# ---------------- Due date (explicit only) ----------------
 
 def compute_due_date(spec: Dict[str, Any]) -> Optional[dt.date]:
     # Explicit date only; simple & predictable for demos
     return parse_date(spec.get("due_date"))
 
-# ---------- Main ----------
+# ---------------- Main ----------------
 
 def main():
     APPLY = (getenv("APPLY", "false").lower() == "true")
