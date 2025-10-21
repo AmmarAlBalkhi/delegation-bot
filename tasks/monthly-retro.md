@@ -13,7 +13,7 @@ project:
   owner: ammar-uni
   title: Delegation Bot - PoC
 
-# ⬇️ Each subtask has ITS OWN interval
+# Each subtask has ITS OWN interval
 subtasks:
   - id: metrics
     title: "Collect metrics (issues closed, PRs merged, lead time)"
