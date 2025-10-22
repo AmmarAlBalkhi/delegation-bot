@@ -2,6 +2,11 @@
 """
 Delegation Bot — Intervals + occurrence-aware sub-issues (incl. per-subtask intervals)
 
+Fixes vs v9:
+- Hard guarantee that a parent for *this* occurrence exists before creating children.
+- Each child body includes an explicit "Parent: #<number>" backlink (plus hidden markers),
+  so GitHub shows a first-class issue reference both ways.
+
 Features
 --------
 - Parent intervals: once | daily | weekly | monthly | every:N
@@ -362,6 +367,7 @@ def search_children_for_parent_occ(repo: str, parent_id: str, parent_occ: Option
     return pairs
 
 def ensure_subissues(repo: str,
+                     parent_issue_num: int,
                      parent_id: str,
                      parent_occ: Optional[str],
                      parent_date_active: Optional[dt.date],
@@ -374,6 +380,7 @@ def ensure_subissues(repo: str,
       - compute its own occurrence (from its 'interval', default 'once')
       - create child for *this* parent occurrence + *this* sub-occurrence, if missing
       - decorate child title with [<sub_occ>] for clarity
+      - include a visible backlink 'Parent: #<parent_issue_num>' in the child body
     Then return ALL child issues belonging to this parent occurrence.
     """
     now = today()
@@ -381,10 +388,8 @@ def ensure_subissues(repo: str,
         sid   = s["id"]
         title = s["title"]
         skind, sn = parse_interval(s.get("interval"))  # per-subtask interval (default once)
-        # sub-occurrence base aligned to parent activation if provided
         sub_occ = compute_occurrence_id(skind, sn, parent_date_active, now)
         fp = sub_marker(parent_id, parent_occ, sub_occ, sid)
-        # existence check for THIS parent-occ + sub-occ + sub-id
         q = f'repo:{repo} in:body "{fp}"'
         items = search_issues(repo, q, token)
         if items:
@@ -392,7 +397,8 @@ def ensure_subissues(repo: str,
         labels    = ensure_list(s.get("labels") or parent_labels)
         assignees = ensure_list(s.get("assign")  or parent_assign)
         final_title = f"{title} [{sub_occ}]" if sub_occ else title
-        body = f"{final_title}\n\n{fp}\n"
+        # ---- backlink to parent + hidden marker
+        body = f"Parent: #{parent_issue_num}\n\n{final_title}\n\n{fp}\n"
         child = create_issue(repo, final_title, body, assignees, labels, token)
         debug(f"[CREATE] sub-issue #{child['number']} {final_title}")
 
@@ -402,7 +408,6 @@ def ensure_subissues(repo: str,
 # ---------------- Due date (explicit only) ----------------
 
 def compute_due_date(spec: Dict[str, Any]) -> Optional[dt.date]:
-    # Explicit date only; simple & predictable for demos
     return parse_date(spec.get("due_date"))
 
 # ---------------- Main ----------------
@@ -442,7 +447,8 @@ def main():
                 debug(f"[DRY-RUN][SKIP] {spec['title']}")
             continue
 
-        # Ensure parent (open)
+        # ---- Hard guarantee: obtain a parent issue for THIS occurrence
+        parent_issue = None
         if open_parent:
             parent_issue = get_issue(repo, open_parent["number"], GH_TOKEN)
         elif create_new:
@@ -459,12 +465,14 @@ def main():
             )
             debug(f"[CREATE] #{parent_issue['number']} {spec['title']}")
         else:
-            # nothing to do this run
+            # No open parent and not scheduled to create a new one => skip everything
+            debug(f"[SKIP] {spec['title']}: no open parent and this occurrence already exists")
             continue
 
         # Ensure sub-issues (occurrence-aware; per-subtask interval)
         child_pairs = ensure_subissues(
             repo=repo,
+            parent_issue_num=parent_issue["number"],
             parent_id=spec["id"],
             parent_occ=parent_occ,
             parent_date_active=parse_date(spec.get("date_active")),
