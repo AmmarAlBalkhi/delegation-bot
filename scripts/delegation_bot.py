@@ -1,32 +1,22 @@
 #!/usr/bin/env python3
 """
-Delegation Bot — intervals + occurrence-aware sub-issues (with per-subtask intervals)
+Delegation Bot — Intervals + occurrence-aware sub-issues (incl. per-subtask intervals)
 
-What this does
---------------
-- Reads all YAML-front-matter task specs in tasks/*.md
-- Creates/updates a *parent* issue per “task family” (id) and *per occurrence*:
-    interval: once | daily | weekly | monthly | every:N
-- Creates *child issues* for each subtask, and lets each subtask override interval
-  (e.g., monthly parent with some weekly and some daily children)
-- Keeps only one OPEN parent per family; creates a new parent when the next
-  occurrence starts (unless the previous one is still open)
-- Writes a “Subtasks” checkbox list into the parent, and reticks it from child state
-- Best-effort ProjectV2 date writes (“Date active” / “Due date”) if you provide a project
+Features
+--------
+- Parent intervals: once | daily | weekly | monthly | every:N
+- Subtasks can override interval (e.g., monthly parent with weekly/daily children)
+- One OPEN parent per "task family"; one parent per period (occurrence)
+- Child issues are REAL GitHub issues; parent shows a tracked list (- [ ] #123 Title)
+- Parent checklist auto-reticks from child issue state on each run
+- ProjectV2 dates ("Date active", "Due date") written if PROJECT_TOKEN + project spec
 
-Environment
------------
-GITHUB_TOKEN  (required; Actions default is fine)
-PROJECT_TOKEN (optional; PAT with project scope; falls back to GITHUB_TOKEN)
-REPO          (optional owner/name; defaults to current repo from Actions)
-APPLY         ("true" to perform writes; anything else = dry-run)
-
-Notes
------
-- Back-compat: `once: true` in a task file is treated as `interval: once`.
-- Relative due dates: `due_in: 7d` (or `2w`, `1m`) is supported in addition to `due_date: YYYY-MM-DD`.
-- GitHub’s “Sub-issues” relation is not public in the API; we use a checklist that
-  autoreticks from child issue state, which demos well and is robust.
+Env
+---
+GITHUB_TOKEN  (required; Actions default ok for issues)
+PROJECT_TOKEN (optional PAT with project scope; falls back to GITHUB_TOKEN)
+REPO          (optional owner/name; defaults to current repo)
+APPLY         ("true" to perform writes; anything else is dry-run)
 """
 
 import os, re, sys, glob, datetime as dt
@@ -238,7 +228,7 @@ mutation($pid:ID!,$iid:ID!,$fid:ID!,$val:Date!){
 }"""
 
 def find_project_id(owner_login: str, title: str, token: str) -> Optional[str]:
-    # Try USER
+    # Try USER scope
     try:
         data = gh_gql(GQL_FIND_USER_PROJECT, {"login": owner_login, "title": title}, token)
         nodes = (data.get("user") or {}).get("projectsV2", {}).get("nodes", []) or []
@@ -247,7 +237,7 @@ def find_project_id(owner_login: str, title: str, token: str) -> Optional[str]:
                 return p["id"]
     except Exception:
         pass
-    # Try ORG
+    # Try ORG scope
     try:
         data = gh_gql(GQL_FIND_ORG_PROJECT, {"login": owner_login, "title": title}, token)
         nodes = (data.get("organization") or {}).get("projectsV2", {}).get("nodes", []) or []
@@ -274,13 +264,13 @@ def write_project_dates(repo: str, issue_num: int,
     issue = get_issue(repo, issue_num, token)
     content_id = issue["node_id"]
 
-    # Ensure project item exists (ignore if already present)
+    # Ensure project item exists
     try:
         gh_gql(GQL_ADD_ITEM, {"pid": pid, "cid": content_id}, token)
     except Exception as e:
         debug(f"[PROJECT] add warn: {e}")
 
-    # Resolve the item id
+    # Resolve the item id on that project
     q_items = """query($iid:ID!){ node(id:$iid){ ... on Issue {
         projectItems(first:50){ nodes{ id project{ id title } } }
     }}}"""
@@ -372,6 +362,7 @@ def search_children_for_parent_occ(repo: str, parent_id: str, parent_occ: Option
     return pairs
 
 def ensure_subissues(repo: str,
+                     parent_issue_num: int,
                      parent_id: str,
                      parent_occ: Optional[str],
                      parent_date_active: Optional[dt.date],
@@ -384,6 +375,7 @@ def ensure_subissues(repo: str,
       - compute its own occurrence (from its 'interval', default 'once')
       - create child for *this* parent occurrence + *this* sub-occurrence, if missing
       - decorate child title with [<sub_occ>] for clarity
+      - include a visible backlink 'Parent: #<parent_issue_num>' in the child body
     Then return ALL child issues belonging to this parent occurrence.
     """
     now = today()
@@ -393,7 +385,6 @@ def ensure_subissues(repo: str,
         skind, sn = parse_interval(s.get("interval"))  # per-subtask interval (default once)
         sub_occ = compute_occurrence_id(skind, sn, parent_date_active, now)
         fp = sub_marker(parent_id, parent_occ, sub_occ, sid)
-        # existence check for THIS parent-occ + sub-occ + sub-id
         q = f'repo:{repo} in:body "{fp}"'
         items = search_issues(repo, q, token)
         if items:
@@ -401,50 +392,20 @@ def ensure_subissues(repo: str,
         labels    = ensure_list(s.get("labels") or parent_labels)
         assignees = ensure_list(s.get("assign")  or parent_assign)
         final_title = f"{title} [{sub_occ}]" if sub_occ else title
-        body = f"{final_title}\n\n{fp}\n"
+        # ---- backlink to parent + hidden marker
+        body = f"Parent: #{parent_issue_num}\n\n{final_title}\n\n{fp}\n"
         child = create_issue(repo, final_title, body, assignees, labels, token)
         debug(f"[CREATE] sub-issue #{child['number']} {final_title}")
 
     # After ensuring children exist for this occurrence, list *all* children for this parent occurrence
     return search_children_for_parent_occ(repo, parent_id, parent_occ, token)
 
-# ---------------- Due date ----------------
-
-DUE_IN_RE = re.compile(r"^\s*(\d+)\s*([dwm])\s*$", re.I)
+# ---------------- Due date (explicit only) ----------------
 
 def compute_due_date(spec: Dict[str, Any]) -> Optional[dt.date]:
-    """
-    Priority:
-      1) due_date: YYYY-MM-DD
-      2) due_in:   <n><d|w|m>  (from date_active if present, else today; month=30d)
-    """
-    # absolute date
-    dd = parse_date(spec.get("due_date"))
-    if dd: return dd
-
-    # relative
-    raw = spec.get("due_in")
-    if not raw: return None
-    m = DUE_IN_RE.match(str(raw))
-    if not m: return None
-    n = int(m.group(1))
-    unit = m.group(2).lower()
-    base = parse_date(spec.get("date_active")) or today()
-    if unit == "d": return base + dt.timedelta(days=n)
-    if unit == "w": return base + dt.timedelta(weeks=n)
-    if unit == "m": return base + dt.timedelta(days=30*n)  # simple month
-    return None
+    return parse_date(spec.get("due_date"))
 
 # ---------------- Main ----------------
-
-def normalize_spec(spec: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Back-compat: map `once: true` => interval: "once" if interval not set.
-    """
-    out = dict(spec or {})
-    if out.get("interval") in (None, "") and out.get("once") is True:
-        out["interval"] = "once"
-    return out
 
 def main():
     APPLY = (getenv("APPLY", "false").lower() == "true")
@@ -460,8 +421,7 @@ def main():
 
     for path in files:
         post = frontmatter.load(path)
-        spec_raw = dict(post.metadata or {})
-        spec = normalize_spec(spec_raw)
+        spec = dict(post.metadata or {})
         body_md = (post.content or "")
         repo = normalized_repo(spec.get("repository")) or repo_env
         if not repo:
@@ -482,7 +442,8 @@ def main():
                 debug(f"[DRY-RUN][SKIP] {spec['title']}")
             continue
 
-        # Ensure parent (open)
+        # ---- Hard guarantee: obtain a parent issue for THIS occurrence
+        parent_issue = None
         if open_parent:
             parent_issue = get_issue(repo, open_parent["number"], GH_TOKEN)
         elif create_new:
@@ -499,12 +460,14 @@ def main():
             )
             debug(f"[CREATE] #{parent_issue['number']} {spec['title']}")
         else:
-            # nothing to do this run
+            # No open parent and not scheduled to create a new one => skip everything
+            debug(f"[SKIP] {spec['title']}: no open parent and this occurrence already exists")
             continue
 
         # Ensure sub-issues (occurrence-aware; per-subtask interval)
         child_pairs = ensure_subissues(
             repo=repo,
+            parent_issue_num=parent_issue["number"],
             parent_id=spec["id"],
             parent_occ=parent_occ,
             parent_date_active=parse_date(spec.get("date_active")),
