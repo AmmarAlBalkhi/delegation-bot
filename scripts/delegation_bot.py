@@ -285,7 +285,7 @@ def expand_specs(meta: dict) -> T.List[dict]:
 
 def glob_task_files() -> T.List[str]:
     files = []
-    for p in ("tasks/**/*.md", "tasks/*.md", "*.md"):
+    for p in ("tasks/**/*.md", "tasks/*.md"):
         files.extend(glob.glob(p, recursive=True))
     # keep stable order, de-dup
     return list(dict.fromkeys(sorted(files)))
