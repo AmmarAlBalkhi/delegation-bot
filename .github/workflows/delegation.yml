@@ -8,26 +8,30 @@ on:
         required: false
         default: "false"
   schedule:
-    - cron: "0 8 * * *"  # daily 08:00 UTC; adjust or remove if you prefer manual runs only
-
-concurrency:
-  group: delegation-bot
-  cancel-in-progress: true
-
-permissions:
-  contents: read
-  issues: write
+    - cron: "0 8 * * *"  # optional
 
 jobs:
   run:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Verify files are present
+        run: |
+          pwd
+          ls -la
+          ls -la scripts || true
+          ls -la tasks   || true
+          test -f scripts/delegation_bot.py || (echo "ERROR: scripts/delegation_bot.py not found" && exit 1)
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
 
       - name: Install dependencies
         run: |
@@ -38,11 +42,10 @@ jobs:
         env:
           APPLY: ${{ github.event.inputs.apply || 'false' }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}   # optional (Projects V2)
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}   # optional
           REPO: ${{ github.repository }}
           PYTHONUNBUFFERED: "1"
         run: |
-          set -e
           python scripts/delegation_bot.py | tee bot.log
 
       - name: Add run summary
