@@ -423,11 +423,12 @@ def main():
             parent, parent_occ = ensure_parent_issue(repo, spec, body_md, now, GH_TOKEN)
 
             # --- Optional Projects v2 (best-effort; never fail core flow)
-            if spec.get("project") and APPLY and parent.get("node_id") and PROJ_TOKEN:
+            proj_title = spec.get("project")
+            if APPLY and parent.get("node_id") and PROJ_TOKEN and isinstance(proj_title, str) and proj_title.strip():
                 try:
                     da = parse_date(spec.get("date_active")) or now
                     dd = compute_due_date(spec, now)
-                    add_to_project_and_dates(parent["node_id"], spec["project"], da, dd, PROJ_TOKEN)
+                    add_to_project_and_dates(parent["node_id"], proj_title.strip(), da, dd, PROJ_TOKEN)
                 except Exception as e:
                     debug(f"[PROJECT] warn: {e}")
 
