@@ -4,47 +4,54 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: "Create issues (true) or just dry-run (false)"
+        description: "Create/update issues (true) or dry-run (false)"
         required: false
         default: "false"
   schedule:
-    - cron: "0 8 * * *"  # daily at 08:00 UTC
+    - cron: "0 8 * * *"  # daily 08:00 UTC; adjust or remove if you prefer manual runs only
 
 concurrency:
   group: delegation-bot
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   run:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      issues: write
-      # (projects permission in Actions is for "Projects classic"; we use a PAT for Projects v2)
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
-        run: pip install python-frontmatter requests
+        run: |
+          python -m pip install --upgrade pip
+          pip install python-frontmatter requests
 
-      - name: Run bot
+      - name: Run delegation bot
         env:
-          APPLY: ${{ github.event.inputs.apply }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}           # Issues API
-          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}         # PAT with repo+project scopes
-          REPO: ${{ github.repository }}                      # owner/repo
-          PROJECT_LOGIN: ammar-uni                            # owner of the Project (user or org)
-          PROJECT_TITLE: Delegation Bot - PoC                 # EXACT project title
+          APPLY: ${{ github.event.inputs.apply || 'false' }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}   # optional (Projects V2)
+          REPO: ${{ github.repository }}
           PYTHONUNBUFFERED: "1"
         run: |
-          echo "ENV project login/title: $PROJECT_LOGIN / $PROJECT_TITLE"
+          set -e
           python scripts/delegation_bot.py | tee bot.log
-          echo "### Delegation Bot summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          tail -n 300 bot.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Add run summary
+        if: always()
+        run: |
+          {
+            echo "### Delegation Bot summary"
+            echo
+            echo '```'
+            tail -n 300 bot.log || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
