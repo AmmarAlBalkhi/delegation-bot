@@ -13,6 +13,16 @@ It should enable AI, not suppress it. Agents can earn more autonomy through
 clear passports, capability packs, approval gates, ledger evidence, evals, and
 promotion rules.
 
+The trust model is hybrid:
+
+```text
+AI proposes.
+Delegation Bot verifies.
+Human approves risky actions.
+Ledger records everything.
+Evals decide whether trust increases.
+```
+
 ## 60-Second Demo
 
 Clone the repo and run the dry-run control-plane loop:
@@ -89,7 +99,8 @@ that can coordinate many underlying harnesses:
 
 See [docs/vision.md](docs/vision.md), [docs/architecture.md](docs/architecture.md),
 [docs/positioning.md](docs/positioning.md),
-[docs/agent-enablement.md](docs/agent-enablement.md), and
+[docs/agent-enablement.md](docs/agent-enablement.md),
+[docs/hybrid-trust-model.md](docs/hybrid-trust-model.md), and
 [docs/adapter-contracts.md](docs/adapter-contracts.md) for the strategic
 blueprint. See [docs/adapter-sdk.md](docs/adapter-sdk.md) for the plug-in
 standard that adapter implementations must satisfy,

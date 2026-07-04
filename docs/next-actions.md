@@ -12,13 +12,23 @@ Harnessfile -> dry-run plan -> policy gates -> adapter actions -> run ledger -> 
 
 Everything should strengthen that loop.
 
+The trust model is hybrid:
+
+```text
+AI proposes.
+Delegation Bot verifies.
+Human approves risky actions.
+Ledger records everything.
+Evals decide whether trust increases.
+```
+
 ## Now
 
-1. Create a clean milestone commit for the dry-run control plane.
-2. Add repeat-threshold policy for blocked eval feedback.
-3. Add the first local OpenTelemetry export command.
-4. Add fixture artifact download examples to README.
-5. Add TestPyPI dry-run release notes.
+1. Cleanly label or move legacy rule-based task bot pieces before pushing.
+2. Add `delegation suggest` design notes for AI-drafted Harnessfiles.
+3. Add repeat-threshold policy for blocked eval feedback.
+4. Add the first local OpenTelemetry export command.
+5. Add fixture artifact download examples to README.
 
 ## Next
 

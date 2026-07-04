@@ -36,6 +36,9 @@ suggest -> draft -> act -> operate -> deploy
 The ladder is meant to enable more autonomy, not suppress it. Each step should
 be earned through evals, approval history, and clean ledgers.
 
+The trust boundary is simple: AI can suggest the next level, but evals and
+ledger evidence decide whether the agent actually earns it.
+
 ## Agent Passport
 
 An agent passport declares who the agent is and what kind of work it can do.

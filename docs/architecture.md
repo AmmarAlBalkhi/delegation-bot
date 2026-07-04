@@ -27,6 +27,25 @@ flowchart TD
 
 ## Core Concepts
 
+### Hybrid Trust Boundary
+
+Delegation Bot should make AI more capable without letting AI approve itself.
+
+```text
+AI proposes.
+Delegation Bot verifies.
+Human approves risky actions.
+Ledger records everything.
+Evals decide whether trust increases.
+```
+
+In architecture terms, model-backed features can generate suggestions,
+Harnessfile drafts, risk explanations, summaries, and fix proposals. The
+manifest compiler, policy engine, ledger writer, eval runner, and promotion
+evaluator should remain deterministic control surfaces.
+
+See `docs/hybrid-trust-model.md`.
+
 ### Harnessfile
 
 A versioned manifest that describes delegated work before execution:

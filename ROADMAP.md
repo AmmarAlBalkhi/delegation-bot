@@ -14,6 +14,16 @@ auditable run ledger with evals.
 It should enable agents, not suppress them. The project gives agents an autonomy
 ladder: suggest, draft, act, operate, deploy.
 
+The trust model is hybrid:
+
+```text
+AI proposes.
+Delegation Bot verifies.
+Human approves risky actions.
+Ledger records everything.
+Evals decide whether trust increases.
+```
+
 ## The Wedge
 
 Start with the problem every serious AI builder already feels:

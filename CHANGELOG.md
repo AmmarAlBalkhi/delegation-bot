@@ -47,3 +47,5 @@ The project is currently pre-release.
   cases, and future marketing language.
 - Added release-readiness and weekly-planning playbooks with catalog metadata.
 - Added adapter compatibility matrix and first live-execution gate design notes.
+- Added a hybrid trust model that separates AI suggestions from deterministic
+  verification, approval, ledger, eval, and promotion decisions.

@@ -478,3 +478,29 @@ Evidence:
 - `docs/live-execution-gate.md`
 - `docs/playbooks.md`
 - `README.md`
+
+## 2026-07-04: Make The Hybrid Trust Model Explicit
+
+Decision: Promote the hybrid principle into the core product docs:
+
+```text
+AI proposes.
+Delegation Bot verifies.
+Human approves risky actions.
+Ledger records everything.
+Evals decide whether trust increases.
+```
+
+Why: The project should enable AI without letting AI approve itself. Model-backed
+features can draft Harnessfiles, recommend adapters, explain plans, summarize
+ledgers, and propose fixes, but deterministic code should own validation, policy
+gates, approval requirements, ledger writes, eval results, and promotion
+readiness.
+
+Evidence:
+
+- `docs/hybrid-trust-model.md`
+- `docs/positioning.md`
+- `docs/architecture.md`
+- `docs/next-actions.md`
+- `README.md`

@@ -53,6 +53,25 @@ Harnessfile -> dry-run plan -> policy gates -> adapter actions -> run ledger -> 
 
 Everything we build should strengthen that loop.
 
+## Hybrid Trust Model
+
+Delegation Bot should be AI-enabled, not AI-governed:
+
+```text
+AI proposes.
+Delegation Bot verifies.
+Human approves risky actions.
+Ledger records everything.
+Evals decide whether trust increases.
+```
+
+AI should help draft Harnessfiles, recommend adapters, explain plans, summarize
+ledgers, and propose fixes. Deterministic code should still control validation,
+policy gates, approval requirements, evidence requirements, ledger writes, eval
+results, and promotion readiness.
+
+See `docs/hybrid-trust-model.md` for the full principle.
+
 ## What Problems It Solves
 
 1. AI actions are hard to inspect before they happen.

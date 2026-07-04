@@ -36,6 +36,20 @@ Delegation = objective + context + executor + policy + evidence + feedback
 Every run should be reproducible enough to inspect, safe enough to approve, and
 structured enough to improve.
 
+The operating principle is hybrid:
+
+```text
+AI proposes.
+Delegation Bot verifies.
+Human approves risky actions.
+Ledger records everything.
+Evals decide whether trust increases.
+```
+
+That means AI can draft, explain, summarize, compare, and execute through
+adapters, but the control plane owns validation, policy, evidence, evals, and
+promotion.
+
 ## What Makes It Different
 
 Most agent frameworks optimize execution. This project should optimize
