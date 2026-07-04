@@ -1,0 +1,156 @@
+version: delegation.ai/v1
+id: playbook-documentation-refresh
+name: Documentation Refresh Playbook
+objective: >
+  Refresh project documentation from current repository evidence, open a tracked
+  docs issue, and draft a scoped documentation change with approval gates.
+
+triggers:
+  - type: workflow_dispatch
+  - type: schedule
+    cron: "0 9 * * 1"
+
+owners:
+  accountable: AmmarAlBalkhi
+  reviewers:
+    - AmmarAlBalkhi
+
+models:
+  - id: docs_model
+    provider: openai
+    model: gpt-5.5
+    role: documentation
+    budget_usd: 2
+
+capability_packs:
+  - id: repo_reader
+    description: Read repository files, changelog entries, roadmap notes, and prior ledgers.
+    capabilities:
+      - read.repository
+      - read.changelog
+      - read.run_ledger
+
+  - id: docs_writer
+    description: Draft documentation updates without changing product behavior.
+    capabilities:
+      - write.working_tree
+      - write.documentation
+      - write.pull_request_draft
+    approval_required_for:
+      - publish.pull_request
+
+  - id: docs_reviewer
+    description: Check whether documentation matches implemented behavior.
+    capabilities:
+      - read.plan
+      - classify.risk
+      - suggest.policy
+
+agents:
+  - id: docs_planner
+    runtime: openai.agents
+    model: docs_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - docs_reviewer
+    promotion:
+      next_level: act
+      requires_evals:
+        - approvals_before_risky_actions
+        - required_adapter_evidence
+
+  - id: docs_implementer
+    runtime: codex.thread
+    model: docs_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - docs_writer
+
+executors:
+  - id: docs_issue
+    kind: workflow
+    adapter: github.issue
+    purpose: Open or update a documentation refresh issue with scope and acceptance evidence.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      issue_title: "Playbook: documentation refresh mission"
+      issue_body: >
+        Track stale docs, desired updates, affected files, acceptance checks,
+        and links to the ledger evidence for this refresh.
+
+  - id: docs_receipt
+    kind: tool
+    adapter: sample.echo
+    purpose: Leave no-network evidence that the documentation refresh playbook was planned.
+    inputs:
+      label: documentation-refresh
+      message: "Documentation refresh playbook planned with issue tracking and docs gates."
+
+  - id: docs_agent
+    kind: ai_harness
+    adapter: codex.thread
+    model: docs_model
+    purpose: Draft scoped documentation updates after the plan is reviewed.
+    inputs:
+      objective: Update docs so README, roadmap, and guides match implemented behavior.
+      repository: AmmarAlBalkhi/delegation-bot
+      allowed_files:
+        - README.md
+        - ROADMAP.md
+        - CHANGELOG.md
+        - docs/**
+        - examples/**
+        - playbooks/**
+
+  - id: docs_signoff
+    kind: human
+    adapter: human.approval
+    purpose: Require maintainer approval before treating the documentation refresh as complete.
+    inputs:
+      request: Approve the documentation refresh plan and drafted changes.
+      approver: AmmarAlBalkhi
+
+context:
+  sources:
+    - id: repository
+      kind: git
+      trust: high
+    - id: roadmap
+      kind: markdown
+      trust: high
+    - id: changelog
+      kind: markdown
+      trust: high
+
+policies:
+  approvals:
+    required_for:
+      - agent_execution
+      - pull_request
+  budgets:
+    max_usd_per_run: 3
+    max_minutes_per_run: 30
+  permissions:
+    allowed_repositories:
+      - AmmarAlBalkhi/delegation-bot
+    network: restricted
+
+outputs:
+  - type: github.issue
+  - type: github.pull_request
+  - type: approval
+  - type: run_ledger
+  - type: eval_report
+
+evals:
+  - id: no_duplicate_issue_markers
+    type: invariant
+    description: The docs refresh playbook must not create duplicate tracking issues.
+  - id: approvals_before_risky_actions
+    type: policy
+    description: Executed risky actions require human approval evidence.
+  - id: required_adapter_evidence
+    type: invariant
+    description: SDK-backed adapters must leave required contract evidence and outputs.

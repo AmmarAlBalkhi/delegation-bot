@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delegation.ai/schemas/promotion-report.v1.schema.json",
+  "title": "Delegation AI Promotion Report v1",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "agent_id",
+      "current_level",
+      "next_level",
+      "ready",
+      "required_evals",
+      "passed_evals",
+      "missing_evals",
+      "reason"
+    ],
+    "properties": {
+      "agent_id": {
+        "type": "string"
+      },
+      "current_level": {
+        "type": "string"
+      },
+      "next_level": {
+        "type": ["string", "null"]
+      },
+      "ready": {
+        "type": "boolean"
+      },
+      "required_evals": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "passed_evals": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "missing_evals": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "reason": {
+        "type": "string"
+      }
+    },
+    "additionalProperties": true
+  }
+}

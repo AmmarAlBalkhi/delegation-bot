@@ -1,8 +1,8 @@
 ---
 id: weekly-status
-repository: ammar-uni/delegation-bot
+repository: AmmarAlBalkhi/delegation-bot
 title: "Weekly Status Pack"
-assign: ammar-uni
+assign: AmmarAlBalkhi
 labels: [delegation, recurring, weekly]
 
 date_active: 2025-10-21
@@ -10,7 +10,7 @@ due_date:   2025-10-28
 interval:   weekly
 
 project:
-  owner: ammar-uni
+  owner: AmmarAlBalkhi
   title: Delegation Bot - PoC
 
 subtasks:

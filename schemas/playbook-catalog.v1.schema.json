@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delegation.ai/schemas/playbook-catalog.v1.schema.json",
+  "title": "Delegation AI Playbook Catalog v1",
+  "type": "object",
+  "required": ["version", "playbooks"],
+  "properties": {
+    "version": {
+      "const": "delegation.ai/playbook-catalog/v1"
+    },
+    "generated_for": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "playbooks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "path",
+          "title",
+          "tags",
+          "required_adapters",
+          "expected_eval_states"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required_adapters": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "expected_eval_states": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": {
+              "enum": ["passed", "blocked", "failed", "skipped"]
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}

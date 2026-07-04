@@ -29,6 +29,7 @@ jobs:
           echo
           [ -d scripts ] && (echo "scripts/"; ls -la scripts)
           [ -d tasks ] && (echo "tasks/"; ls -la tasks)
+          [ -d examples/legacy-recurring-tasks ] && (echo "examples/legacy-recurring-tasks/"; ls -la examples/legacy-recurring-tasks)
           echo "::endgroup::TREE"
 
       - name: Set up Python
@@ -36,10 +37,14 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies (frontmatter + requests)
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install python-frontmatter requests
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            python -m pip install python-frontmatter requests
+          fi
 
       - name: Locate and run delegation bot
         env:
@@ -62,13 +67,96 @@ jobs:
           fi
           echo "Using script: $SCRIPT"
 
-          # Make sure tasks folder exists; if not, show what we have
+          # Legacy task specs are optional; the Harnessfile evidence step below
+          # is the main product path.
           if [ ! -d tasks ]; then
-            echo "WARNING: 'tasks/' folder not found. Showing top-level Markdown for debugging:"
-            ls -la | grep '\.md$' || true
+            echo "No top-level tasks/ folder found. Legacy issue bot will no-op unless TASK_GLOB is configured."
           fi
 
           python "$SCRIPT" | tee bot.log
+
+      - name: Generate Harnessfile dry-run evidence
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .delegation
+
+          if [ -f examples/ai-harness-control-plane.yaml ]; then
+            python scripts/delegation.py plan \
+              examples/ai-harness-control-plane.yaml \
+              --ledger .delegation/harness-dry-run.jsonl
+            python scripts/delegation.py eval \
+              examples/ai-harness-control-plane.yaml \
+              --ledger .delegation/harness-dry-run.jsonl \
+              --write
+            python scripts/delegation.py ledger \
+              .delegation/harness-dry-run.jsonl \
+              > .delegation/harness-ledger-report.txt
+          else
+            echo "No Harnessfile example found; legacy task bot log is the only artifact." \
+              > .delegation/harness-ledger-report.txt
+          fi
+
+      - name: Generate adapter fixture artifacts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .delegation/fixtures
+
+          python scripts/generate_adapter_fixtures.py sample.echo \
+            --state good \
+            --output .delegation/fixtures/sample-echo-good.jsonl
+          python scripts/generate_adapter_fixtures.py sample.echo \
+            --state blocked \
+            --output .delegation/fixtures/sample-echo-blocked.jsonl
+          python scripts/generate_adapter_fixtures.py sample.echo \
+            --state failed \
+            --output .delegation/fixtures/sample-echo-failed.jsonl
+          python scripts/generate_adapter_fixtures.py mcp.tool \
+            --state good \
+            --output .delegation/fixtures/mcp-tool-good.jsonl
+
+          python scripts/delegation.py ledger \
+            .delegation/fixtures/sample-echo-good.jsonl \
+            > .delegation/fixtures/sample-echo-good-report.txt
+          python scripts/delegation.py ledger \
+            .delegation/fixtures/sample-echo-blocked.jsonl \
+            --status blocked \
+            > .delegation/fixtures/sample-echo-blocked-report.txt
+          python scripts/delegation.py ledger \
+            .delegation/fixtures/sample-echo-failed.jsonl \
+            --status failed \
+            > .delegation/fixtures/sample-echo-failed-report.txt
+          python scripts/delegation.py ledger \
+            .delegation/fixtures/mcp-tool-good.jsonl \
+            --adapter mcp.tool \
+            > .delegation/fixtures/mcp-tool-good-report.txt
+
+      - name: Collect release artifact manifest
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "Delegation Bot release evidence"
+            echo "run_id: $GITHUB_RUN_ID"
+            echo "commit: $GITHUB_SHA"
+            echo
+            echo "Required release files:"
+            for required in LICENSE NOTICE pyproject.toml CHANGELOG.md docs/release.md; do
+              if [ -f "$required" ]; then
+                echo "- $required"
+              else
+                echo "- MISSING: $required"
+                exit 1
+              fi
+            done
+            echo
+            echo "Generated evidence files:"
+            find .delegation -type f | sort
+          } > .delegation/release-artifacts-manifest.txt
 
       - name: Add run summary
         if: always()
@@ -79,4 +167,36 @@ jobs:
             echo '```'
             tail -n 300 bot.log || true
             echo '```'
+            echo
+            echo "### Harness dry-run ledger"
+            echo
+            echo '```'
+            tail -n 120 .delegation/harness-ledger-report.txt || true
+            echo '```'
+            echo
+            echo "### Release artifacts"
+            echo
+            echo '```'
+            cat .delegation/release-artifacts-manifest.txt || true
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload run evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: delegation-run-evidence
+          path: |
+            bot.log
+            .delegation/*.jsonl
+            .delegation/*-report.txt
+            .delegation/release-artifacts-manifest.txt
+            .delegation/fixtures/*.jsonl
+            .delegation/fixtures/*-report.txt
+            LICENSE
+            NOTICE
+            pyproject.toml
+            CHANGELOG.md
+            docs/release.md
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,145 @@
+version: delegation.ai/v1
+id: playbook-code-review
+name: Code Review Playbook
+objective: >
+  Review a proposed code change with clear scope, AI-assisted findings,
+  human approval, and ledger evidence before any pull request is accepted.
+
+triggers:
+  - type: workflow_dispatch
+
+owners:
+  accountable: AmmarAlBalkhi
+  reviewers:
+    - AmmarAlBalkhi
+
+models:
+  - id: reviewer_model
+    provider: anthropic
+    adapter: anthropic.messages
+    model: claude-sonnet
+    role: code_review
+    budget_usd: 2
+
+capability_packs:
+  - id: repo_reader
+    description: Read repository files, diffs, test output, and prior run ledgers.
+    capabilities:
+      - read.repository
+      - read.diff
+      - read.test_results
+      - read.run_ledger
+
+  - id: review_writer
+    description: Draft review notes, risk labels, and follow-up issues.
+    capabilities:
+      - write.review_summary
+      - write.github_issue
+
+  - id: safety_reviewer
+    description: Classify risky changes and recommend safer approval gates.
+    capabilities:
+      - read.plan
+      - classify.risk
+      - suggest.policy
+
+agents:
+  - id: reviewer
+    runtime: claude.code
+    model: reviewer_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - review_writer
+      - safety_reviewer
+    promotion:
+      next_level: act
+      requires_evals:
+        - approvals_before_risky_actions
+        - required_adapter_evidence
+
+executors:
+  - id: review_issue
+    kind: workflow
+    adapter: github.issue
+    purpose: Open or update a review tracking issue with scope, risks, and evidence requirements.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      issue_title: "Playbook: code review mission"
+      issue_body: >
+        Track code review scope, findings, risk classification, required evidence,
+        and human approval before accepting the change.
+
+  - id: review_receipt
+    kind: tool
+    adapter: sample.echo
+    purpose: Leave no-network evidence that the review playbook was planned.
+    inputs:
+      label: code-review
+      message: "Code review playbook planned with issue tracking and adapter evidence."
+
+  - id: ai_reviewer
+    kind: ai_harness
+    adapter: claude.code
+    model: reviewer_model
+    purpose: Review the diff and produce findings, risk notes, and follow-up recommendations.
+    inputs:
+      objective: Review the proposed code change and identify correctness, safety, and test gaps.
+      repository: AmmarAlBalkhi/delegation-bot
+      allowed_files:
+        - delegation_bot/**
+        - scripts/**
+        - tests/**
+        - docs/**
+      mcp_servers: []
+
+  - id: human_signoff
+    kind: human
+    adapter: human.approval
+    purpose: Require a maintainer decision before findings are treated as resolved.
+    inputs:
+      request: Approve the review outcome and any follow-up actions.
+      approver: AmmarAlBalkhi
+
+context:
+  sources:
+    - id: repository
+      kind: git
+      trust: high
+    - id: pull_request_diff
+      kind: github
+      trust: high
+    - id: previous_ledgers
+      kind: run_ledger
+      trust: medium
+
+policies:
+  approvals:
+    required_for:
+      - agent_execution
+      - pull_request
+      - external_message
+  budgets:
+    max_usd_per_run: 3
+    max_minutes_per_run: 30
+  permissions:
+    allowed_repositories:
+      - AmmarAlBalkhi/delegation-bot
+    network: restricted
+
+outputs:
+  - type: github.issue
+  - type: approval
+  - type: run_ledger
+  - type: eval_report
+
+evals:
+  - id: no_duplicate_issue_markers
+    type: invariant
+    description: The review playbook must not create duplicate tracking issues.
+  - id: approvals_before_risky_actions
+    type: policy
+    description: Executed risky actions require human approval evidence.
+  - id: required_adapter_evidence
+    type: invariant
+    description: SDK-backed adapters must leave required contract evidence and outputs.

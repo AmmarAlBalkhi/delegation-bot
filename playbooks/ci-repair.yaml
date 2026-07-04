@@ -1,0 +1,180 @@
+version: delegation.ai/v1
+id: playbook-ci-repair
+name: CI Repair Playbook
+objective: >
+  Diagnose a failing CI run, create a repair plan, draft a scoped fix through an
+  approved coding harness, and require test evidence before pull request promotion.
+
+triggers:
+  - type: workflow_dispatch
+  - type: github.check_failed
+
+owners:
+  accountable: AmmarAlBalkhi
+  reviewers:
+    - AmmarAlBalkhi
+
+models:
+  - id: planner_model
+    provider: openai
+    model: gpt-5.5
+    role: planning
+    budget_usd: 2
+
+  - id: local_policy_model
+    provider: local
+    adapter: ollama
+    model: llama-guard
+    role: policy_review
+
+capability_packs:
+  - id: repo_reader
+    description: Read repository files, workflow logs, issues, and run history.
+    capabilities:
+      - read.repository
+      - read.github_actions
+      - read.github_issues
+      - read.run_ledger
+
+  - id: repair_drafter
+    description: Draft minimal code or configuration changes for a CI failure.
+    capabilities:
+      - write.working_tree
+      - write.pull_request_draft
+      - read.test_results
+    approval_required_for:
+      - publish.pull_request
+
+  - id: risk_guard
+    description: Classify failure risk and recommend approval gates.
+    capabilities:
+      - read.plan
+      - classify.risk
+      - suggest.policy
+
+agents:
+  - id: triage_planner
+    runtime: openai.agents
+    model: planner_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - risk_guard
+    promotion:
+      next_level: act
+      requires_evals:
+        - approvals_before_risky_actions
+        - required_adapter_evidence
+
+  - id: repair_implementer
+    runtime: codex.thread
+    model: planner_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - repair_drafter
+    promotion:
+      next_level: act
+      requires_evals:
+        - approvals_before_risky_actions
+        - tests_pass_before_pr
+
+executors:
+  - id: repair_issue
+    kind: workflow
+    adapter: github.issue
+    purpose: Create a CI repair issue with failure summary, suspected cause, and evidence checklist.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      issue_title: "Playbook: CI repair mission"
+      issue_body: >
+        Track the failing workflow, suspected root cause, proposed repair,
+        verification command, and required passing test evidence.
+
+  - id: repair_receipt
+    kind: tool
+    adapter: sample.echo
+    purpose: Leave no-network evidence that the CI repair playbook was planned.
+    inputs:
+      label: ci-repair
+      message: "CI repair playbook planned with issue tracking and verification gates."
+
+  - id: risk_classifier
+    kind: ml_model
+    adapter: local.classifier
+    model: local_policy_model
+    purpose: Classify whether the repair can stay in draft mode or needs stronger approval.
+    inputs:
+      plan: Diagnose failing CI and propose a scoped repair.
+      policy: Require approval for workflow changes, agent execution, and pull requests.
+
+  - id: implementation_agent
+    kind: ai_harness
+    adapter: codex.thread
+    model: planner_model
+    purpose: Draft the smallest safe repair after the issue plan is approved.
+    inputs:
+      objective: Repair the failing CI run with minimal code or workflow changes.
+      repository: AmmarAlBalkhi/delegation-bot
+      allowed_files:
+        - .github/workflows/**
+        - delegation_bot/**
+        - scripts/**
+        - tests/**
+        - requirements.txt
+        - pyproject.toml
+
+  - id: verification_runner
+    kind: workflow
+    adapter: github.actions
+    purpose: Plan the verification workflow and collect status evidence.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      workflow_ref: .github/workflows/tests.yml
+
+context:
+  sources:
+    - id: repository
+      kind: git
+      trust: high
+    - id: failing_workflow
+      kind: github_actions
+      trust: high
+    - id: previous_ledgers
+      kind: run_ledger
+      trust: medium
+
+policies:
+  approvals:
+    required_for:
+      - agent_execution
+      - workflow
+      - pull_request
+  budgets:
+    max_usd_per_run: 5
+    max_minutes_per_run: 45
+  permissions:
+    allowed_repositories:
+      - AmmarAlBalkhi/delegation-bot
+    network: restricted
+
+outputs:
+  - type: github.issue
+  - type: test_result
+  - type: github.pull_request
+  - type: run_ledger
+  - type: eval_report
+
+evals:
+  - id: no_duplicate_issue_markers
+    type: invariant
+    description: The CI repair playbook must not create duplicate tracking issues.
+  - id: approvals_before_risky_actions
+    type: policy
+    description: Executed risky actions require human approval evidence.
+  - id: required_adapter_evidence
+    type: invariant
+    description: SDK-backed adapters must leave required contract evidence and outputs.
+  - id: tests_pass_before_pr
+    type: quality_gate
+    description: Promotion requires real passing test evidence before a pull request is treated as ready.

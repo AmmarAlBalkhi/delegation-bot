@@ -1,0 +1,77 @@
+# Ledger Fixtures
+
+These compact JSONL fixtures show the adapter result states contributors need
+to understand.
+
+They live in `examples/ledgers/`:
+
+- `adapter-good.jsonl`: adapter evidence is complete and should pass
+- `adapter-blocked.jsonl`: adapter could not plan because input was missing
+- `adapter-failed.jsonl`: adapter reported a failed result
+
+## Why They Exist
+
+Simple version: fixtures make the black-box recorder easy to learn.
+
+Instead of running a full Harnessfile, a contributor can inspect one tiny ledger
+and see how adapter evidence, outputs, statuses, and evals fit together.
+
+## Inspect Them
+
+Good evidence:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapter sample.echo
+```
+
+Blocked result:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/adapter-blocked.jsonl --status blocked
+```
+
+Failed result:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/adapter-failed.jsonl --status failed
+```
+
+## Eval Behavior
+
+The `required_adapter_evidence` eval should:
+
+- pass for `adapter-good.jsonl`
+- block for `adapter-blocked.jsonl`
+- fail for `adapter-failed.jsonl`
+
+That gives adapter authors a quick sanity check for the three most important
+states before they touch live execution.
+
+## Fixture Rules
+
+Keep fixtures:
+
+- small enough to read in a minute
+- valid JSONL, one event per line
+- deterministic
+- free of secrets
+- free of network assumptions
+- tied to real adapter contracts
+
+These files are documentation and tests at the same time.
+
+## Generate Fixtures
+
+Use the generator when a new SDK-backed adapter needs repeatable examples:
+
+```bash
+python scripts/generate_adapter_fixtures.py mcp.tool --state good --output examples/ledgers/generated/adapter-mcp-tool-good.jsonl
+python scripts/generate_adapter_fixtures.py sample.echo --state blocked --output examples/ledgers/generated/adapter-sample-echo-blocked.jsonl
+python scripts/generate_adapter_fixtures.py --all --output-dir examples/ledgers/generated
+```
+
+The generated fixtures follow the same eval behavior:
+
+- `good` should pass `required_adapter_evidence`
+- `blocked` should block `required_adapter_evidence`
+- `failed` should fail `required_adapter_evidence`
