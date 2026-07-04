@@ -1,0 +1,165 @@
+{
+  "version": "delegation.ai/harness-suggestion-draft/v1",
+  "goal": "review this pull request",
+  "draft_source": "model",
+  "provider": "anthropic",
+  "model": "claude-sonnet-fixture",
+  "rationale": "Fixture output that mimics an Anthropic tool-use response for a code-review Harnessfile.",
+  "manifest": {
+    "version": "delegation.ai/v1",
+    "id": "model-fixture-anthropic-code-review",
+    "name": "Model Fixture: Anthropic Code Review",
+    "objective": "Review a pull request with dry-run evidence and approval gates.",
+    "triggers": [
+      {
+        "type": "manual"
+      }
+    ],
+    "owners": {
+      "accountable": "AmmarAlBalkhi",
+      "reviewers": [
+        "AmmarAlBalkhi"
+      ]
+    },
+    "models": [
+      {
+        "id": "review_model",
+        "provider": "anthropic",
+        "adapter": "anthropic.messages",
+        "model": "claude-sonnet-fixture",
+        "role": "code_review"
+      }
+    ],
+    "capability_packs": [
+      {
+        "id": "review_reader",
+        "description": "Read repository diffs, tests, docs, and prior ledger evidence.",
+        "capabilities": [
+          "read.repository",
+          "read.pull_request",
+          "read.run_ledger"
+        ]
+      },
+      {
+        "id": "review_drafter",
+        "description": "Draft review findings and follow-up issues without publishing changes.",
+        "capabilities": [
+          "write.review_draft",
+          "write.issue_draft"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "id": "claude_reviewer",
+        "runtime": "claude.code",
+        "model": "review_model",
+        "autonomy_level": "draft",
+        "capability_packs": [
+          "review_reader",
+          "review_drafter"
+        ],
+        "promotion": {
+          "next_level": "act",
+          "requires_evals": [
+            "ledger_is_valid",
+            "required_adapter_evidence"
+          ]
+        }
+      }
+    ],
+    "policies": {
+      "approvals": {
+        "required_for": [
+          "agent_execution",
+          "pull_request",
+          "github_issue"
+        ]
+      },
+      "permissions": {
+        "allowed_repositories": [
+          "AmmarAlBalkhi/delegation-bot"
+        ],
+        "network": "restricted"
+      },
+      "budgets": {
+        "max_usd_per_run": 2,
+        "max_minutes_per_run": 20
+      }
+    },
+    "executors": [
+      {
+        "id": "review_issue",
+        "kind": "workflow",
+        "adapter": "github.issue",
+        "purpose": "Draft a review tracking issue before any live publication.",
+        "inputs": {
+          "repository": "AmmarAlBalkhi/delegation-bot",
+          "issue_title": "Code review mission",
+          "issue_body": "Track review scope, findings, approval, and required evidence."
+        }
+      },
+      {
+        "id": "review_agent",
+        "kind": "ai_harness",
+        "adapter": "anthropic.messages",
+        "model": "review_model",
+        "purpose": "Plan a Claude review pass without posting comments.",
+        "inputs": {
+          "model": "claude-sonnet-fixture",
+          "system": "Draft concise code-review findings with evidence. Do not post comments.",
+          "tools": [
+            "propose_harnessfile"
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "type": "github.issue"
+      },
+      {
+        "type": "agent_result"
+      },
+      {
+        "type": "run_ledger"
+      },
+      {
+        "type": "eval_report"
+      }
+    ],
+    "evals": [
+      {
+        "id": "ledger_is_valid",
+        "type": "invariant",
+        "description": "The generated ledger must be ordered and readable."
+      },
+      {
+        "id": "required_adapter_evidence",
+        "type": "invariant",
+        "description": "Adapters must leave required dry-run evidence."
+      },
+      {
+        "id": "approvals_before_risky_actions",
+        "type": "policy",
+        "description": "Risky actions need human approval evidence before execution."
+      }
+    ],
+    "metadata": {
+      "suggested_by": "delegation.suggest.model_fixture",
+      "suggestion_template": "code-review",
+      "provider_fixture": "anthropic",
+      "trust_boundary": "Model proposes; Delegation Bot validates, plans, writes ledger evidence, and requires approval."
+    }
+  },
+  "safety_notes": [
+    "The fixture must not call Anthropic.",
+    "The draft may propose a Harnessfile but cannot approve or execute it.",
+    "Review comments or issues still require the normal gates before live writes."
+  ],
+  "validation_expectations": [
+    "The manifest validates with the deterministic Harnessfile validator.",
+    "The manifest compiles into a dry-run plan.",
+    "The ledger is written only by Delegation Bot planning code."
+  ]
+}

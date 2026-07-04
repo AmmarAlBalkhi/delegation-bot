@@ -45,8 +45,10 @@ The QA command currently checks:
 - package module CLI smoke test
 - example Harnessfile validation
 - example Harnessfile dry-run planning
+- local OpenTelemetry export generation
 - adapter contract listing and inspection
 - adapter fixture generation
+- no-network model-backed suggestion fixtures
 - release artifact workflow checks for ledgers, fixtures, QA logs, `LICENSE`,
   and `NOTICE`
 - built-in eval generation from the generated QA ledger

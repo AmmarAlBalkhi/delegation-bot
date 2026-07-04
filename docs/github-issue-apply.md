@@ -62,6 +62,12 @@ GITHUB_TOKEN=... delegation apply-issues Harnessfile.yaml \
 If a matching issue marker already exists in the first 100 repository issues,
 the command updates that issue. Otherwise it creates a new issue.
 
+To inspect the lifecycle without touching GitHub, use the applied fixture:
+
+```bash
+delegation ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
+```
+
 ## Ledger Events
 
 Live apply appends events to the same ledger:

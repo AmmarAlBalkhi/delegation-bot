@@ -38,6 +38,7 @@ python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledge
 python scripts/delegation.py ledger .delegation/latest.jsonl --adapter sample.echo
 python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --write
 python scripts/delegation.py promote examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+python scripts/delegation.py otel .delegation/latest.jsonl --output .delegation/latest-otel.json
 python scripts/delegation.py apply-issues examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
 ```
 
@@ -45,6 +46,7 @@ What you get:
 
 - a readable execution plan before any live action
 - a JSONL run ledger with adapter evidence
+- a local OpenTelemetry-style JSON export for dashboards and later tracing
 - `github.issue` and no-network `sample.echo` adapter results
 - evals for duplicate issue markers, risky approvals, required adapter evidence,
   and pull-request readiness
@@ -73,6 +75,8 @@ smallest possible form.
 - `delegation suggest` for no-blank-page Harnessfile drafts from plain-language
   goals
 - `delegation apply-issues` for preview-first, live-gated `github.issue` writes
+- `delegation otel` for local OpenTelemetry-style trace/log JSON exports
+- no-network model-backed suggestion fixtures for OpenAI and Anthropic paths
 - Adapter contracts for AI harnesses, workflows, tools, ML steps, and human
   approvals
 - Adapter SDK with dry-run adapters for `github.issue`, `github.actions`,
@@ -120,19 +124,21 @@ gated GitHub Issue path,
 [docs/harnessfile-suggest.md](docs/harnessfile-suggest.md) for the
 no-blank-page suggestion flow,
 [docs/model-backed-suggest.md](docs/model-backed-suggest.md) for the explicit
-opt-in model-backed suggestion design,
+opt-in model-backed suggestion design and no-network fixtures,
 [docs/ledger-viewer.md](docs/ledger-viewer.md) for inspecting run evidence,
 [docs/ledger-fixtures.md](docs/ledger-fixtures.md) for compact good, blocked,
 and failed examples, [docs/playbooks.md](docs/playbooks.md) for reusable
 Harnessfile missions, [docs/eval-to-issue-feedback.md](docs/eval-to-issue-feedback.md)
 for the improvement loop, [docs/opentelemetry-mapping.md](docs/opentelemetry-mapping.md)
-for observability mapping, and [ROADMAP.md](ROADMAP.md) for the million-star plan.
+for observability mapping and the local exporter, and [ROADMAP.md](ROADMAP.md)
+for the million-star plan.
 
 For public launch planning, see [CONTRIBUTING.md](CONTRIBUTING.md),
 [SECURITY.md](SECURITY.md), and [docs/domain-strategy.md](docs/domain-strategy.md).
 For business assumptions and the active work queue, see
 [docs/business-model.md](docs/business-model.md) and
-[docs/next-actions.md](docs/next-actions.md).
+[docs/next-actions.md](docs/next-actions.md). For package release rehearsal,
+see [docs/testpypi-dry-run.md](docs/testpypi-dry-run.md).
 
 ## Current Status
 
@@ -220,7 +226,16 @@ It now serves two purposes:
 
 - run the legacy issue bot only when legacy task specs are present or
   `TASK_GLOB` is configured
-- always generate Harnessfile dry-run evidence and upload ledger artifacts
+- always generate Harnessfile dry-run evidence and upload ledger, report,
+  fixture, and OpenTelemetry export artifacts
+
+To inspect generated evidence after a workflow run:
+
+1. Open the workflow run in GitHub Actions.
+2. Download the `delegation-run-evidence` artifact.
+3. Inspect `.delegation/harness-dry-run.jsonl`,
+   `.delegation/harness-ledger-report.txt`,
+   `.delegation/harness-otel.json`, and `.delegation/fixtures/`.
 
 `GITHUB_TOKEN` is provided automatically by GitHub Actions. Set `PROJECT_TOKEN`
 only if your Project v2 access requires a separate fine-grained token.
@@ -286,6 +301,13 @@ Draft a Harnessfile from a plain-language goal:
 python scripts/delegation.py suggest "prepare this repo for release" --output .delegation/suggested-release.yaml --plan --ledger .delegation/suggested-release.jsonl
 ```
 
+Try no-network model-backed suggestion fixtures:
+
+```bash
+python scripts/delegation.py suggest "prepare this repo for release" --draft-source fixture --provider openai --output .delegation/model-openai-release.yaml --plan --ledger .delegation/model-openai-release.jsonl
+python scripts/delegation.py suggest "review this pull request" --draft-source fixture --provider anthropic --output .delegation/model-anthropic-review.yaml --plan --ledger .delegation/model-anthropic-review.jsonl
+```
+
 List built-in adapter contracts:
 
 ```bash
@@ -328,6 +350,12 @@ Inspect the run ledger:
 python scripts/delegation.py ledger .delegation/latest.jsonl --adapter github.issue
 ```
 
+Export the ledger to local OpenTelemetry-style JSON:
+
+```bash
+python scripts/delegation.py otel .delegation/latest.jsonl --output .delegation/latest-otel.json
+```
+
 Inspect the no-network sample adapter:
 
 ```bash
@@ -338,6 +366,7 @@ Inspect a compact fixture:
 
 ```bash
 python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapter sample.echo
+python scripts/delegation.py ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
 ```
 
 Try a starter playbook:

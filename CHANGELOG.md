@@ -64,3 +64,8 @@ The project is currently pre-release.
   `github.issue` writes.
 - Clarified that star milestones are aspirational target states, not traction
   claims.
+- Added `delegation otel` for local OpenTelemetry-style JSON export from
+  ledgers.
+- Added no-network model-backed suggestion fixtures for OpenAI and Anthropic.
+- Added an applied `github.issue` ledger fixture.
+- Added TestPyPI dry-run release notes.

@@ -321,6 +321,7 @@ def _check_ledger_fixtures(root: Path) -> DoctorCheck:
         fixture_dir / "adapter-good.jsonl",
         fixture_dir / "adapter-blocked.jsonl",
         fixture_dir / "adapter-failed.jsonl",
+        fixture_dir / "github-issue-applied.jsonl",
     ]
     problems: list[str] = []
     for fixture_path in fixture_paths:
@@ -330,7 +331,7 @@ def _check_ledger_fixtures(root: Path) -> DoctorCheck:
             problems.append(f"{fixture_path.name}: {exc}")
     if problems:
         return _failed("ledger_fixtures", "Ledger Fixtures", "Fixture ledgers could not be read.", details=problems)
-    return _ready("ledger_fixtures", "Ledger Fixtures", "Good, blocked, and failed fixture ledgers are readable.")
+    return _ready("ledger_fixtures", "Ledger Fixtures", "Adapter and applied issue fixture ledgers are readable.")
 
 
 def _check_git_repository(root: Path) -> DoctorCheck:

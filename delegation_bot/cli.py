@@ -23,9 +23,22 @@ from delegation_bot.github_issue_apply import (
 from delegation_bot.harness_manifest import ManifestError, load_manifest, summarize_manifest, validate_manifest
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
+from delegation_bot.model_suggest_fixtures import (
+    ModelSuggestionFixtureError,
+    SUPPORTED_PROVIDERS,
+    load_model_suggestion_fixture,
+)
+from delegation_bot.otel_export import OtelExportError, build_otel_export, render_otel_export, write_otel_export
 from delegation_bot.playbook_catalog import PlaybookCatalogError, load_catalog, summarize_catalog, validate_catalog
 from delegation_bot.promotion import PromotionError, evaluate_promotions, load_ledger, render_promotion_report
-from delegation_bot.suggest import SUGGESTION_TEMPLATE_IDS, build_suggestion, manifest_to_yaml, render_suggestion
+from delegation_bot.suggest import (
+    SUGGESTION_TEMPLATE_IDS,
+    HarnessSuggestion,
+    build_suggestion,
+    infer_template,
+    manifest_to_yaml,
+    render_suggestion,
+)
 
 
 def _load_valid_manifest(path: Path) -> tuple[dict[str, T.Any] | None, int]:
@@ -78,14 +91,28 @@ def cmd_plan(args: argparse.Namespace) -> int:
 
 def cmd_suggest(args: argparse.Namespace) -> int:
     try:
-        suggestion = build_suggestion(
-            args.goal,
-            repository=args.repository,
-            owner=args.owner,
-            template=args.template,
-        )
+        if args.draft_source == "fixture":
+            if not args.provider:
+                print("ERROR: --provider is required when --draft-source fixture is used", file=sys.stderr)
+                return 1
+            template_id = args.template or infer_template(args.goal)[0]
+            draft = load_model_suggestion_fixture(args.provider, template_id)
+            source_name = draft.source_path.name if draft.source_path else "fixture"
+            suggestion = HarnessSuggestion(
+                goal=draft.goal,
+                template_id=draft.template_id,
+                template_reason=f"No-network {draft.provider} model fixture loaded from `{source_name}`.",
+                manifest=draft.manifest,
+            )
+        else:
+            suggestion = build_suggestion(
+                args.goal,
+                repository=args.repository,
+                owner=args.owner,
+                template=args.template,
+            )
         manifest_yaml = manifest_to_yaml(suggestion.manifest)
-    except (RuntimeError, ValueError) as exc:
+    except (RuntimeError, ValueError, ModelSuggestionFixtureError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
@@ -267,6 +294,31 @@ def cmd_ledger(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_otel(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        events = load_ledger_events(ledger_path)
+        export = build_otel_export(events, source=str(ledger_path), environment=args.environment)
+    except (LedgerError, OtelExportError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.output:
+        try:
+            write_otel_export(export, Path(args.output))
+        except OSError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(json.dumps(export.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_otel_export(export))
+        if args.output:
+            print(f"\nOpenTelemetry JSON written: {args.output}")
+    return 0
+
+
 def cmd_catalog(args: argparse.Namespace) -> int:
     catalog_path = Path(args.catalog)
     try:
@@ -380,6 +432,17 @@ def build_parser() -> argparse.ArgumentParser:
         choices=SUGGESTION_TEMPLATE_IDS,
         help="Force a suggestion template instead of inferring one from the goal.",
     )
+    suggest.add_argument(
+        "--draft-source",
+        choices=("template", "fixture"),
+        default="template",
+        help="Use the built-in template path or a no-network model-backed fixture.",
+    )
+    suggest.add_argument(
+        "--provider",
+        choices=SUPPORTED_PROVIDERS,
+        help="Fixture provider to load when --draft-source fixture is used.",
+    )
     suggest.add_argument("--plan", action="store_true", help="Also compile and print the dry-run plan.")
     suggest.add_argument("--ledger", help="Write a dry-run ledger; requires --plan.")
     suggest.add_argument("--json", action="store_true", help="Print the suggested Harnessfile as JSON.")
@@ -400,6 +463,13 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--adapter", help="Only show recent events for this adapter id.")
     ledger.add_argument("--limit", type=int, default=12, help="Number of recent matching events to show; 0 shows all.")
     ledger.set_defaults(func=cmd_ledger)
+
+    otel = subparsers.add_parser("otel", help="Export a JSONL run ledger to local OpenTelemetry-style JSON.")
+    otel.add_argument("ledger", help="Path to a run ledger JSONL file.")
+    otel.add_argument("--output", help="Write the telemetry export JSON to this path.")
+    otel.add_argument("--environment", default="local", help="deployment.environment resource value.")
+    otel.add_argument("--json", action="store_true", help="Print the full telemetry export as JSON.")
+    otel.set_defaults(func=cmd_otel)
 
     catalog = subparsers.add_parser("catalog", help="Validate and summarize the playbook catalog.")
     catalog.add_argument(

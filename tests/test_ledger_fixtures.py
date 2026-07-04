@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from delegation_bot.evals import eval_ledger_is_valid, eval_required_adapter_evidence
+from delegation_bot.evals import eval_ledger_is_valid, eval_no_duplicate_issue_markers, eval_required_adapter_evidence
 from delegation_bot.ledger import LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
 
 
@@ -43,6 +43,17 @@ class LedgerFixtureTests(unittest.TestCase):
         self.assertEqual(len(view.adapter_evidence), 2)
         self.assertIn("sample.echo", text)
         self.assertIn("echo_hash=fixture-good-echo", text)
+
+    def test_applied_github_issue_fixture_is_readable_and_not_duplicate(self) -> None:
+        events = load_ledger_events(FIXTURES / "github-issue-applied.jsonl")
+        view = build_ledger_view(events, ledger_filter=LedgerFilter(adapter="github.issue"))
+        text = render_ledger_view(view)
+
+        self.assertEqual(eval_ledger_is_valid(events).status, "passed")
+        self.assertEqual(eval_no_duplicate_issue_markers(events).status, "passed")
+        self.assertEqual(view.total_events, 6)
+        self.assertIn("github.issue.created", text)
+        self.assertIn("issue_number=123", text)
 
 
 if __name__ == "__main__":

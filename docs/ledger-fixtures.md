@@ -8,6 +8,8 @@ They live in `examples/ledgers/`:
 - `adapter-good.jsonl`: adapter evidence is complete and should pass
 - `adapter-blocked.jsonl`: adapter could not plan because input was missing
 - `adapter-failed.jsonl`: adapter reported a failed result
+- `github-issue-applied.jsonl`: a planned `github.issue` action was applied
+  and recorded with issue evidence
 
 ## Why They Exist
 
@@ -36,6 +38,12 @@ Failed result:
 python scripts/delegation.py ledger examples/ledgers/adapter-failed.jsonl --status failed
 ```
 
+Applied GitHub Issue:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
+```
+
 ## Eval Behavior
 
 The `required_adapter_evidence` eval should:
@@ -57,6 +65,8 @@ Keep fixtures:
 - free of secrets
 - free of network assumptions
 - tied to real adapter contracts
+- representative of real lifecycle states such as planned, blocked, failed,
+  created, updated, and completed
 
 These files are documentation and tests at the same time.
 
