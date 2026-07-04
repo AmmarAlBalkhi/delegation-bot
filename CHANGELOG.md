@@ -60,3 +60,7 @@ The project is currently pre-release.
 - Added opt-in model-backed `delegation suggest` design notes, a structured
   draft schema, and blocked-eval repeat thresholds for lower-noise feedback.
 - Added `delegation doctor` for local readiness checks and first-run guidance.
+- Added preview-first `delegation apply-issues` with explicit live gates for
+  `github.issue` writes.
+- Clarified that star milestones are aspirational target states, not traction
+  claims.

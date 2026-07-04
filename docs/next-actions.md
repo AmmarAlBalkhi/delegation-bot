@@ -32,11 +32,11 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Implement the first live `github.issue` execution gate.
-2. Add the first local OpenTelemetry export command.
-3. Add fixture artifact download examples to README.
-4. Add TestPyPI dry-run release notes.
-5. Add no-network model-backed suggest fixtures for OpenAI and Anthropic.
+1. Add the first local OpenTelemetry export command.
+2. Add fixture artifact download examples to README.
+3. Add TestPyPI dry-run release notes.
+4. Add no-network model-backed suggest fixtures for OpenAI and Anthropic.
+5. Add fixture coverage for applied `github.issue` ledger states.
 
 ## Next
 

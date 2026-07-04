@@ -605,3 +605,39 @@ Evidence:
 - `tests/test_doctor.py`
 - `tests/test_delegation_cli.py`
 - `scripts/qa.py`
+
+## 2026-07-04: Add First Live GitHub Issue Gate
+
+Decision: Add `delegation apply-issues` as the first live execution path. The
+command previews gates by default and only writes GitHub Issues when the user
+passes `--apply --confirm LIVE_GITHUB_ISSUES` with a GitHub token.
+
+Why: The project needs real action, but not uncontrolled action. A GitHub Issue
+is visible and reversible compared with model calls, coding agents, workflow
+runs, or deployments. This proves the live-gate pattern while keeping the
+control plane's core promise: dry-run first, policy gates, explicit intent,
+ledger evidence, then live apply.
+
+Evidence:
+
+- `delegation_bot/github_issue_apply.py`
+- `delegation_bot/cli.py`
+- `docs/github-issue-apply.md`
+- `docs/live-execution-gate.md`
+- `tests/test_github_issue_apply.py`
+- `tests/test_delegation_cli.py`
+- `scripts/qa.py`
+
+## 2026-07-04: Clarify Star Milestones As Aspirational
+
+Decision: Rename roadmap star milestones as aspirational target states and add
+a short humility note to the million-star strategy.
+
+Why: The project should be ambitious without pretending to have traction it does
+not yet have. Stars are a lagging signal of legitimate adoption, not the thing
+to fake or optimize directly.
+
+Evidence:
+
+- `ROADMAP.md`
+- `docs/million-star-strategy.md`

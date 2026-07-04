@@ -82,6 +82,17 @@ delegation apply-issues Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
 The second shape is less elegant, but clearer while live execution is new.
+This first slice is now implemented as a preview-first command. Live writes
+require:
+
+```bash
+delegation apply-issues Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_GITHUB_ISSUES
+```
+
+See `docs/github-issue-apply.md` for the user-facing guide.
 
 ## Ledger Events
 

@@ -38,6 +38,7 @@ python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledge
 python scripts/delegation.py ledger .delegation/latest.jsonl --adapter sample.echo
 python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --write
 python scripts/delegation.py promote examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+python scripts/delegation.py apply-issues examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
 ```
 
 What you get:
@@ -71,6 +72,7 @@ smallest possible form.
 - `delegation doctor` for local readiness checks and a clear next command
 - `delegation suggest` for no-blank-page Harnessfile drafts from plain-language
   goals
+- `delegation apply-issues` for preview-first, live-gated `github.issue` writes
 - Adapter contracts for AI harnesses, workflows, tools, ML steps, and human
   approvals
 - Adapter SDK with dry-run adapters for `github.issue`, `github.actions`,
@@ -113,6 +115,8 @@ standard that adapter implementations must satisfy,
 adapter status, [docs/live-execution-gate.md](docs/live-execution-gate.md) for
 the first safe live-execution design, [docs/doctor.md](docs/doctor.md) for
 local readiness checks,
+[docs/github-issue-apply.md](docs/github-issue-apply.md) for the first live
+gated GitHub Issue path,
 [docs/harnessfile-suggest.md](docs/harnessfile-suggest.md) for the
 no-blank-page suggestion flow,
 [docs/model-backed-suggest.md](docs/model-backed-suggest.md) for the explicit
@@ -304,6 +308,12 @@ Run built-in evals and append eval evidence:
 
 ```bash
 python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --write
+```
+
+Preview the live GitHub Issue apply gate:
+
+```bash
+python scripts/delegation.py apply-issues examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
 ```
 
 Draft dry-run feedback issues from failed or blocked eval evidence:

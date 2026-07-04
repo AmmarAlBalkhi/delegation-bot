@@ -157,26 +157,31 @@ def eval_ledger_is_valid(events: T.Sequence[JsonMap]) -> EvalResult:
 
 
 def eval_no_duplicate_issue_markers(events: T.Sequence[JsonMap]) -> EvalResult:
-    markers: list[str] = []
+    marker_actions: dict[str, set[str]] = {}
     for event in events:
         details = event.get("details") if isinstance(event.get("details"), dict) else {}
         marker = details.get("issue_marker")
+        if not isinstance(marker, str):
+            adapter_result = details.get("adapter_result") if isinstance(details.get("adapter_result"), dict) else {}
+            evidence = adapter_result.get("evidence") if isinstance(adapter_result.get("evidence"), dict) else {}
+            marker = evidence.get("issue_marker")
         if isinstance(marker, str):
-            markers.append(marker)
+            action_id = event.get("action_id") if isinstance(event.get("action_id"), str) else "unknown"
+            marker_actions.setdefault(marker, set()).add(action_id)
 
-    duplicates = sorted({marker for marker in markers if markers.count(marker) > 1})
+    duplicates = sorted(marker for marker, action_ids in marker_actions.items() if len(action_ids) > 1)
     if duplicates:
         return EvalResult(
             "no_duplicate_issue_markers",
             "failed",
-            "Duplicate issue markers found.",
-            {"duplicates": duplicates},
+            "Duplicate issue markers found across multiple actions.",
+            {"duplicates": duplicates, "marker_actions": {key: sorted(value) for key, value in marker_actions.items()}},
         )
     return EvalResult(
         "no_duplicate_issue_markers",
         "passed",
         "No duplicate issue markers found.",
-        {"marker_count": len(markers)},
+        {"marker_count": len(marker_actions)},
     )
 
 
