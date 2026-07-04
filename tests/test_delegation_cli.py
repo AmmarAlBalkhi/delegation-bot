@@ -32,6 +32,31 @@ class DelegationCliTests(unittest.TestCase):
         self.assertGreater(len(lines), 2)
         self.assertEqual(json.loads(lines[0])["type"], "plan.compiled")
 
+    def test_suggest_writes_valid_harnessfile_and_plan_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            harnessfile = Path(tmpdir) / "suggested.yaml"
+            ledger = Path(tmpdir) / "suggested.jsonl"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "suggest",
+                        "prepare this repo for release",
+                        "--output",
+                        str(harnessfile),
+                        "--plan",
+                        "--ledger",
+                        str(ledger),
+                    ]
+            )
+            harnessfile_exists = harnessfile.exists()
+            ledger_lines = ledger.read_text(encoding="utf-8").splitlines()
+
+        self.assertEqual(status, 0)
+        self.assertIn("Suggested Harnessfile", output.getvalue())
+        self.assertIn("Template: release-readiness", output.getvalue())
+        self.assertTrue(harnessfile_exists)
+        self.assertEqual(json.loads(ledger_lines[0])["type"], "plan.compiled")
+
     def test_promote_example_reads_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"

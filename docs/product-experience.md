@@ -49,7 +49,8 @@ delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write
 delegation promote Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
-Until `delegation suggest` exists, playbooks are the no-blank-page path:
+`delegation suggest` now exists as a no-network, template-backed first version.
+Playbooks remain another no-blank-page path:
 
 ```text
 delegation catalog

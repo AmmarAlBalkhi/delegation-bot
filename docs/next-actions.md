@@ -32,12 +32,11 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Push `codex/improve-foundations` and open a PR after final local checks.
-2. Add `delegation suggest` design notes for AI-drafted Harnessfiles and
-   no-blank-page onboarding.
-3. Add repeat-threshold policy for blocked eval feedback.
-4. Add the first local OpenTelemetry export command.
-5. Add fixture artifact download examples to README.
+1. Add model-backed `delegation suggest` design notes behind explicit opt-in.
+2. Add repeat-threshold policy for blocked eval feedback.
+3. Add the first local OpenTelemetry export command.
+4. Add fixture artifact download examples to README.
+5. Add TestPyPI dry-run release notes.
 
 ## Next
 

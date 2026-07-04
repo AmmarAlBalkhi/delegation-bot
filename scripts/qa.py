@@ -111,6 +111,20 @@ def build_checks(python: str) -> list[Check]:
             [python, "scripts/delegation.py", "validate", "examples/ai-harness-control-plane.yaml"],
         ),
         Check(
+            "suggest release Harnessfile",
+            [
+                python,
+                "scripts/delegation.py",
+                "suggest",
+                "prepare this repo for release",
+                "--output",
+                ".delegation/qa-suggested-release.yaml",
+                "--plan",
+                "--ledger",
+                ".delegation/qa-suggested-release.jsonl",
+            ],
+        ),
+        Check(
             "package module CLI",
             [python, "-m", "delegation_bot", "adapters", "codex.thread"],
         ),
