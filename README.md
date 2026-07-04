@@ -112,6 +112,8 @@ adapter status, [docs/live-execution-gate.md](docs/live-execution-gate.md) for
 the first safe live-execution design,
 [docs/harnessfile-suggest.md](docs/harnessfile-suggest.md) for the
 no-blank-page suggestion flow,
+[docs/model-backed-suggest.md](docs/model-backed-suggest.md) for the explicit
+opt-in model-backed suggestion design,
 [docs/ledger-viewer.md](docs/ledger-viewer.md) for inspecting run evidence,
 [docs/ledger-fixtures.md](docs/ledger-fixtures.md) for compact good, blocked,
 and failed examples, [docs/playbooks.md](docs/playbooks.md) for reusable

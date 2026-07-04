@@ -32,11 +32,11 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Add model-backed `delegation suggest` design notes behind explicit opt-in.
-2. Add repeat-threshold policy for blocked eval feedback.
-3. Add the first local OpenTelemetry export command.
-4. Add fixture artifact download examples to README.
-5. Add TestPyPI dry-run release notes.
+1. Add the first local OpenTelemetry export command.
+2. Add fixture artifact download examples to README.
+3. Add TestPyPI dry-run release notes.
+4. Add no-network model-backed suggest fixtures for OpenAI and Anthropic.
+5. Add direct `EvalResult` to feedback issue draft conversion.
 
 ## Next
 
@@ -44,7 +44,7 @@ Deep only when the user asks for depth.
 2. Add hosted dashboard wireframe notes.
 3. Add Developer Certificate of Origin or contributor-license policy notes.
 4. Add playbook catalog filtering by tag and adapter.
-5. Add compatibility badges once live-gated adapters exist.
+5. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
 
 ## Later
 

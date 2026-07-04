@@ -18,6 +18,7 @@ from delegation_bot.harness_plan import LedgerEvent
 
 JsonMap = dict[str, T.Any]
 SECRET_KEY_PARTS = ("token", "secret", "password", "api_key", "authorization", "credential")
+DEFAULT_BLOCKED_REPEAT_THRESHOLD = 2
 
 
 @dataclass(frozen=True)
@@ -243,7 +244,11 @@ def build_feedback_issue_drafts(
     repository: str | None = None,
     ledger_source: str = "<ledger>",
     include_blocked: bool = False,
+    blocked_repeat_threshold: int = DEFAULT_BLOCKED_REPEAT_THRESHOLD,
 ) -> list[FeedbackIssueDraft]:
+    if blocked_repeat_threshold < 1:
+        raise ValueError("blocked_repeat_threshold must be at least 1")
+
     target_repository = repository or default_repository(manifest)
     harness_id = str(manifest.get("id", "unknown-harness"))
     existing_feedback_counts = _existing_feedback_marker_counts(events)
@@ -259,6 +264,14 @@ def build_feedback_issue_drafts(
     drafts: list[FeedbackIssueDraft] = []
     for marker, matching_events in grouped.items():
         latest_event = matching_events[-1]
+        _, status, _, _ = _eval_event_payload(latest_event)
+        existing_feedback_events = existing_feedback_counts.get(marker, 0)
+        if (
+            status == "blocked"
+            and len(matching_events) < blocked_repeat_threshold
+            and existing_feedback_events == 0
+        ):
+            continue
         drafts.append(
             build_feedback_issue_draft(
                 manifest,
@@ -266,7 +279,7 @@ def build_feedback_issue_drafts(
                 repository=target_repository,
                 ledger_source=ledger_source,
                 occurrence_count=len(matching_events),
-                existing_feedback_events=existing_feedback_counts.get(marker, 0),
+                existing_feedback_events=existing_feedback_events,
             )
         )
     return drafts

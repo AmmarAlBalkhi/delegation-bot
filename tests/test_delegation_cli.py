@@ -102,6 +102,8 @@ class DelegationCliTests(unittest.TestCase):
                         "--ledger",
                         str(ledger),
                         "--include-blocked",
+                        "--blocked-repeat-threshold",
+                        "1",
                     ]
                 )
 

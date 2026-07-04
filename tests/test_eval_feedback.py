@@ -66,7 +66,37 @@ class EvalFeedbackTests(unittest.TestCase):
         }
 
         self.assertEqual(build_feedback_issue_drafts(MANIFEST, [blocked]), [])
-        self.assertEqual(len(build_feedback_issue_drafts(MANIFEST, [blocked], include_blocked=True)), 1)
+        self.assertEqual(build_feedback_issue_drafts(MANIFEST, [blocked], include_blocked=True), [])
+        self.assertEqual(
+            len(
+                build_feedback_issue_drafts(
+                    MANIFEST,
+                    [blocked],
+                    include_blocked=True,
+                    blocked_repeat_threshold=1,
+                )
+            ),
+            1,
+        )
+
+    def test_repeated_blocked_eval_crosses_repeat_threshold(self) -> None:
+        first = copy.deepcopy(BASE_EVENT)
+        first["status"] = "blocked"
+        first["details"]["eval"]["status"] = "blocked"
+        second = copy.deepcopy(first)
+        second["sequence"] = 2
+
+        drafts = build_feedback_issue_drafts(
+            MANIFEST,
+            [first, second],
+            ledger_source="ledger.jsonl",
+            include_blocked=True,
+        )
+
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(drafts[0].operation, "update")
+        self.assertEqual(drafts[0].occurrence_count, 2)
+        self.assertEqual(drafts[0].title, "Update eval blocked: required_adapter_evidence")
 
     def test_repeated_eval_results_are_grouped_into_one_update_draft(self) -> None:
         repeated = copy.deepcopy(BASE_EVENT)

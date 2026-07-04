@@ -184,6 +184,8 @@ def build_checks(python: str) -> list[Check]:
                 "--ledger",
                 ".delegation/qa-latest.jsonl",
                 "--include-blocked",
+                "--blocked-repeat-threshold",
+                "1",
             ],
         ),
         Check(
