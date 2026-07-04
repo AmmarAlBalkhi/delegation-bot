@@ -40,6 +40,8 @@ Later, a model-backed drafting mode can be added behind explicit configuration,
 but it should still output a normal Harnessfile that the deterministic control
 plane must validate and dry-run.
 
+See `docs/model-backed-suggest.md` for the opt-in model-backed design.
+
 ## Usage
 
 Write a suggested Harnessfile and immediately compile its dry-run plan:

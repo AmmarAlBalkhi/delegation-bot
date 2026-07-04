@@ -127,6 +127,18 @@ Default policy:
 - issue bodies must not include secrets, full prompts with secrets, or raw model
   responses unless sanitized
 
+The default blocked repeat threshold is `2`. That means a single blocked eval is
+reported in the eval output, but it does not become a feedback issue draft until
+the same block appears twice in the ledger. Users can opt into immediate blocked
+drafts with:
+
+```bash
+python scripts/delegation.py feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --include-blocked \
+  --blocked-repeat-threshold 1
+```
+
 ## First Implementation Slice
 
 The first code slice is now implemented through:
@@ -139,7 +151,7 @@ What it does:
 
 - reads `eval.result` events from the ledger
 - drafts dry-run GitHub Issues for failed evals
-- optionally includes blocked evals with `--include-blocked`
+- optionally includes repeated blocked evals with `--include-blocked`
 - redacts obvious secret-like fields from failure details
 - groups repeated eval failures by deterministic marker
 - marks drafts as `create` or `update` based on repeated failures or existing
@@ -151,9 +163,8 @@ The next implementation slice should be:
 
 1. Add a function that converts `EvalResult` into a `github.issue` adapter
    request for direct eval-result objects, not only ledger events.
-2. Add repeat-threshold policy for blocked evals.
-3. Link dry-run update drafts to live GitHub issue numbers after apply mode
+2. Link dry-run update drafts to live GitHub issue numbers after apply mode
    exists.
-4. Keep live GitHub writes behind the existing apply mode.
+3. Keep live GitHub writes behind the existing apply mode.
 
 This keeps the project aligned with its own rule: evidence first, then action.

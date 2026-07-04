@@ -57,3 +57,5 @@ The project is currently pre-release.
 - Added `delegation suggest` to draft valid Harnessfiles from plain-language
   goals using no-network templates, with optional dry-run planning and ledger
   output.
+- Added opt-in model-backed `delegation suggest` design notes, a structured
+  draft schema, and blocked-eval repeat thresholds for lower-noise feedback.

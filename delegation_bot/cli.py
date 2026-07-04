@@ -193,6 +193,7 @@ def cmd_feedback(args: argparse.Namespace) -> int:
             repository=args.repository,
             ledger_source=str(ledger_path),
             include_blocked=args.include_blocked,
+            blocked_repeat_threshold=args.blocked_repeat_threshold,
         )
     except (LookupError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -347,6 +348,12 @@ def build_parser() -> argparse.ArgumentParser:
     feedback.add_argument("--ledger", required=True, help="Read run ledger JSONL eval evidence.")
     feedback.add_argument("--repository", help="Target repository for planned feedback issues.")
     feedback.add_argument("--include-blocked", action="store_true", help="Also draft issues for blocked eval results.")
+    feedback.add_argument(
+        "--blocked-repeat-threshold",
+        type=int,
+        default=2,
+        help="Minimum matching blocked eval occurrences before drafting an issue; use 1 for immediate blocked drafts.",
+    )
     feedback.add_argument("--json", action="store_true", help="Print feedback issue drafts as JSON.")
     feedback.add_argument("--write", action="store_true", help="Append planned feedback issue events to the ledger.")
     feedback.set_defaults(func=cmd_feedback)

@@ -563,3 +563,24 @@ Evidence:
 - `tests/test_suggest.py`
 - `tests/test_delegation_cli.py`
 - `scripts/qa.py`
+
+## 2026-07-04: Keep Model-Backed Suggestions Explicit
+
+Decision: Document model-backed `delegation suggest` as an explicit opt-in path
+and add a structured draft schema for future model output. Also add a repeat
+threshold for blocked eval feedback so one blocked dry-run does not immediately
+become issue noise.
+
+Why: The product should enable AI without letting AI approve itself. Models can
+draft Harnessfiles through OpenAI, Anthropic, or local providers, but the
+deterministic control plane still validates, plans, writes ledgers, runs evals,
+and controls promotion. Blocked evals should be helpful signals, not chores.
+
+Evidence:
+
+- `docs/model-backed-suggest.md`
+- `schemas/harness-suggestion-draft.v1.schema.json`
+- `delegation_bot/eval_feedback.py`
+- `delegation_bot/cli.py`
+- `docs/eval-to-issue-feedback.md`
+- `tests/test_eval_feedback.py`
