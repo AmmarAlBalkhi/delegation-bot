@@ -1,0 +1,162 @@
+{
+  "version": "delegation.ai/harness-suggestion-draft/v1",
+  "goal": "prepare this repo for release",
+  "draft_source": "model",
+  "provider": "openai",
+  "model": "gpt-5.5-fixture",
+  "rationale": "Fixture output that mimics an OpenAI structured response for a release-readiness Harnessfile.",
+  "manifest": {
+    "version": "delegation.ai/v1",
+    "id": "model-fixture-openai-release-readiness",
+    "name": "Model Fixture: OpenAI Release Readiness",
+    "objective": "Prepare this repository for a safe alpha release without live publication.",
+    "triggers": [
+      {
+        "type": "manual"
+      }
+    ],
+    "owners": {
+      "accountable": "AmmarAlBalkhi",
+      "reviewers": [
+        "AmmarAlBalkhi"
+      ]
+    },
+    "models": [
+      {
+        "id": "planner_model",
+        "provider": "openai",
+        "adapter": "openai.agents",
+        "model": "gpt-5.5-fixture",
+        "role": "planning"
+      }
+    ],
+    "capability_packs": [
+      {
+        "id": "release_reader",
+        "description": "Read package metadata, changelog, release docs, and local QA evidence.",
+        "capabilities": [
+          "read.repository",
+          "read.release_docs",
+          "read.run_ledger"
+        ]
+      },
+      {
+        "id": "release_drafter",
+        "description": "Draft release notes and tracking issues without publishing packages.",
+        "capabilities": [
+          "write.issue_draft",
+          "write.release_note_draft"
+        ]
+      }
+    ],
+    "agents": [
+      {
+        "id": "release_planner",
+        "runtime": "openai.agents",
+        "model": "planner_model",
+        "autonomy_level": "draft",
+        "capability_packs": [
+          "release_reader",
+          "release_drafter"
+        ],
+        "promotion": {
+          "next_level": "act",
+          "requires_evals": [
+            "ledger_is_valid",
+            "required_adapter_evidence"
+          ]
+        }
+      }
+    ],
+    "policies": {
+      "approvals": {
+        "required_for": [
+          "agent_execution",
+          "github_issue",
+          "pull_request"
+        ]
+      },
+      "permissions": {
+        "allowed_repositories": [
+          "AmmarAlBalkhi/delegation-bot"
+        ],
+        "network": "restricted"
+      },
+      "budgets": {
+        "max_usd_per_run": 2,
+        "max_minutes_per_run": 20
+      }
+    },
+    "executors": [
+      {
+        "id": "release_issue",
+        "kind": "workflow",
+        "adapter": "github.issue",
+        "purpose": "Draft a release readiness tracking issue.",
+        "inputs": {
+          "repository": "AmmarAlBalkhi/delegation-bot",
+          "issue_title": "Release readiness: alpha package",
+          "issue_body": "Track package metadata, changelog, TestPyPI smoke test, QA evidence, and maintainer approval."
+        }
+      },
+      {
+        "id": "release_agent",
+        "kind": "ai_harness",
+        "adapter": "openai.agents",
+        "model": "planner_model",
+        "purpose": "Plan the release checklist without publishing anything.",
+        "inputs": {
+          "model": "gpt-5.5-fixture",
+          "instructions": "Draft a release readiness plan with evidence requirements and no live publication.",
+          "tools": [
+            "github.issue"
+          ]
+        }
+      }
+    ],
+    "outputs": [
+      {
+        "type": "github.issue"
+      },
+      {
+        "type": "run_ledger"
+      },
+      {
+        "type": "eval_report"
+      }
+    ],
+    "evals": [
+      {
+        "id": "ledger_is_valid",
+        "type": "invariant",
+        "description": "The generated ledger must be ordered and readable."
+      },
+      {
+        "id": "required_adapter_evidence",
+        "type": "invariant",
+        "description": "Adapters must leave required dry-run evidence."
+      },
+      {
+        "id": "approvals_before_risky_actions",
+        "type": "policy",
+        "description": "Risky actions need human approval evidence before execution."
+      }
+    ],
+    "metadata": {
+      "suggested_by": "delegation.suggest.model_fixture",
+      "suggestion_template": "release-readiness",
+      "provider_fixture": "openai",
+      "trust_boundary": "Model proposes; Delegation Bot validates, plans, writes ledger evidence, and requires approval."
+    }
+  },
+  "safety_notes": [
+    "The fixture must not call OpenAI.",
+    "The draft may propose a Harnessfile but cannot approve or execute it.",
+    "Live issue writes still require the normal apply gate."
+  ],
+  "validation_expectations": [
+    "The manifest validates with the deterministic Harnessfile validator.",
+    "The manifest compiles into a dry-run plan.",
+    "The ledger is written only by Delegation Bot planning code."
+  ]
+}

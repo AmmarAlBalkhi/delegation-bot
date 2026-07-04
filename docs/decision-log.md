@@ -641,3 +641,27 @@ Evidence:
 
 - `ROADMAP.md`
 - `docs/million-star-strategy.md`
+
+## 2026-07-04: Add Local Telemetry Export And Provider Fixtures
+
+Decision: Add `delegation otel`, no-network OpenAI and Anthropic model-backed
+suggestion fixtures, an applied `github.issue` ledger fixture, README artifact
+download guidance, and TestPyPI dry-run notes.
+
+Why: The next product layer should keep strengthening the core loop. Telemetry
+export lets teams carry Delegation Bot evidence into observability systems
+later. Provider fixtures let model-backed suggestions be tested without cost or
+network calls. Applied issue fixtures make the live gate lifecycle concrete.
+TestPyPI notes prepare the project for users without rushing a release.
+
+Evidence:
+
+- `delegation_bot/otel_export.py`
+- `delegation_bot/model_suggest_fixtures.py`
+- `examples/model-suggestions/`
+- `examples/ledgers/github-issue-applied.jsonl`
+- `docs/opentelemetry-mapping.md`
+- `docs/model-backed-suggest.md`
+- `docs/testpypi-dry-run.md`
+- `tests/test_otel_export.py`
+- `tests/test_model_suggest_fixtures.py`

@@ -158,7 +158,7 @@ delegation.feedback.marker = <dedupe marker>
 
 Do not start with a collector integration.
 
-Start with a deterministic local command:
+Start with a deterministic local command. This first slice now exists:
 
 ```bash
 delegation otel .delegation/latest.jsonl --output .delegation/latest-otel.json
@@ -172,6 +172,14 @@ That command should:
 - preserve original ledger event details
 - redact secrets using the same sanitizer as feedback issues
 - avoid network calls
+
+Tiny version:
+
+```text
+Ledger stays truth.
+OTel export makes truth easier to search later.
+No upload by default.
+```
 
 After that local shape is stable, add an OTLP exporter behind explicit config.
 

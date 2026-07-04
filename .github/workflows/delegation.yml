@@ -93,6 +93,9 @@ jobs:
             python scripts/delegation.py ledger \
               .delegation/harness-dry-run.jsonl \
               > .delegation/harness-ledger-report.txt
+            python scripts/delegation.py otel \
+              .delegation/harness-dry-run.jsonl \
+              --output .delegation/harness-otel.json
           else
             echo "No Harnessfile example found; legacy task bot log is the only artifact." \
               > .delegation/harness-ledger-report.txt
@@ -189,6 +192,7 @@ jobs:
           path: |
             bot.log
             .delegation/*.jsonl
+            .delegation/*.json
             .delegation/*-report.txt
             .delegation/release-artifacts-manifest.txt
             .delegation/fixtures/*.jsonl

@@ -38,6 +38,7 @@ jobs:
           name: delegation-qa-evidence
           path: |
             .delegation/*.jsonl
+            .delegation/*.json
             .delegation/*.log
             LICENSE
             NOTICE

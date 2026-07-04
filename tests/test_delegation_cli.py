@@ -57,6 +57,34 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(harnessfile_exists)
         self.assertEqual(json.loads(ledger_lines[0])["type"], "plan.compiled")
 
+    def test_suggest_fixture_writes_valid_model_backed_harnessfile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            harnessfile = Path(tmpdir) / "suggested.yaml"
+            ledger = Path(tmpdir) / "suggested.jsonl"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "suggest",
+                        "prepare this repo for release",
+                        "--draft-source",
+                        "fixture",
+                        "--provider",
+                        "openai",
+                        "--output",
+                        str(harnessfile),
+                        "--plan",
+                        "--ledger",
+                        str(ledger),
+                    ]
+                )
+            lines = ledger.read_text(encoding="utf-8").splitlines()
+            harness_text = harnessfile.read_text(encoding="utf-8")
+
+        self.assertEqual(status, 0)
+        self.assertIn("No-network openai model fixture", output.getvalue())
+        self.assertIn("model-fixture-openai-release-readiness", harness_text)
+        self.assertEqual(json.loads(lines[0])["type"], "plan.compiled")
+
     def test_promote_example_reads_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"
@@ -137,6 +165,21 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["source"], str(ledger))
         self.assertTrue(data["adapter_evidence"])
         self.assertEqual(data["shown_event_count"], 2)
+
+    def test_otel_command_exports_trace_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            otel = Path(tmpdir) / "otel.json"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["otel", str(ledger), "--output", str(otel)])
+            data = json.loads(otel.read_text(encoding="utf-8"))
+
+        self.assertEqual(status, 0)
+        self.assertIn("OpenTelemetry export", output.getvalue())
+        self.assertEqual(data["format"], "delegation.otel.trace.v1")
+        self.assertTrue(data["traces"][0]["spans"])
 
     def test_adapters_command_lists_contracts(self) -> None:
         with redirect_stdout(io.StringIO()) as output:

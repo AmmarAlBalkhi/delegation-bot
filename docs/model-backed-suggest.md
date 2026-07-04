@@ -34,6 +34,22 @@ delegation suggest "review this pull request" --draft-source model --provider an
 
 No hidden model calls. No surprise cost. No surprise data sharing.
 
+## No-Network Fixture Mode
+
+The project now has fixture-backed model drafts for testing the future provider
+paths without calling any model API:
+
+```bash
+delegation suggest "prepare this repo for release" --draft-source fixture --provider openai --output .delegation/model-openai-release.yaml --plan --ledger .delegation/model-openai-release.jsonl
+delegation suggest "review this pull request" --draft-source fixture --provider anthropic --output .delegation/model-anthropic-review.yaml --plan --ledger .delegation/model-anthropic-review.jsonl
+```
+
+These fixtures live in `examples/model-suggestions/`.
+
+They are not live model calls. They are saved draft envelopes that prove the
+schema, validation, planning, and ledger loop works before real provider calls
+are added.
+
 ## Trust Boundary
 
 The model may:
@@ -153,7 +169,7 @@ Model-backed suggest is ready only when:
 
 1. It is off by default.
 2. It supports at least OpenAI and Anthropic through the same draft envelope.
-3. It can run in a no-network fixture mode for tests.
+3. It can run in a no-network fixture mode for tests. The first fixture mode is now implemented.
 4. Invalid model output cannot create a plan.
 5. Valid model output still goes through `validate`, `plan`, ledger, evals, and promotion.
 6. The README explains cost and data-sharing plainly.

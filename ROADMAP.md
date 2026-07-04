@@ -213,11 +213,11 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Add the first local OpenTelemetry export command.
-2. Add fixture artifact download examples to README.
-3. Add TestPyPI dry-run release notes.
-4. Add no-network model-backed suggest fixtures for OpenAI and Anthropic.
-5. Add fixture coverage for applied `github.issue` ledger states.
+1. Convert direct eval results into feedback issue drafts without ledger round trips.
+2. Add hosted dashboard wireframe notes.
+3. Add contributor-license or DCO policy notes.
+4. Add playbook catalog filtering by tag and adapter.
+5. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
 
 The million-star path starts with one quiet miracle: a developer can understand
 what an AI system is about to do before it does it.

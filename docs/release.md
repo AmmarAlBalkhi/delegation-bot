@@ -49,8 +49,11 @@ Before a public package release:
 - confirm GitHub Actions uploads ledgers, generated adapter fixtures, QA logs,
   and release metadata
 - confirm `CHANGELOG.md` has a release entry
+- rehearse the package on TestPyPI
 - create a git tag
 - publish to TestPyPI before PyPI
+
+See `docs/testpypi-dry-run.md` for the rehearsal commands and smoke checks.
 
 ## Package Boundaries
 
