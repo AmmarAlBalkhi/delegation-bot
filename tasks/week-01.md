@@ -1,7 +1,7 @@
 ---
 # Defaults applied to all tasks
-repository: ammar-uni/delegation-bot
-assign: ammar-uni
+repository: AmmarAlBalkhi/delegation-bot
+assign: AmmarAlBalkhi
 labels: [delegation, generated-by-bot]
 
 tasks:

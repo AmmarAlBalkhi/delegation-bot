@@ -1,0 +1,153 @@
+version: delegation.ai/v1
+id: playbook-weekly-planning
+name: Weekly Planning Playbook
+objective: >
+  Dry-run a weekly engineering planning mission: collect repository context,
+  draft a planning issue, ask for human approval, and leave evidence before any
+  agent receives more autonomy.
+
+triggers:
+  - type: workflow_dispatch
+  - type: schedule
+    cron: "0 9 * * 1"
+
+owners:
+  accountable: AmmarAlBalkhi
+  reviewers:
+    - AmmarAlBalkhi
+
+models:
+  - id: planning_model
+    provider: openai
+    model: gpt-5.5
+    role: weekly_planning
+    budget_usd: 2
+
+capability_packs:
+  - id: repo_reader
+    description: Read issues, roadmap, changelog, previous ledgers, and open work.
+    capabilities:
+      - read.repository
+      - read.github_issues
+      - read.roadmap
+      - read.changelog
+      - read.run_ledger
+
+  - id: planning_writer
+    description: Draft a planning issue and suggested priorities without applying changes.
+    capabilities:
+      - write.github_issue_draft
+      - suggest.priorities
+      - suggest.owners
+    approval_required_for:
+      - publish.github_issue
+
+  - id: planning_reviewer
+    description: Check whether the plan is focused, scoped, and evidence-backed.
+    capabilities:
+      - read.plan
+      - classify.risk
+      - suggest.policy
+
+agents:
+  - id: weekly_planner
+    runtime: openai.agents
+    model: planning_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - planning_writer
+      - planning_reviewer
+    promotion:
+      next_level: act
+      requires_evals:
+        - approvals_before_risky_actions
+        - required_adapter_evidence
+
+executors:
+  - id: planning_issue
+    kind: workflow
+    adapter: github.issue
+    purpose: Open or update a weekly planning issue with priorities, owners, and evidence links.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      issue_title: "Playbook: weekly planning mission"
+      issue_body: >
+        Track current goals, blockers, next actions, owners, evidence links,
+        and decisions before any agent work is promoted.
+
+  - id: planning_receipt
+    kind: tool
+    adapter: sample.echo
+    purpose: Leave no-network evidence that the weekly planning playbook was planned.
+    inputs:
+      label: weekly-planning
+      message: "Weekly planning playbook planned with issue tracking and human approval."
+
+  - id: planning_agent
+    kind: ai_harness
+    adapter: openai.agents
+    model: planning_model
+    purpose: Draft weekly priorities from repository context without applying changes.
+    inputs:
+      model: gpt-5.5
+      tools:
+        - github.issue
+        - mcp.tool
+      instructions: >
+        Draft a focused weekly plan with owners, risks, evidence needs, and
+        blocked items. Do not execute live writes.
+
+  - id: planning_signoff
+    kind: human
+    adapter: human.approval
+    purpose: Require maintainer approval before the weekly plan is treated as accepted.
+    inputs:
+      request: Approve the weekly planning issue and decide which missions should proceed.
+      approver: AmmarAlBalkhi
+
+context:
+  sources:
+    - id: repository
+      kind: git
+      trust: high
+    - id: roadmap
+      kind: markdown
+      trust: high
+    - id: open_issues
+      kind: github
+      trust: high
+    - id: previous_ledgers
+      kind: run_ledger
+      trust: medium
+
+policies:
+  approvals:
+    required_for:
+      - github_issue
+      - agent_execution
+  budgets:
+    max_usd_per_run: 3
+    max_minutes_per_run: 30
+  permissions:
+    allowed_repositories:
+      - AmmarAlBalkhi/delegation-bot
+    network: restricted
+
+outputs:
+  - type: github.issue
+  - type: approval
+  - type: agent_result
+  - type: run_ledger
+  - type: eval_report
+
+evals:
+  - id: no_duplicate_issue_markers
+    type: invariant
+    description: The weekly planning playbook must not create duplicate planning issues.
+  - id: approvals_before_risky_actions
+    type: policy
+    description: Executed risky actions require human approval evidence.
+  - id: required_adapter_evidence
+    type: invariant
+    description: SDK-backed adapters must leave required contract evidence and outputs.

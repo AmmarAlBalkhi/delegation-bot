@@ -1,60 +1,366 @@
-# Delegation Bot (GitHub-native, Markdown + YAML)
+# Delegation Bot
 
-A lightweight, rule-based “delegation bot” for GitHub repositories: you define tasks as **Markdown files with YAML front-matter**, and a **GitHub Action** turns those task specs into **Issues** (optionally added to a **GitHub Project**) on a schedule or via manual trigger.
+Delegation Bot is **mission control for agentic work**.
 
-The goal is **pre-issue delegation**: expressing *who does what, when, and with what metadata* **before** Issues exist—directly as versioned text in the repo—so task delegation stays transparent, reviewable, and auditable.
+Write one Harnessfile, dry-run the plan, route work to adapters, inspect the
+run ledger, run evals, and promote agents only when the evidence is good.
 
+The big idea is a **harness for AI harnesses**: a repo-native layer above Codex,
+Claude Code, Anthropic Claude, OpenAI Agents SDK, LangGraph, MCP tools, GitHub
+Actions, local scripts, and human approval.
+
+It should enable AI, not suppress it. Agents can earn more autonomy through
+clear passports, capability packs, approval gates, ledger evidence, evals, and
+promotion rules.
+
+## 60-Second Demo
+
+Clone the repo and run the dry-run control-plane loop:
+
+```bash
+python -m pip install -r requirements.txt
+python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+python scripts/delegation.py ledger .delegation/latest.jsonl --adapter sample.echo
+python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --write
+python scripts/delegation.py promote examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+```
+
+What you get:
+
+- a readable execution plan before any live action
+- a JSONL run ledger with adapter evidence
+- `github.issue` and no-network `sample.echo` adapter results
+- evals for duplicate issue markers, risky approvals, required adapter evidence,
+  and pull-request readiness
+- a promotion report showing which agents are still blocked
+
+After dependencies are installed, the Delegation Bot demo does not require a
+GitHub write, model call, network call, or agent execution. It is safe by
+default.
+
+Try the compact ledger fixtures:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapter sample.echo
+python scripts/delegation.py ledger examples/ledgers/adapter-blocked.jsonl --status blocked
+python scripts/delegation.py ledger examples/ledgers/adapter-failed.jsonl --status failed
+```
+
+Those three files show good, blocked, and failed adapter evidence in the
+smallest possible form.
+
+## Features
+
+- Text-native tasks in `tasks/*.md`
+- Recurring intervals: `once`, `daily`, `weekly`, `monthly`, and `every:N`
+- Idempotent issue creation through hidden markers in issue bodies
+- Parent issues with optional child issues for task packs
+- Optional GitHub Projects v2 integration for date fields
+- Dry-run mode by default, with explicit apply mode for writes
+- Harnessfile planning for models, agent passports, capability packs, policies,
+  outputs, evals, and run ledgers
+- Adapter contracts for AI harnesses, workflows, tools, ML steps, and human
+  approvals
+- Adapter SDK with dry-run adapters for `github.issue`, `github.actions`,
+  `codex.thread`, `openai.agents`, `anthropic.messages`, `claude.code`,
+  `mcp.tool`, `langgraph.graph`, `human.approval`, `openclaw.gateway`,
+  `hermes.agent`, `local.classifier`, and no-network `sample.echo`
+- Ledger viewer for adapter evidence, eval results, and recent run events
+- Adapter fixture generator for good, blocked, and failed SDK-backed ledgers
+- Feedback issue drafts from failed or blocked eval evidence
+- Built-in evals for ledger validity, approvals, duplicate markers, required
+  adapter evidence, and pull-request test evidence
+- Starter playbooks for code review, CI repair, and documentation refresh, plus
+  catalog metadata for tags, adapters, and expected dry-run eval states
+
+## Big Direction
+
+The long-term product is not just issue creation. It is an AI operations harness
+that can coordinate many underlying harnesses:
+
+- OpenAI Agents SDK, Anthropic Claude, Claude Code, LangGraph, custom scripts,
+  GitHub Actions, MCP servers, and human review steps
+- durable run ledgers with evidence, artifacts, decisions, approvals, and cost
+- policy gates for permissions, secrets, budgets, tool risk, and human signoff
+- agent passports and capability packs that let AI earn more autonomy over time
+- evals that turn every run into regression data
+- adapters that let teams switch agent frameworks without rewriting delegation
+  plans
+
+See [docs/vision.md](docs/vision.md), [docs/architecture.md](docs/architecture.md),
+[docs/positioning.md](docs/positioning.md),
+[docs/agent-enablement.md](docs/agent-enablement.md), and
+[docs/adapter-contracts.md](docs/adapter-contracts.md) for the strategic
+blueprint. See [docs/adapter-sdk.md](docs/adapter-sdk.md) for the plug-in
+standard that adapter implementations must satisfy,
+[docs/build-an-adapter.md](docs/build-an-adapter.md) for the contributor path,
+[docs/adapter-compatibility.md](docs/adapter-compatibility.md) for current
+adapter status, [docs/live-execution-gate.md](docs/live-execution-gate.md) for
+the first safe live-execution design,
+[docs/ledger-viewer.md](docs/ledger-viewer.md) for inspecting run evidence,
+[docs/ledger-fixtures.md](docs/ledger-fixtures.md) for compact good, blocked,
+and failed examples, [docs/playbooks.md](docs/playbooks.md) for reusable
+Harnessfile missions, [docs/eval-to-issue-feedback.md](docs/eval-to-issue-feedback.md)
+for the improvement loop, [docs/opentelemetry-mapping.md](docs/opentelemetry-mapping.md)
+for observability mapping, and [ROADMAP.md](ROADMAP.md) for the million-star plan.
+
+For public launch planning, see [CONTRIBUTING.md](CONTRIBUTING.md),
+[SECURITY.md](SECURITY.md), and [docs/domain-strategy.md](docs/domain-strategy.md).
+For business assumptions and the active work queue, see
+[docs/business-model.md](docs/business-model.md) and
+[docs/next-actions.md](docs/next-actions.md).
+
+## Current Status
+
+Today the project has two layers:
+
+- **Legacy task bot:** Markdown task specs can dry-run or create GitHub Issues.
+- **Harness control plane:** Harnessfiles can validate, compile into dry-run
+  plans, emit ledgers, expose adapter evidence, run evals, and evaluate agent
+  promotion readiness.
+
+Live agent execution is intentionally not enabled yet. The current focus is
+trustworthy dry-runs, adapter contracts, evidence, and contributor-friendly
+examples.
+
+## Task File Format
+
+Create Markdown files in `tasks/` with YAML front matter:
+
+```yaml
+---
+id: weekly-status
+repository: owner/repo
+title: Weekly Status Pack
+assign: [octocat]
+labels: [delegation, recurring, weekly]
+date_active: 2026-01-01
+due_in_days: 7
+interval: weekly
+project:
+  title: Delegation Bot
+subtasks:
+  - id: collect-notes
+    title: Collect weekly notes
+  - id: send-summary
+    title: Send summary
 ---
 
-## What it does
+Write any issue body content here.
+```
 
-- **Text-native tasks**: tasks live in `tasks/*.md` (YAML header + Markdown body).
-- **Recurring tasks**: supports intervals like `daily`, `weekly`, `monthly`, `once`, and `every:N`.
-- **Idempotent re-runs**: safe to run repeatedly; the bot avoids duplicates using a hidden fingerprint in the Issue body.
-- **Task packs (parent + subtasks)**: a parent Issue can spawn child Issues, keeping a checklist-like structure in GitHub.
-- **Optional Project integration (Projects v2)**: created Issues can be auto-added to a Project and fields updated (Status, Due date, etc.).
+Required fields:
 
----
+- `id`: stable identifier for idempotency
+- `title`: issue title
+- `repository`: `owner/repo`, unless `REPO` or `GITHUB_REPOSITORY` is set
 
-## Quick start (copy/paste setup)
+Useful optional fields:
 
-### 1) Add the workflow
+- `assign`: one login or a list of logins
+- `labels`: one label or a list of labels
+- `date_active` or `start`: do not create the task before this date
+- `due_date`, `due`, or `due_in_days`
+- `interval`: `once`, `daily`, `weekly`, `monthly`, or `every:N`
+- `project`: either a project title string or an object with `title`
+- `subtasks`: child issue specs with `id` and `title`
 
-Copy `.github/workflows/delegation.yml` into your repo (or keep the one in this repo). The workflow supports:
-- manual run (`workflow_dispatch`)
-- scheduled runs (`cron`)
-- a dry-run vs apply mode via `apply` input
+## Scheduling Rules
 
-If you use **Projects v2**, create a **fine-grained PAT** and store it as a secret named `PROJECT_TOKEN`.
+- `once` creates one issue for the task family.
+- `daily` creates one issue per UTC date.
+- `weekly` creates one issue per ISO week.
+- `monthly` creates one issue per calendar month.
+- `every:N` runs every N days, anchored to `start` or `date_active`.
+- Future `date_active` or `start` values are skipped until that date arrives.
 
-> GitHub Action triggers (manual + schedule) are documented here: workflow_dispatch and schedule.  
-> GitHub docs: `workflow_dispatch` and `schedule` events. 
+The bot is safe to re-run. It searches existing issue bodies for hidden markers
+before creating new Issues.
 
-### 2) Add task files
+## GitHub Action
 
-Create one or more Markdown files in `tasks/` (e.g., `tasks/weekly-status.md`) using YAML front-matter.
+The included workflow lives at `.github/workflows/delegation.yml`.
 
-### 3) Configure secrets (only if needed)
+It supports:
 
-- `GITHUB_TOKEN` is automatically provided by GitHub Actions (no setup).
-- `PROJECT_TOKEN` is **optional** and only required for Projects v2 integration.
+- `workflow_dispatch` manual runs
+- scheduled runs with cron
+- `apply=false` dry-runs
+- `apply=true` issue creation and updates
 
-> The permission model for `GITHUB_TOKEN` is configurable per workflow/repository; Projects access may require a separate token depending on what you need to do. 
+`GITHUB_TOKEN` is provided automatically by GitHub Actions. Set `PROJECT_TOKEN`
+only if your Project v2 access requires a separate fine-grained token.
 
----
+## Local Development
 
-## Running the bot
+Install dependencies:
 
-### Manual run (recommended for first test)
+```bash
+python -m pip install -r requirements.txt
+```
 
-1. Go to **Actions → Delegation Bot**
-2. Click **Run workflow**
-3. Set `apply=false` first (dry-run), then `apply=true` when you’re confident.
+Install from source with the package command:
 
-### Scheduled run
+```bash
+python -m pip install -e .
+delegation --help
+```
 
-Edit the cron expression in `.github/workflows/delegation.yml`, e.g.:
+The installable Python package namespace is `delegation_bot`. The older
+`scripts/*.py` commands remain as compatibility wrappers while the project moves
+toward normal packaging.
 
-```yml
-schedule:
-  - cron: "0 8 * * *"  # daily at 08:00 UTC
+Run tests:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Run the full local QA suite:
+
+```bash
+python scripts/qa.py
+```
+
+Validate an AI harness manifest:
+
+```bash
+python scripts/delegation.py validate examples/ai-harness-control-plane.yaml
+```
+
+After installing from source, the same command is available as:
+
+```bash
+delegation validate examples/ai-harness-control-plane.yaml
+```
+
+You can also run the package module directly:
+
+```bash
+python -m delegation_bot adapters codex.thread
+```
+
+Compile a dry-run plan:
+
+```bash
+python scripts/delegation.py plan examples/ai-harness-control-plane.yaml
+```
+
+List built-in adapter contracts:
+
+```bash
+python scripts/delegation.py adapters
+```
+
+Inspect one adapter contract:
+
+```bash
+python scripts/delegation.py adapters codex.thread --json
+```
+
+Write a dry-run run ledger:
+
+```bash
+python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+```
+
+Run built-in evals and append eval evidence:
+
+```bash
+python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --write
+```
+
+Draft dry-run feedback issues from failed or blocked eval evidence:
+
+```bash
+python scripts/delegation.py feedback examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --include-blocked
+```
+
+Inspect the run ledger:
+
+```bash
+python scripts/delegation.py ledger .delegation/latest.jsonl --adapter github.issue
+```
+
+Inspect the no-network sample adapter:
+
+```bash
+python scripts/delegation.py ledger .delegation/latest.jsonl --adapter sample.echo
+```
+
+Inspect a compact fixture:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapter sample.echo
+```
+
+Try a starter playbook:
+
+```bash
+python scripts/delegation.py plan playbooks/code-review.yaml --ledger .delegation/playbook-code-review.jsonl
+python scripts/delegation.py eval playbooks/code-review.yaml --ledger .delegation/playbook-code-review.jsonl --write
+```
+
+Try the flagship release-readiness playbook:
+
+```bash
+python scripts/delegation.py plan playbooks/release-readiness.yaml --ledger .delegation/playbook-release-readiness.jsonl
+python scripts/delegation.py eval playbooks/release-readiness.yaml --ledger .delegation/playbook-release-readiness.jsonl --write
+python scripts/delegation.py promote playbooks/release-readiness.yaml --ledger .delegation/playbook-release-readiness.jsonl
+```
+
+Browse starter playbook metadata in `playbooks/catalog.yaml`.
+
+Summarize the playbook catalog:
+
+```bash
+python scripts/delegation.py catalog
+```
+
+Evaluate whether agents are ready for promotion:
+
+```bash
+python scripts/delegation.py promote examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+```
+
+Create a timestamped source backup:
+
+```bash
+python scripts/backup_repo.py
+```
+
+Generate an adapter fixture:
+
+```bash
+python scripts/generate_adapter_fixtures.py mcp.tool --state good --output .delegation/adapter-mcp-tool-good.jsonl
+```
+
+See [docs/qa.md](docs/qa.md) for the backup, QA, type, and documentation
+discipline.
+
+## Packaging And License
+
+Delegation Bot is preparing for other users through `pyproject.toml` and the
+installable `delegation` CLI command. See [docs/release.md](docs/release.md)
+for the release checklist.
+
+The project uses the Apache License 2.0. The short version: the core stays open
+and business-friendly, while the project gets clearer patent protection,
+contribution terms, and attribution through `NOTICE`. See
+[docs/license-strategy.md](docs/license-strategy.md) for the decision notes.
+
+The license does not block future paid hosted services, private adapters,
+support, or enterprise controls. Those assumptions live in
+[docs/business-model.md](docs/business-model.md).
+
+Run the bot locally in dry-run mode:
+
+```bash
+GITHUB_TOKEN=ghp_your_token REPO=owner/repo python scripts/delegation_bot.py
+```
+
+Run in apply mode only when you are ready to create or update Issues:
+
+```bash
+APPLY=true GITHUB_TOKEN=ghp_your_token REPO=owner/repo python scripts/delegation_bot.py
+```

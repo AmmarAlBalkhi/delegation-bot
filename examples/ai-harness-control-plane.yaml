@@ -1,0 +1,305 @@
+version: delegation.ai/v1
+id: ai-harness-control-plane
+name: AI Harness Control Plane
+objective: >
+  Coordinate humans, AI agents, GitHub workflows, and tool servers into one
+  auditable delegation system.
+
+triggers:
+  - type: workflow_dispatch
+  - type: schedule
+    cron: "0 8 * * 1"
+
+owners:
+  accountable: AmmarAlBalkhi
+  reviewers:
+    - AmmarAlBalkhi
+
+models:
+  - id: planner_model
+    provider: openai
+    model: gpt-5.5
+    role: planning
+    budget_usd: 2
+
+  - id: local_policy_model
+    provider: local
+    adapter: ollama
+    model: llama-guard
+    role: policy_review
+
+  - id: claude_reviewer_model
+    provider: anthropic
+    adapter: anthropic.messages
+    model: claude-sonnet
+    role: code_review
+    budget_usd: 2
+
+capability_packs:
+  - id: repo_reader
+    description: Read repository files, issues, and run history.
+    capabilities:
+      - read.repository
+      - read.github_issues
+      - read.run_ledger
+
+  - id: pull_request_drafter
+    description: Draft code changes and pull requests, but require approval before publishing.
+    capabilities:
+      - write.working_tree
+      - write.pull_request_draft
+      - read.test_results
+    approval_required_for:
+      - publish.pull_request
+
+  - id: workflow_reviewer
+    description: Review plans, classify risk, and suggest safer next steps.
+    capabilities:
+      - read.plan
+      - classify.risk
+      - suggest.policy
+
+agents:
+  - id: planner
+    runtime: openai.agents
+    model: planner_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - workflow_reviewer
+    promotion:
+      next_level: act
+      requires_evals:
+        - approvals_before_risky_actions
+        - tests_pass_before_pr
+
+  - id: implementer
+    runtime: codex.thread
+    model: planner_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - pull_request_drafter
+
+  - id: claude_reviewer
+    runtime: claude.code
+    model: claude_reviewer_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - workflow_reviewer
+
+  - id: policy_guard
+    runtime: local.classifier
+    model: local_policy_model
+    autonomy_level: suggest
+    capability_packs:
+      - workflow_reviewer
+
+executors:
+  - id: issue_planner
+    kind: workflow
+    adapter: github.issue
+    purpose: Convert validated plans into GitHub Issues.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      issue_title: "Delegation Bot: approved AI harness plan"
+      issue_body: >
+        Track a validated Harnessfile plan, its policy gates, adapter evidence,
+        evals, and promotion readiness before live execution.
+
+  - id: sample_echo
+    kind: tool
+    adapter: sample.echo
+    purpose: Demonstrate the adapter SDK without network calls.
+    inputs:
+      label: contributor-demo
+      message: "A no-network adapter can still leave useful ledger evidence."
+
+  - id: planner_agent
+    kind: ai_harness
+    adapter: openai.agents
+    model: planner_model
+    purpose: Plan the mission through an OpenAI Agents SDK-style workflow.
+    inputs:
+      model: gpt-5.5
+      tools:
+        - github.issue
+        - mcp.tool
+      instructions: >
+        Draft a safe delegation plan with explicit evidence requirements,
+        policy gates, and promotion checks.
+
+  - id: claude_messages_review
+    kind: model_provider
+    adapter: anthropic.messages
+    model: claude_reviewer_model
+    purpose: Plan a Claude Messages review pass without calling the model.
+    inputs:
+      model: claude-sonnet
+      system_prompt: >
+        Review the delegation plan for unclear evidence, risky autonomy, and
+        missing approval gates.
+      messages:
+        - role: user
+          content: Review this Harnessfile plan before execution.
+      tools: []
+
+  - id: mcp_tool_probe
+    kind: tool
+    adapter: mcp.tool
+    purpose: Plan a tool-server probe without invoking the tool.
+    inputs:
+      server: local-repository-tools
+      tool_name: inspect_repository
+      arguments:
+        path: .
+        mode: dry_run
+
+  - id: implementation_agent
+    kind: ai_harness
+    adapter: codex.thread
+    model: planner_model
+    purpose: Implement scoped changes from approved issues.
+    inputs:
+      objective: Implement scoped changes only after issue planning and approval evidence exist.
+      repository: AmmarAlBalkhi/delegation-bot
+      allowed_files:
+        - delegation_bot/**
+        - scripts/**
+        - tests/**
+        - docs/**
+
+  - id: claude_review_agent
+    kind: ai_harness
+    adapter: claude.code
+    model: claude_reviewer_model
+    purpose: Review code changes and suggest safer implementation paths.
+    inputs:
+      objective: Review proposed code changes and identify risk, test, and documentation gaps.
+      repository: AmmarAlBalkhi/delegation-bot
+      allowed_files:
+        - delegation_bot/**
+        - scripts/**
+        - tests/**
+        - docs/**
+      mcp_servers: []
+
+  - id: risk_classifier
+    kind: ml_model
+    adapter: local.classifier
+    model: local_policy_model
+    purpose: Classify plan risk before execution.
+    inputs:
+      plan: Coordinate humans, agents, workflows, and tool calls through dry-run evidence.
+      policy: Require approvals for agent execution, pull requests, external messages, and secret access.
+
+  - id: verification_runner
+    kind: workflow
+    adapter: github.actions
+    purpose: Run tests and collect status evidence.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      workflow_ref: .github/workflows/tests.yml
+
+  - id: graph_orchestrator
+    kind: workflow
+    adapter: langgraph.graph
+    purpose: Plan a durable graph workflow with checkpoint evidence.
+    inputs:
+      graph_id: release-readiness-graph
+      checkpoint:
+        previous: none
+      state:
+        mission: ai-harness-control-plane
+        phase: dry_run
+
+  - id: maintainer_signoff
+    kind: human
+    adapter: human.approval
+    purpose: Require a maintainer approval checkpoint before live execution.
+    inputs:
+      approver: AmmarAlBalkhi
+      request: Approve moving from dry-run evidence to any live external action.
+
+  - id: local_assistant_gateway
+    kind: ai_harness
+    adapter: openclaw.gateway
+    purpose: Plan a local assistant gateway handoff without sending messages.
+    inputs:
+      channel: local
+      objective: Route a scoped assistant task through the local gateway after approval.
+      tools:
+        - repository.inspect
+        - ledger.read
+
+  - id: skill_learning_agent
+    kind: ai_harness
+    adapter: hermes.agent
+    purpose: Plan a skill-learning agent step with scoped memory evidence.
+    inputs:
+      objective: Learn from eval failures and propose a reusable adapter improvement.
+      memory_scope: repository
+      skill_context:
+        source: eval-to-issue feedback loop
+        allowed_updates:
+          - playbook
+          - eval
+          - adapter_contract
+
+context:
+  sources:
+    - id: repository
+      kind: git
+      trust: high
+    - id: github_issues
+      kind: github
+      trust: high
+    - id: user_prompt
+      kind: human
+      trust: medium
+
+policies:
+  approvals:
+    required_for:
+      - push
+      - pull_request
+      - agent_execution
+      - external_message
+      - secret_access
+  budgets:
+    max_usd_per_run: 10
+    max_minutes_per_run: 60
+  permissions:
+    allowed_repositories:
+      - AmmarAlBalkhi/delegation-bot
+    network: restricted
+
+outputs:
+  - type: github.issue
+  - type: github.pull_request
+  - type: agent_result
+  - type: model_response
+  - type: tool_result
+  - type: test_result
+  - type: graph_state
+  - type: checkpoint
+  - type: approval
+  - type: assistant_result
+  - type: skill_update
+  - type: run_ledger
+  - type: eval_report
+
+evals:
+  - id: no_duplicate_issue_markers
+    type: invariant
+    description: A recurring task must not create duplicate issues for the same occurrence.
+  - id: approvals_before_risky_actions
+    type: policy
+    description: Risky actions must have human approval evidence before execution.
+  - id: required_adapter_evidence
+    type: invariant
+    description: SDK-backed adapters must leave required contract evidence and outputs.
+  - id: tests_pass_before_pr
+    type: quality_gate
+    description: Pull requests require a passing test event in the run ledger.

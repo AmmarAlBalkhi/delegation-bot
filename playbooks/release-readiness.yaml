@@ -1,0 +1,193 @@
+version: delegation.ai/v1
+id: playbook-release-readiness
+name: Release Readiness Playbook
+objective: >
+  Dry-run a release readiness mission: verify package metadata, license,
+  changelog, documentation, tests, adapter evidence, and approval gates before
+  any release action is promoted.
+
+triggers:
+  - type: workflow_dispatch
+  - type: release_candidate
+
+owners:
+  accountable: AmmarAlBalkhi
+  reviewers:
+    - AmmarAlBalkhi
+
+models:
+  - id: release_model
+    provider: openai
+    model: gpt-5.5
+    role: release_planning
+    budget_usd: 3
+
+  - id: local_policy_model
+    provider: local
+    adapter: ollama
+    model: llama-guard
+    role: release_policy_review
+
+capability_packs:
+  - id: repo_reader
+    description: Read repository files, package metadata, docs, changelog, and prior ledgers.
+    capabilities:
+      - read.repository
+      - read.package_metadata
+      - read.changelog
+      - read.run_ledger
+
+  - id: release_drafter
+    description: Draft release notes, checklist updates, and pull request changes.
+    capabilities:
+      - write.documentation
+      - write.release_notes
+      - write.pull_request_draft
+    approval_required_for:
+      - publish.release
+      - publish.pull_request
+
+  - id: release_guard
+    description: Classify release risk and require evidence before promotion.
+    capabilities:
+      - read.plan
+      - classify.risk
+      - suggest.policy
+
+agents:
+  - id: release_planner
+    runtime: openai.agents
+    model: release_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - release_guard
+    promotion:
+      next_level: act
+      requires_evals:
+        - approvals_before_risky_actions
+        - required_adapter_evidence
+        - tests_pass_before_pr
+
+  - id: release_editor
+    runtime: codex.thread
+    model: release_model
+    autonomy_level: draft
+    capability_packs:
+      - repo_reader
+      - release_drafter
+
+executors:
+  - id: release_issue
+    kind: workflow
+    adapter: github.issue
+    purpose: Open or update a release readiness issue with evidence checklist and blockers.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      issue_title: "Playbook: release readiness mission"
+      issue_body: >
+        Track package metadata, license, changelog, README, docs, tests,
+        generated artifacts, adapter evidence, and maintainer signoff before a
+        release is promoted.
+
+  - id: release_receipt
+    kind: tool
+    adapter: sample.echo
+    purpose: Leave no-network evidence that the release readiness playbook was planned.
+    inputs:
+      label: release-readiness
+      message: "Release readiness playbook planned with metadata, QA, artifact, and approval gates."
+
+  - id: release_risk_classifier
+    kind: ml_model
+    adapter: local.classifier
+    model: local_policy_model
+    purpose: Classify whether the release candidate has risky gaps before promotion.
+    inputs:
+      plan: Verify package metadata, license, docs, changelog, tests, and artifacts before release.
+      policy: Require approvals for release publication, pull requests, workflows, and agent execution.
+
+  - id: release_editor_agent
+    kind: ai_harness
+    adapter: codex.thread
+    model: release_model
+    purpose: Draft scoped release-readiness documentation or metadata fixes after approval.
+    inputs:
+      objective: Update release readiness docs, changelog, metadata, or examples only after evidence gaps are identified.
+      repository: AmmarAlBalkhi/delegation-bot
+      allowed_files:
+        - README.md
+        - ROADMAP.md
+        - CHANGELOG.md
+        - pyproject.toml
+        - docs/**
+        - examples/**
+        - playbooks/**
+
+  - id: qa_workflow
+    kind: workflow
+    adapter: github.actions
+    purpose: Plan the release QA workflow and collect status evidence.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      workflow_ref: .github/workflows/tests.yml
+
+  - id: maintainer_signoff
+    kind: human
+    adapter: human.approval
+    purpose: Require maintainer signoff before the release is treated as ready.
+    inputs:
+      request: Approve the release readiness evidence and decide whether publication may proceed.
+      approver: AmmarAlBalkhi
+
+context:
+  sources:
+    - id: repository
+      kind: git
+      trust: high
+    - id: changelog
+      kind: markdown
+      trust: high
+    - id: package_metadata
+      kind: pyproject
+      trust: high
+    - id: prior_ledgers
+      kind: run_ledger
+      trust: medium
+
+policies:
+  approvals:
+    required_for:
+      - agent_execution
+      - workflow
+      - pull_request
+      - release
+  budgets:
+    max_usd_per_run: 5
+    max_minutes_per_run: 45
+  permissions:
+    allowed_repositories:
+      - AmmarAlBalkhi/delegation-bot
+    network: restricted
+
+outputs:
+  - type: github.issue
+  - type: test_result
+  - type: github.pull_request
+  - type: approval
+  - type: run_ledger
+  - type: eval_report
+
+evals:
+  - id: no_duplicate_issue_markers
+    type: invariant
+    description: The release readiness playbook must not create duplicate tracking issues.
+  - id: approvals_before_risky_actions
+    type: policy
+    description: Executed risky release actions require human approval evidence.
+  - id: required_adapter_evidence
+    type: invariant
+    description: SDK-backed adapters must leave required contract evidence and outputs.
+  - id: tests_pass_before_pr
+    type: quality_gate
+    description: A release pull request requires real passing test evidence before promotion.

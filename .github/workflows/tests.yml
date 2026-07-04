@@ -1,0 +1,48 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Run QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .delegation
+          python scripts/qa.py | tee .delegation/qa.log
+
+      - name: Upload QA evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: delegation-qa-evidence
+          path: |
+            .delegation/*.jsonl
+            .delegation/*.log
+            LICENSE
+            NOTICE
+            pyproject.toml
+            CHANGELOG.md
+            docs/release.md
+          if-no-files-found: error
+          retention-days: 14

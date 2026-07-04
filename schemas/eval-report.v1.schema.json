@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delegation.ai/schemas/eval-report.v1.schema.json",
+  "title": "Delegation AI Eval Report v1",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["id", "status", "message", "details"],
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string",
+        "enum": ["passed", "failed", "blocked"]
+      },
+      "message": {
+        "type": "string"
+      },
+      "details": {
+        "type": "object",
+        "additionalProperties": true
+      }
+    },
+    "additionalProperties": true
+  }
+}

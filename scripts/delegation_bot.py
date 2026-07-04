@@ -37,7 +37,7 @@ Run modes
 """
 
 from __future__ import annotations
-import os, re, glob, math, html, typing as T
+import os, re, glob, typing as T
 from datetime import datetime, date, timedelta, timezone
 import calendar
 import requests
@@ -85,6 +85,19 @@ def parse_interval(s: T.Optional[str]) -> T.Tuple[str, T.Optional[int]]:
     m = re.match(r"^every\s*:\s*(\d+)$", s)
     if m: return ("every", int(m.group(1)))
     return ("once", None)
+
+def should_run_spec(spec: dict, now: date) -> T.Tuple[bool, T.Optional[str]]:
+    kind, n = parse_interval(spec.get("interval"))
+    anchor = parse_date(spec.get("start") or spec.get("date_active"))
+    if anchor and now < anchor:
+        return False, f"starts on {anchor.strftime(ISO)}"
+    if kind == "every":
+        if not n or n < 1:
+            return False, "every:N interval must use N >= 1"
+        start = anchor or now
+        if (now - start).days % n != 0:
+            return False, f"not due for every:{n} cadence anchored at {start.strftime(ISO)}"
+    return True, None
 
 def compute_occurrence_id(kind: str, n: T.Optional[int], anchor: T.Optional[date], now: date) -> str:
     if kind == "once": return "once"
@@ -171,6 +184,15 @@ def normalized_repo(s: T.Optional[str]) -> T.Optional[str]:
         owner = REPO_ENV.split("/")[0]
         return f"{owner}/{s}"
     return s
+
+def project_title(value) -> T.Optional[str]:
+    if isinstance(value, str):
+        title = value.strip()
+        return title or None
+    if isinstance(value, dict):
+        title = str(value.get("title") or "").strip()
+        return title or None
+    return None
 
 # --------------------------- GitHub API -----------------------------------
 
@@ -414,6 +436,10 @@ def main():
             if "id" not in spec or "title" not in spec:
                 debug(f"[SKIP] {path}: require id + title")
                 continue
+            should_run, reason = should_run_spec(spec, now)
+            if not should_run:
+                debug(f"[SKIP] {path}: {spec.get('id', '<unknown>')} {reason}")
+                continue
             repo = normalized_repo(spec.get("repository")) or REPO_ENV
             if not repo:
                 debug(f"[SKIP] {path}: no repository (set spec.repository or REPO env)")
@@ -423,12 +449,12 @@ def main():
             parent, parent_occ = ensure_parent_issue(repo, spec, body_md, now, GH_TOKEN)
 
             # --- Optional Projects v2 (best-effort; never fail core flow)
-            proj_title = spec.get("project")
-            if APPLY and parent.get("node_id") and PROJ_TOKEN and isinstance(proj_title, str) and proj_title.strip():
+            proj_title = project_title(spec.get("project"))
+            if APPLY and parent.get("node_id") and PROJ_TOKEN and proj_title:
                 try:
                     da = parse_date(spec.get("date_active")) or now
                     dd = compute_due_date(spec, now)
-                    add_to_project_and_dates(parent["node_id"], proj_title.strip(), da, dd, PROJ_TOKEN)
+                    add_to_project_and_dates(parent["node_id"], proj_title, da, dd, PROJ_TOKEN)
                 except Exception as e:
                     debug(f"[PROJECT] warn: {e}")
 

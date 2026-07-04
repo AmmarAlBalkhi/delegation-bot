@@ -1,0 +1,106 @@
+version: delegation.ai/playbook-catalog/v1
+generated_for: delegation-bot
+description: Starter playbook catalog for dry-run AI delegation missions.
+
+playbooks:
+  - id: playbook-code-review
+    path: playbooks/code-review.yaml
+    title: Code Review
+    status: starter
+    tags:
+      - code-review
+      - ai-review
+      - human-approval
+    required_adapters:
+      - github.issue
+      - sample.echo
+      - claude.code
+      - human.approval
+    expected_eval_states:
+      ledger_is_valid: passed
+      no_duplicate_issue_markers: passed
+      approvals_before_risky_actions: passed
+      required_adapter_evidence: passed
+
+  - id: playbook-ci-repair
+    path: playbooks/ci-repair.yaml
+    title: CI Repair
+    status: starter
+    tags:
+      - ci
+      - repair
+      - verification
+    required_adapters:
+      - github.issue
+      - sample.echo
+      - local.classifier
+      - codex.thread
+      - github.actions
+    expected_eval_states:
+      ledger_is_valid: passed
+      no_duplicate_issue_markers: passed
+      approvals_before_risky_actions: passed
+      required_adapter_evidence: passed
+      tests_pass_before_pr: blocked
+
+  - id: playbook-documentation-refresh
+    path: playbooks/documentation-refresh.yaml
+    title: Documentation Refresh
+    status: starter
+    tags:
+      - documentation
+      - maintenance
+      - human-approval
+    required_adapters:
+      - github.issue
+      - sample.echo
+      - codex.thread
+      - human.approval
+    expected_eval_states:
+      ledger_is_valid: passed
+      no_duplicate_issue_markers: passed
+      approvals_before_risky_actions: passed
+      required_adapter_evidence: passed
+
+  - id: playbook-release-readiness
+    path: playbooks/release-readiness.yaml
+    title: Release Readiness
+    status: flagship
+    tags:
+      - release
+      - qa
+      - flagship-demo
+      - human-approval
+    required_adapters:
+      - github.issue
+      - sample.echo
+      - local.classifier
+      - codex.thread
+      - github.actions
+      - human.approval
+    expected_eval_states:
+      ledger_is_valid: passed
+      no_duplicate_issue_markers: passed
+      approvals_before_risky_actions: passed
+      required_adapter_evidence: passed
+      tests_pass_before_pr: blocked
+
+  - id: playbook-weekly-planning
+    path: playbooks/weekly-planning.yaml
+    title: Weekly Planning
+    status: starter
+    tags:
+      - planning
+      - weekly
+      - human-approval
+      - agent-enablement
+    required_adapters:
+      - github.issue
+      - sample.echo
+      - openai.agents
+      - human.approval
+    expected_eval_states:
+      ledger_is_valid: passed
+      no_duplicate_issue_markers: passed
+      approvals_before_risky_actions: passed
+      required_adapter_evidence: passed

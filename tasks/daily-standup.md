@@ -1,8 +1,8 @@
 ---
 id: daily-standup
-repository: ammar-uni/delegation-bot
+repository: AmmarAlBalkhi/delegation-bot
 title: "Daily Stand-up"
-assign: ammar-uni
+assign: AmmarAlBalkhi
 labels: [recurring, daily]
 
 date_active: 2025-10-21
@@ -10,7 +10,7 @@ due_date:   2025-10-21
 interval:   daily
 
 project:
-  owner: ammar-uni
+  owner: AmmarAlBalkhi
   title: Delegation Bot - PoC
 
 subtasks:

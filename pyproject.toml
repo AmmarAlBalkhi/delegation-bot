@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "delegation-bot"
+version = "0.1.0a0"
+description = "Mission control for agentic work: plan, dry-run, route, evaluate, and promote AI delegation."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+  { name = "Ammar Al Balkhi" }
+]
+keywords = [
+  "agentops",
+  "ai-agents",
+  "delegation",
+  "github-actions",
+  "harness",
+  "mcp"
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Software Development :: Build Tools",
+  "Topic :: Software Development :: Quality Assurance"
+]
+dependencies = [
+  "python-frontmatter>=1.1,<2",
+  "PyYAML>=6.0.2,<7",
+  "requests>=2.32,<3"
+]
+
+[project.scripts]
+delegation = "delegation_bot.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AmmarAlBalkhi/delegation-bot"
+Repository = "https://github.com/AmmarAlBalkhi/delegation-bot"
+Issues = "https://github.com/AmmarAlBalkhi/delegation-bot/issues"
+
+[tool.setuptools.packages.find]
+include = ["delegation_bot*"]

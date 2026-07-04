@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://delegation.ai/schemas/ledger.v1.schema.json",
+  "title": "Delegation AI Run Ledger Event v1",
+  "type": "object",
+  "required": ["run_id", "sequence", "timestamp", "type", "status", "message", "details"],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["planned", "blocked", "executed", "skipped", "failed", "passed"]
+    },
+    "message": {
+      "type": "string"
+    },
+    "action_id": {
+      "type": ["string", "null"]
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
