@@ -504,3 +504,23 @@ Evidence:
 - `docs/architecture.md`
 - `docs/next-actions.md`
 - `README.md`
+
+## 2026-07-04: Add Low-Friction Product Experience Principles
+
+Decision: Add a dedicated product-experience guide and link it from the public
+README and planning docs.
+
+Why: A trust layer can become tedious if every safety feature feels like extra
+paperwork. Delegation Bot should be useful in 60 seconds, powerful after 10
+minutes, and deep only when users ask for depth. The product should start from
+goals, playbooks, examples, and AI-drafted Harnessfiles, then reveal policy,
+ledger, and eval detail progressively.
+
+Evidence:
+
+- `docs/product-experience.md`
+- `README.md`
+- `docs/positioning.md`
+- `docs/next-actions.md`
+- `docs/vision.md`
+- `ROADMAP.md`

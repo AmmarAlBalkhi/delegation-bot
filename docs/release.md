@@ -1,6 +1,6 @@
 # Release And Packaging Plan
 
-Delegation Bot should be easy to try, safe to inspect, and boring to install.
+Delegation Bot should be easy to try, safe to inspect, and predictable to install.
 
 The public package goal is:
 

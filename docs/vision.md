@@ -147,6 +147,12 @@ instead of being either fully blocked or fully trusted.
    The project should help agents become more useful. Autonomy should increase
    through evidence, evals, ledgers, and clear capability grants.
 
+8. Low-friction trust
+
+   The tool should make trustworthy AI work easier, not heavier. Users should
+   get value from a playbook or AI-drafted Harnessfile before they need to learn
+   the full schema.
+
 ## External Alignment
 
 - OpenAI Agents SDK exposes concepts around orchestration, guardrails, state,

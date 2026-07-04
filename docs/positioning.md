@@ -72,6 +72,17 @@ results, and promotion readiness.
 
 See `docs/hybrid-trust-model.md` for the full principle.
 
+## Experience Promise
+
+Trustworthy should not mean tedious.
+
+The first product experience should be useful in 60 seconds, powerful after 10
+minutes, and deep only when the user asks for depth. Users should be able to
+start from a goal, example, or playbook; see a clear dry-run plan; and inspect
+evidence without feeling buried in process.
+
+See `docs/product-experience.md` for the full experience principles.
+
 ## What Problems It Solves
 
 1. AI actions are hard to inspect before they happen.

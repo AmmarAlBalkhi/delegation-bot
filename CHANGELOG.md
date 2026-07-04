@@ -49,3 +49,5 @@ The project is currently pre-release.
 - Added adapter compatibility matrix and first live-execution gate design notes.
 - Added a hybrid trust model that separates AI suggestions from deterministic
   verification, approval, ledger, eval, and promotion decisions.
+- Added product-experience principles for low-friction onboarding, playbooks,
+  AI-drafted Harnessfiles, helpful blocked states, and progressive disclosure.

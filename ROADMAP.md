@@ -24,6 +24,9 @@ Ledger records everything.
 Evals decide whether trust increases.
 ```
 
+The experience promise is equally important: useful in 60 seconds, powerful
+after 10 minutes, and deep only when the user asks for depth.
+
 ## The Wedge
 
 Start with the problem every serious AI builder already feels:
@@ -212,5 +215,5 @@ Current focus:
 4. Add fixture artifact download examples to README.
 5. Add TestPyPI dry-run release notes.
 
-The million-star path starts with one boring miracle: a developer can understand
+The million-star path starts with one quiet miracle: a developer can understand
 what an AI system is about to do before it does it.

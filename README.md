@@ -23,6 +23,9 @@ Ledger records everything.
 Evals decide whether trust increases.
 ```
 
+The experience should stay low-friction: useful in 60 seconds, powerful after
+10 minutes, and deep only when the user asks for depth.
+
 ## 60-Second Demo
 
 Clone the repo and run the dry-run control-plane loop:
@@ -100,7 +103,8 @@ that can coordinate many underlying harnesses:
 See [docs/vision.md](docs/vision.md), [docs/architecture.md](docs/architecture.md),
 [docs/positioning.md](docs/positioning.md),
 [docs/agent-enablement.md](docs/agent-enablement.md),
-[docs/hybrid-trust-model.md](docs/hybrid-trust-model.md), and
+[docs/hybrid-trust-model.md](docs/hybrid-trust-model.md),
+[docs/product-experience.md](docs/product-experience.md), and
 [docs/adapter-contracts.md](docs/adapter-contracts.md) for the strategic
 blueprint. See [docs/adapter-sdk.md](docs/adapter-sdk.md) for the plug-in
 standard that adapter implementations must satisfy,

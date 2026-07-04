@@ -22,10 +22,19 @@ Ledger records everything.
 Evals decide whether trust increases.
 ```
 
+The experience rule is:
+
+```text
+Useful in 60 seconds.
+Powerful after 10 minutes.
+Deep only when the user asks for depth.
+```
+
 ## Now
 
 1. Cleanly label or move legacy rule-based task bot pieces before pushing.
-2. Add `delegation suggest` design notes for AI-drafted Harnessfiles.
+2. Add `delegation suggest` design notes for AI-drafted Harnessfiles and
+   no-blank-page onboarding.
 3. Add repeat-threshold policy for blocked eval feedback.
 4. Add the first local OpenTelemetry export command.
 5. Add fixture artifact download examples to README.
