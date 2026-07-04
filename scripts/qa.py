@@ -111,6 +111,10 @@ def build_checks(python: str) -> list[Check]:
             [python, "scripts/delegation.py", "validate", "examples/ai-harness-control-plane.yaml"],
         ),
         Check(
+            "doctor readiness",
+            [python, "scripts/delegation.py", "doctor", "--skip-github"],
+        ),
+        Check(
             "suggest release Harnessfile",
             [
                 python,

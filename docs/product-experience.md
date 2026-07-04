@@ -43,6 +43,7 @@ The product should feel like:
 The public experience should move toward this:
 
 ```text
+delegation doctor
 delegation suggest "prepare this repo for release"
 delegation plan Harnessfile.yaml
 delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write
