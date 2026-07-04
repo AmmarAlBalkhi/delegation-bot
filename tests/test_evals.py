@@ -11,6 +11,7 @@ from delegation_bot.evals import (
     eval_results_to_events,
     eval_tests_pass_before_pr,
     eval_ledger_is_valid,
+    eval_no_duplicate_issue_markers,
     load_jsonl,
     run_declared_evals,
 )
@@ -107,6 +108,52 @@ class EvalTests(unittest.TestCase):
         )
 
         self.assertEqual(result.status, "passed")
+
+    def test_duplicate_issue_marker_allows_same_action_lifecycle(self) -> None:
+        result = eval_no_duplicate_issue_markers(
+            [
+                {
+                    **VALID_LEDGER[0],
+                    "sequence": 1,
+                    "type": "github.issue.planned",
+                    "action_id": "executor.issue_planner",
+                    "details": {"issue_marker": "delegation-bot:abc123"},
+                },
+                {
+                    **VALID_LEDGER[0],
+                    "sequence": 2,
+                    "type": "github.issue.created",
+                    "status": "executed",
+                    "action_id": "executor.issue_planner",
+                    "details": {"issue_marker": "delegation-bot:abc123"},
+                },
+            ]
+        )
+
+        self.assertEqual(result.status, "passed")
+
+    def test_duplicate_issue_marker_fails_across_multiple_actions(self) -> None:
+        result = eval_no_duplicate_issue_markers(
+            [
+                {
+                    **VALID_LEDGER[0],
+                    "sequence": 1,
+                    "type": "github.issue.planned",
+                    "action_id": "executor.issue_one",
+                    "details": {"issue_marker": "delegation-bot:abc123"},
+                },
+                {
+                    **VALID_LEDGER[0],
+                    "sequence": 2,
+                    "type": "github.issue.planned",
+                    "action_id": "executor.issue_two",
+                    "details": {"issue_marker": "delegation-bot:abc123"},
+                },
+            ]
+        )
+
+        self.assertEqual(result.status, "failed")
+        self.assertEqual(result.details["duplicates"], ["delegation-bot:abc123"])
 
     def test_required_adapter_evidence_passes_for_sdk_adapter_result(self) -> None:
         result = eval_required_adapter_evidence(ADAPTER_RESULT_LEDGER)

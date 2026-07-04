@@ -1,5 +1,9 @@
 # Million-Star Strategy
 
+This is an ambition map, not a traction claim. The goal is not to fake
+popularity; the goal is to build something useful enough that legitimate
+adoption can compound over time.
+
 ## Positioning
 
 Delegation Bot should own a category, not just a feature.

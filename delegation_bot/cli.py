@@ -13,6 +13,13 @@ from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts
 from delegation_bot.doctor import render_doctor_report, run_doctor
 from delegation_bot.evals import EvalError, append_jsonl, eval_results_to_events, load_jsonl, render_eval_report, run_declared_evals
 from delegation_bot.eval_feedback import append_feedback_events, build_feedback_issue_drafts, feedback_drafts_to_events, render_feedback_report
+from delegation_bot.github_issue_apply import (
+    GitHubIssueClient,
+    apply_github_issue_drafts,
+    build_apply_report,
+    github_token_from_env,
+    render_apply_report,
+)
 from delegation_bot.harness_manifest import ManifestError, load_manifest, summarize_manifest, validate_manifest
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
@@ -291,6 +298,64 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 1 if report.failed_count else 0
 
 
+def cmd_apply_issues(args: argparse.Namespace) -> int:
+    path = Path(args.harnessfile)
+    manifest, status = _load_valid_manifest(path)
+    if status != 0 or manifest is None:
+        return status
+
+    try:
+        plan = compile_plan(manifest, source=str(path))
+    except PlanError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    token = github_token_from_env()
+    report = build_apply_report(
+        manifest,
+        plan,
+        ledger_events,
+        ledger_source=str(ledger_path),
+        apply=args.apply,
+        confirmation=args.confirm,
+        token=token,
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_apply_report(report))
+
+    if report.blocked:
+        return 1
+
+    if not args.apply:
+        return 0
+
+    run_id = str(ledger_events[0].get("run_id")) if ledger_events else f"apply-{plan.id}"
+    events = apply_github_issue_drafts(
+        report.drafts,
+        client=GitHubIssueClient(token or ""),
+        run_id=run_id,
+        start_sequence=len(ledger_events) + 1,
+    )
+    try:
+        append_jsonl(events, ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if not args.json:
+        print(f"\nApply events appended: {ledger_path}")
+    return 1 if any(event.status == "failed" for event in events) else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -354,6 +419,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip GitHub CLI/auth checks for deterministic local or CI runs.",
     )
     doctor.set_defaults(func=cmd_doctor)
+
+    apply_issues = subparsers.add_parser(
+        "apply-issues",
+        help="Preview or live-apply gated GitHub Issue actions from a dry-run ledger.",
+    )
+    apply_issues.add_argument("harnessfile")
+    apply_issues.add_argument("--ledger", required=True, help="Read and append run ledger JSONL evidence.")
+    apply_issues.add_argument("--apply", action="store_true", help="Perform live GitHub Issue writes.")
+    apply_issues.add_argument(
+        "--confirm",
+        help="Required confirmation token for live apply: LIVE_GITHUB_ISSUES.",
+    )
+    apply_issues.add_argument("--json", action="store_true", help="Print the apply gate report as JSON.")
+    apply_issues.set_defaults(func=cmd_apply_issues)
 
     eval_parser = subparsers.add_parser("eval", help="Run built-in evals against a ledger.")
     eval_parser.add_argument("harnessfile")

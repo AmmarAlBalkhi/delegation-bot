@@ -182,7 +182,11 @@ Deliverables:
 4. The eval prevents regression.
 5. Users trust the system more because it gets stricter through use.
 
-## Star Milestones
+## Aspirational Star Milestones
+
+These are target states, not traction claims. The project is still early; stars
+should be treated as a lagging signal that the product is becoming useful,
+trustworthy, and easy to explain.
 
 - 100 stars: README promise is clear, local dry-run demo works.
 - 1,000 stars: GitHub Action flow works, docs are strong, contributors can add evals.
@@ -209,11 +213,11 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Create a clean milestone commit for the dry-run control plane.
-2. Add repeat-threshold policy for blocked eval feedback.
-3. Add the first local OpenTelemetry export command.
-4. Add fixture artifact download examples to README.
-5. Add TestPyPI dry-run release notes.
+1. Add the first local OpenTelemetry export command.
+2. Add fixture artifact download examples to README.
+3. Add TestPyPI dry-run release notes.
+4. Add no-network model-backed suggest fixtures for OpenAI and Anthropic.
+5. Add fixture coverage for applied `github.issue` ledger states.
 
 The million-star path starts with one quiet miracle: a developer can understand
 what an AI system is about to do before it does it.

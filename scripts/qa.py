@@ -179,6 +179,17 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "github issue apply gate preview",
+            [
+                python,
+                "scripts/delegation.py",
+                "apply-issues",
+                "examples/ai-harness-control-plane.yaml",
+                "--ledger",
+                ".delegation/qa-latest.jsonl",
+            ],
+        ),
+        Check(
             "feedback issue drafts",
             [
                 python,

@@ -192,6 +192,40 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["failed_count"], 0)
         self.assertTrue(any(check["id"] == "suggest_loop" for check in data["checks"]))
 
+    def test_apply_issues_previews_gated_github_issue_apply(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["apply-issues", str(EXAMPLE), "--ledger", str(ledger)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("GitHub Issue Apply Gate", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("Rerun with `--apply --confirm LIVE_GITHUB_ISSUES`", output.getvalue())
+
+    def test_apply_issues_live_mode_blocks_without_token(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "apply-issues",
+                        str(EXAMPLE),
+                        "--ledger",
+                        str(ledger),
+                        "--apply",
+                        "--confirm",
+                        "LIVE_GITHUB_ISSUES",
+                    ]
+                )
+
+        self.assertEqual(status, 1)
+        self.assertIn("GITHUB_TOKEN or GH_TOKEN is required", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()
