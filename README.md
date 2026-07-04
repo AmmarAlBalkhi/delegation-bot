@@ -32,6 +32,7 @@ Clone the repo and run the dry-run control-plane loop:
 
 ```bash
 python -m pip install -r requirements.txt
+python scripts/delegation.py doctor --skip-github
 python scripts/delegation.py suggest "prepare this repo for release" --output .delegation/suggested-release.yaml --plan --ledger .delegation/suggested-release.jsonl
 python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
 python scripts/delegation.py ledger .delegation/latest.jsonl --adapter sample.echo
@@ -67,6 +68,7 @@ smallest possible form.
 
 - Harnessfile planning for models, agent passports, capability packs, policies,
   outputs, evals, and run ledgers
+- `delegation doctor` for local readiness checks and a clear next command
 - `delegation suggest` for no-blank-page Harnessfile drafts from plain-language
   goals
 - Adapter contracts for AI harnesses, workflows, tools, ML steps, and human
@@ -109,7 +111,8 @@ standard that adapter implementations must satisfy,
 [docs/build-an-adapter.md](docs/build-an-adapter.md) for the contributor path,
 [docs/adapter-compatibility.md](docs/adapter-compatibility.md) for current
 adapter status, [docs/live-execution-gate.md](docs/live-execution-gate.md) for
-the first safe live-execution design,
+the first safe live-execution design, [docs/doctor.md](docs/doctor.md) for
+local readiness checks,
 [docs/harnessfile-suggest.md](docs/harnessfile-suggest.md) for the
 no-blank-page suggestion flow,
 [docs/model-backed-suggest.md](docs/model-backed-suggest.md) for the explicit

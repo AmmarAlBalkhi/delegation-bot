@@ -175,6 +175,23 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["version"], "delegation.ai/playbook-catalog/v1")
         self.assertGreaterEqual(len(data["playbooks"]), 3)
 
+    def test_doctor_command_reports_readiness(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["doctor", "--skip-github"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("Delegation Doctor", output.getvalue())
+        self.assertIn("Suggest Loop", output.getvalue())
+
+    def test_doctor_command_can_print_json(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["doctor", "--skip-github", "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["failed_count"], 0)
+        self.assertTrue(any(check["id"] == "suggest_loop" for check in data["checks"]))
+
 
 if __name__ == "__main__":
     unittest.main()

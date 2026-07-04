@@ -584,3 +584,24 @@ Evidence:
 - `delegation_bot/cli.py`
 - `docs/eval-to-issue-feedback.md`
 - `tests/test_eval_feedback.py`
+
+## 2026-07-04: Add Local Readiness Doctor
+
+Decision: Add `delegation doctor` as the local readiness check before live
+execution work.
+
+Why: The control plane should feel powerful without making users guess what is
+working. Doctor checks Python, dependencies, package metadata, license files,
+schemas, the flagship Harnessfile, the suggest-to-plan loop, ledger fixtures,
+Git, and optional GitHub CLI auth. This makes the next live `github.issue` gate
+safer because users can see whether their setup is ready before any write.
+
+Evidence:
+
+- `delegation_bot/doctor.py`
+- `delegation_bot/cli.py`
+- `docs/doctor.md`
+- `README.md`
+- `tests/test_doctor.py`
+- `tests/test_delegation_cli.py`
+- `scripts/qa.py`

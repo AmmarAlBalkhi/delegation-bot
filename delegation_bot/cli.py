@@ -10,6 +10,7 @@ import typing as T
 from pathlib import Path
 
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
+from delegation_bot.doctor import render_doctor_report, run_doctor
 from delegation_bot.evals import EvalError, append_jsonl, eval_results_to_events, load_jsonl, render_eval_report, run_declared_evals
 from delegation_bot.eval_feedback import append_feedback_events, build_feedback_issue_drafts, feedback_drafts_to_events, render_feedback_report
 from delegation_bot.harness_manifest import ManifestError, load_manifest, summarize_manifest, validate_manifest
@@ -281,6 +282,15 @@ def cmd_catalog(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_doctor(args: argparse.Namespace) -> int:
+    report = run_doctor(include_github=not args.skip_github)
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_doctor_report(report))
+    return 1 if report.failed_count else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -335,6 +345,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     catalog.add_argument("--json", action="store_true", help="Print the catalog as JSON.")
     catalog.set_defaults(func=cmd_catalog)
+
+    doctor = subparsers.add_parser("doctor", help="Check local Delegation Bot readiness.")
+    doctor.add_argument("--json", action="store_true", help="Print doctor results as JSON.")
+    doctor.add_argument(
+        "--skip-github",
+        action="store_true",
+        help="Skip GitHub CLI/auth checks for deterministic local or CI runs.",
+    )
+    doctor.set_defaults(func=cmd_doctor)
 
     eval_parser = subparsers.add_parser("eval", help="Run built-in evals against a ledger.")
     eval_parser.add_argument("harnessfile")

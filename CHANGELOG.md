@@ -59,3 +59,4 @@ The project is currently pre-release.
   output.
 - Added opt-in model-backed `delegation suggest` design notes, a structured
   draft schema, and blocked-eval repeat thresholds for lower-noise feedback.
+- Added `delegation doctor` for local readiness checks and first-run guidance.
