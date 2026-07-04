@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
+import tempfile
 import types
 import unittest
+from unittest import mock
 from datetime import date
 from pathlib import Path
 
@@ -61,6 +64,18 @@ class ProjectConfigTests(unittest.TestCase):
             delegation_bot.project_title({"owner": "ammar-uni", "title": "Delegation Bot - PoC"}),
             "Delegation Bot - PoC",
         )
+
+
+class TaskDiscoveryTests(unittest.TestCase):
+    def test_task_glob_env_can_point_to_legacy_examples(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            legacy_dir = Path(tmp) / "legacy"
+            legacy_dir.mkdir()
+            task_file = legacy_dir / "weekly-status.md"
+            task_file.write_text("---\nid: weekly-status\ntitle: Weekly Status\n---\n", encoding="utf-8")
+
+            with mock.patch.dict(os.environ, {"TASK_GLOB": str(legacy_dir / "*.md")}):
+                self.assertEqual(delegation_bot.glob_task_files(), [str(task_file)])
 
 
 if __name__ == "__main__":

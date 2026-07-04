@@ -29,6 +29,7 @@ jobs:
           echo
           [ -d scripts ] && (echo "scripts/"; ls -la scripts)
           [ -d tasks ] && (echo "tasks/"; ls -la tasks)
+          [ -d examples/legacy-recurring-tasks ] && (echo "examples/legacy-recurring-tasks/"; ls -la examples/legacy-recurring-tasks)
           echo "::endgroup::TREE"
 
       - name: Set up Python
@@ -66,10 +67,10 @@ jobs:
           fi
           echo "Using script: $SCRIPT"
 
-          # Make sure tasks folder exists; if not, show what we have
+          # Legacy task specs are optional; the Harnessfile evidence step below
+          # is the main product path.
           if [ ! -d tasks ]; then
-            echo "WARNING: 'tasks/' folder not found. Showing top-level Markdown for debugging:"
-            ls -la | grep '\.md$' || true
+            echo "No top-level tasks/ folder found. Legacy issue bot will no-op unless TASK_GLOB is configured."
           fi
 
           python "$SCRIPT" | tee bot.log

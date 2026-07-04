@@ -32,7 +32,7 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Cleanly label or move legacy rule-based task bot pieces before pushing.
+1. Push `codex/improve-foundations` and open a PR after final local checks.
 2. Add `delegation suggest` design notes for AI-drafted Harnessfiles and
    no-blank-page onboarding.
 3. Add repeat-threshold policy for blocked eval feedback.

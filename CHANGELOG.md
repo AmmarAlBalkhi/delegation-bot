@@ -51,3 +51,6 @@ The project is currently pre-release.
   verification, approval, ledger, eval, and promotion decisions.
 - Added product-experience principles for low-friction onboarding, playbooks,
   AI-drafted Harnessfiles, helpful blocked states, and progressive disclosure.
+- Moved original recurring task examples into
+  `examples/legacy-recurring-tasks/` and labeled the old task bot as legacy
+  compatibility so the repository presents the Harnessfile control plane first.

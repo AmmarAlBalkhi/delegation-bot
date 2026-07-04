@@ -61,8 +61,8 @@ A versioned manifest that describes delegated work before execution:
 - outputs
 - evals
 
-The current `tasks/*.md` format can remain as a simple issue-generation layer.
-The Harnessfile becomes the larger orchestration format.
+The old `tasks/*.md` format remains as a legacy issue-generation layer for
+existing users. The Harnessfile is the main orchestration format.
 
 See `docs/agent-enablement.md` for the agent passport and autonomy ladder model.
 
@@ -190,7 +190,7 @@ design.
 
 ## Data Flow
 
-1. Load manifests from `tasks/`, `harnesses/`, or an explicit file path.
+1. Load a Harnessfile or playbook from an explicit file path.
 2. Validate structure and policy declarations.
 3. Compile a run plan.
 4. Execute in dry-run or apply mode.
@@ -224,6 +224,7 @@ playbooks/
   documentation-refresh.yaml
 examples/
   ai-harness-control-plane.yaml
+  legacy-recurring-tasks/
 schemas/
   adapter-contract.v1.schema.json
   eval-report.v1.schema.json
@@ -245,7 +246,9 @@ tests/
 
 `delegation_bot/` is the installable package. `scripts/delegation.py` remains a
 compatibility wrapper for the package CLI, and `scripts/delegation_bot.py`
-remains the legacy GitHub Issue bot entry point.
+remains the legacy GitHub Issue bot entry point. The retained legacy examples
+live in `examples/legacy-recurring-tasks/` instead of a top-level `tasks/`
+folder so the repository presents the Harnessfile control plane first.
 
 ## Build Order
 

@@ -524,3 +524,22 @@ Evidence:
 - `docs/next-actions.md`
 - `docs/vision.md`
 - `ROADMAP.md`
+
+## 2026-07-04: Move Legacy Task-Bot Examples Out Of The Main Path
+
+Decision: Move the original rule-based recurring task examples from `tasks/`
+to `examples/legacy-recurring-tasks/`, label `scripts/delegation_bot.py` as the
+legacy compatibility entry point, and update README/architecture docs so new
+visitors see the Harnessfile control plane first.
+
+Why: The old proof of concept still has value, but it can confuse the first
+impression. Delegation Bot should now read as mission control for agentic work,
+not just a recurring GitHub Issue bot.
+
+Evidence:
+
+- `examples/legacy-recurring-tasks/`
+- `examples/legacy-recurring-tasks/README.md`
+- `scripts/delegation_bot.py`
+- `README.md`
+- `docs/architecture.md`

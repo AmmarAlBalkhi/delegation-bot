@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+Legacy compatibility script for the original recurring GitHub Issue bot.
+
+The main Delegation Bot product is now the Harnessfile control plane exposed by
+`scripts/delegation.py` and the installable `delegation` command. Keep this
+script stable for old task-bot users, but prefer Harnessfiles, playbooks,
+adapters, ledgers, evals, and promotion for new work.
+
 What this script does:
 - One fresh parent issue per occurrence: once | daily | weekly | monthly | every:N
 - Idempotency via hidden markers in issue bodies (searchable, so re-runs never duplicate)
@@ -26,14 +33,16 @@ YAML keys (per task)
       * within_parent enumerates child occurrences INSIDE the parent window
 
 File layout examples
-  tasks/daily-standup.md         # single task
-  tasks/weekly-status.md         # single task with subtasks
-  tasks/monthly-retro.md         # parent monthly + child cadence
-  tasks/week-01.md               # multi: top-level tasks: [ ... ]
+  tasks/daily-standup.md                         # default legacy task path
+  examples/legacy-recurring-tasks/weekly-status.md  # retained example task
 
 Run modes
   - Dry-run (default) -> logs actions, no changes
   - APPLY=true -> performs create/update via GitHub API
+
+Optional env
+  TASK_GLOB: comma- or semicolon-separated glob(s), such as
+             examples/legacy-recurring-tasks/*.md
 """
 
 from __future__ import annotations
@@ -52,6 +61,7 @@ REPO_ENV = os.getenv("REPO") or os.getenv("GITHUB_REPOSITORY") or ""
 
 API = "https://api.github.com"
 ISO = "%Y-%m-%d"
+DEFAULT_TASK_GLOBS = ("tasks/**/*.md", "tasks/*.md")
 
 def debug(msg: str) -> None:
     print(("[APPLY] " if APPLY else "[DRY-RUN] ") + msg, flush=True)
@@ -305,9 +315,16 @@ def expand_specs(meta: dict) -> T.List[dict]:
         return out
     return [meta]
 
+def task_globs() -> T.List[str]:
+    raw = os.getenv("TASK_GLOB") or ""
+    if not raw.strip():
+        return list(DEFAULT_TASK_GLOBS)
+    parts = [p.strip() for p in re.split(r"[,;\n]", raw) if p.strip()]
+    return parts or list(DEFAULT_TASK_GLOBS)
+
 def glob_task_files() -> T.List[str]:
     files = []
-    for p in ("tasks/**/*.md", "tasks/*.md"):
+    for p in task_globs():
         files.extend(glob.glob(p, recursive=True))
     # keep stable order, de-dup
     return list(dict.fromkeys(sorted(files)))
@@ -416,7 +433,11 @@ def main():
 
     files = glob_task_files()
     if not files:
-        debug("No Markdown files found (looked in tasks/**/*.md, tasks/*.md, *.md)")
+        debug(
+            "No legacy task Markdown files found. "
+            f"Looked in: {', '.join(task_globs())}. "
+            "Set TASK_GLOB to run retained examples."
+        )
         return
 
     now = today_utc()

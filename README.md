@@ -64,12 +64,6 @@ smallest possible form.
 
 ## Features
 
-- Text-native tasks in `tasks/*.md`
-- Recurring intervals: `once`, `daily`, `weekly`, `monthly`, and `every:N`
-- Idempotent issue creation through hidden markers in issue bodies
-- Parent issues with optional child issues for task packs
-- Optional GitHub Projects v2 integration for date fields
-- Dry-run mode by default, with explicit apply mode for writes
 - Harnessfile planning for models, agent passports, capability packs, policies,
   outputs, evals, and run ledgers
 - Adapter contracts for AI harnesses, workflows, tools, ML steps, and human
@@ -85,6 +79,7 @@ smallest possible form.
   adapter evidence, and pull-request test evidence
 - Starter playbooks for code review, CI repair, and documentation refresh, plus
   catalog metadata for tags, adapters, and expected dry-run eval states
+- Legacy recurring GitHub Issue bot retained for existing `tasks/*.md` users
 
 ## Big Direction
 
@@ -129,18 +124,29 @@ For business assumptions and the active work queue, see
 
 Today the project has two layers:
 
-- **Legacy task bot:** Markdown task specs can dry-run or create GitHub Issues.
 - **Harness control plane:** Harnessfiles can validate, compile into dry-run
   plans, emit ledgers, expose adapter evidence, run evals, and evaluate agent
   promotion readiness.
+- **Legacy task bot:** The original Markdown recurring issue bot is retained
+  for compatibility, but it is no longer the main product path.
 
 Live agent execution is intentionally not enabled yet. The current focus is
 trustworthy dry-runs, adapter contracts, evidence, and contributor-friendly
 examples.
 
-## Task File Format
+## Legacy Recurring Issue Bot
 
-Create Markdown files in `tasks/` with YAML front matter:
+The original proof of concept can still dry-run or create recurring GitHub
+Issues from Markdown task specs. It is useful for migration and simple personal
+automation, but new users should start with Harnessfiles and playbooks.
+
+Retained examples live in
+`examples/legacy-recurring-tasks/`.
+
+The legacy script still defaults to `tasks/*.md` for existing users. To run the
+retained examples directly, set `TASK_GLOB`.
+
+Legacy Markdown files use YAML front matter:
 
 ```yaml
 ---
@@ -180,7 +186,7 @@ Useful optional fields:
 - `project`: either a project title string or an object with `title`
 - `subtasks`: child issue specs with `id` and `title`
 
-## Scheduling Rules
+Legacy scheduling rules:
 
 - `once` creates one issue for the task family.
 - `daily` creates one issue per UTC date.
@@ -196,12 +202,11 @@ before creating new Issues.
 
 The included workflow lives at `.github/workflows/delegation.yml`.
 
-It supports:
+It now serves two purposes:
 
-- `workflow_dispatch` manual runs
-- scheduled runs with cron
-- `apply=false` dry-runs
-- `apply=true` issue creation and updates
+- run the legacy issue bot only when legacy task specs are present or
+  `TASK_GLOB` is configured
+- always generate Harnessfile dry-run evidence and upload ledger artifacts
 
 `GITHUB_TOKEN` is provided automatically by GitHub Actions. Set `PROJECT_TOKEN`
 only if your Project v2 access requires a separate fine-grained token.
@@ -372,6 +377,12 @@ Run the bot locally in dry-run mode:
 
 ```bash
 GITHUB_TOKEN=ghp_your_token REPO=owner/repo python scripts/delegation_bot.py
+```
+
+Run the retained legacy examples:
+
+```bash
+TASK_GLOB=examples/legacy-recurring-tasks/*.md GITHUB_TOKEN=ghp_your_token REPO=owner/repo python scripts/delegation_bot.py
 ```
 
 Run in apply mode only when you are ready to create or update Issues:
