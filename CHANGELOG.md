@@ -54,3 +54,6 @@ The project is currently pre-release.
 - Moved original recurring task examples into
   `examples/legacy-recurring-tasks/` and labeled the old task bot as legacy
   compatibility so the repository presents the Harnessfile control plane first.
+- Added `delegation suggest` to draft valid Harnessfiles from plain-language
+  goals using no-network templates, with optional dry-run planning and ledger
+  output.

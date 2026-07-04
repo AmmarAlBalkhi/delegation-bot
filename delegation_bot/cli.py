@@ -17,6 +17,7 @@ from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
 from delegation_bot.playbook_catalog import PlaybookCatalogError, load_catalog, summarize_catalog, validate_catalog
 from delegation_bot.promotion import PromotionError, evaluate_promotions, load_ledger, render_promotion_report
+from delegation_bot.suggest import SUGGESTION_TEMPLATE_IDS, build_suggestion, manifest_to_yaml, render_suggestion
 
 
 def _load_valid_manifest(path: Path) -> tuple[dict[str, T.Any] | None, int]:
@@ -64,6 +65,63 @@ def cmd_plan(args: argparse.Namespace) -> int:
         events = build_dry_run_ledger(plan)
         write_jsonl(events, Path(args.ledger))
         print(f"\nLedger written: {args.ledger}")
+    return 0
+
+
+def cmd_suggest(args: argparse.Namespace) -> int:
+    try:
+        suggestion = build_suggestion(
+            args.goal,
+            repository=args.repository,
+            owner=args.owner,
+            template=args.template,
+        )
+        manifest_yaml = manifest_to_yaml(suggestion.manifest)
+    except (RuntimeError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    errors = suggestion.validate()
+    if errors:
+        print("INVALID suggested Harnessfile", file=sys.stderr)
+        for error in errors:
+            print(f"- {error}", file=sys.stderr)
+        return 1
+
+    output_path = Path(args.output) if args.output else None
+    if output_path:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(manifest_yaml, encoding="utf-8")
+
+    if args.json:
+        print(json.dumps(suggestion.manifest, indent=2, sort_keys=True))
+    elif args.yaml and not output_path:
+        print(manifest_yaml)
+    else:
+        print(render_suggestion(suggestion, output_path=str(output_path) if output_path else None))
+        if not output_path:
+            print("\n---")
+            print(manifest_yaml)
+
+    if args.plan:
+        try:
+            plan = compile_plan(
+                suggestion.manifest,
+                source=str(output_path) if output_path else "<suggestion>",
+            )
+        except PlanError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+        print("\n" + render_plan(plan))
+        if args.ledger:
+            events = build_dry_run_ledger(plan)
+            write_jsonl(events, Path(args.ledger))
+            print(f"\nLedger written: {args.ledger}")
+    elif args.ledger:
+        print("ERROR: --ledger requires --plan", file=sys.stderr)
+        return 1
+
     return 0
 
 
@@ -235,6 +293,22 @@ def build_parser() -> argparse.ArgumentParser:
     plan.add_argument("--json", action="store_true", help="Print the plan as JSON.")
     plan.add_argument("--ledger", help="Write a dry-run run ledger as JSONL.")
     plan.set_defaults(func=cmd_plan)
+
+    suggest = subparsers.add_parser("suggest", help="Draft a Harnessfile from a plain-language goal.")
+    suggest.add_argument("goal", help="Plain-language mission goal.")
+    suggest.add_argument("--output", help="Write the suggested Harnessfile to this path.")
+    suggest.add_argument("--repository", default="AmmarAlBalkhi/delegation-bot", help="Repository owner/name to place in executor inputs.")
+    suggest.add_argument("--owner", default="AmmarAlBalkhi", help="Accountable owner/reviewer login for the suggested mission.")
+    suggest.add_argument(
+        "--template",
+        choices=SUGGESTION_TEMPLATE_IDS,
+        help="Force a suggestion template instead of inferring one from the goal.",
+    )
+    suggest.add_argument("--plan", action="store_true", help="Also compile and print the dry-run plan.")
+    suggest.add_argument("--ledger", help="Write a dry-run ledger; requires --plan.")
+    suggest.add_argument("--json", action="store_true", help="Print the suggested Harnessfile as JSON.")
+    suggest.add_argument("--yaml", action="store_true", help="Print only the suggested Harnessfile YAML when --output is omitted.")
+    suggest.set_defaults(func=cmd_suggest)
 
     adapters = subparsers.add_parser("adapters", help="List built-in adapter contracts.")
     adapters.add_argument("adapter_id", nargs="?", help="Optional adapter id to inspect.")

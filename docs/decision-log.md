@@ -543,3 +543,23 @@ Evidence:
 - `scripts/delegation_bot.py`
 - `README.md`
 - `docs/architecture.md`
+
+## 2026-07-04: Add Template-Backed Harnessfile Suggestions
+
+Decision: Add `delegation suggest`, a no-network command that drafts a valid
+Harnessfile from a plain-language goal and can immediately compile a dry-run
+plan and ledger.
+
+Why: The project needs a fast first-run path that does not start from a blank
+YAML file. This preserves the hybrid trust model: suggestions make AI
+delegation easier, but deterministic validation, planning, ledgers, evals, and
+human approval still control trust.
+
+Evidence:
+
+- `delegation_bot/suggest.py`
+- `delegation_bot/cli.py`
+- `docs/harnessfile-suggest.md`
+- `tests/test_suggest.py`
+- `tests/test_delegation_cli.py`
+- `scripts/qa.py`
