@@ -213,12 +213,15 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Add a real-world adapter candidate matrix.
-2. Prototype the read-only dashboard data model with fixture ledgers.
-3. Design the feedback resolution path for evals that later pass.
+1. Strengthen the `github.actions` adapter toward gated workflow dispatch
+   preview and run URL evidence.
+2. Strengthen the `mcp.tool` adapter with server/tool permission evidence and
+   prompt-injection risk notes.
+3. Add local-model provider design for `delegation suggest` and
+   `local.classifier`.
 4. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
-5. Add local-model provider design for `delegation suggest`.
+5. Design live feedback issue comments or close actions behind explicit gates.
 
 The million-star path starts with one quiet miracle: a developer can understand
 what an AI system is about to do before it does it.

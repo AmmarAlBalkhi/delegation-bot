@@ -10,12 +10,14 @@ import typing as T
 from pathlib import Path
 
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
+from delegation_bot.dashboard import build_dashboard_snapshot, render_dashboard_snapshot
 from delegation_bot.doctor import render_doctor_report, run_doctor
 from delegation_bot.evals import EvalError, append_jsonl, eval_results_to_events, load_jsonl, render_eval_report, run_declared_evals
 from delegation_bot.eval_feedback import (
     append_feedback_events,
     build_feedback_issue_drafts,
     build_feedback_issue_drafts_from_results,
+    build_feedback_resolution_drafts,
     feedback_drafts_to_events,
     render_feedback_report,
 )
@@ -354,6 +356,50 @@ def cmd_feedback(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_recover_feedback(args: argparse.Namespace) -> int:
+    manifest, status = _load_valid_manifest(Path(args.harnessfile))
+    if status != 0 or manifest is None:
+        return status
+
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        drafts = build_feedback_resolution_drafts(
+            manifest,
+            ledger_events,
+            repository=args.repository,
+            ledger_source=str(ledger_path),
+        )
+    except (LookupError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps([draft.to_dict() for draft in drafts], indent=2, sort_keys=True))
+    else:
+        print(render_feedback_report(drafts))
+
+    if args.write and drafts:
+        run_id = str(ledger_events[0].get("run_id")) if ledger_events else "feedback-recovery-run"
+        result_events = feedback_drafts_to_events(
+            drafts,
+            run_id=run_id,
+            start_sequence=len(ledger_events) + 1,
+        )
+        try:
+            append_feedback_events(result_events, ledger_path)
+        except OSError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        print(f"\nFeedback recovery events appended: {ledger_path}")
+    return 0
+
+
 def cmd_adapters(args: argparse.Namespace) -> int:
     if args.adapter_id:
         contract = get_adapter_contract(args.adapter_id)
@@ -390,6 +436,28 @@ def cmd_ledger(args: argparse.Namespace) -> int:
         print(json.dumps(view.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_ledger_view(view))
+    return 0
+
+
+def cmd_dashboard(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        events = load_ledger_events(ledger_path)
+    except LedgerError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    manifest = None
+    if args.harnessfile:
+        manifest, status = _load_valid_manifest(Path(args.harnessfile))
+        if status != 0 or manifest is None:
+            return status
+
+    snapshot = build_dashboard_snapshot(events, manifest=manifest, source=str(ledger_path))
+    if args.json:
+        print(json.dumps(snapshot.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_dashboard_snapshot(snapshot))
     return 0
 
 
@@ -606,6 +674,12 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--limit", type=int, default=12, help="Number of recent matching events to show; 0 shows all.")
     ledger.set_defaults(func=cmd_ledger)
 
+    dashboard = subparsers.add_parser("dashboard", help="Build a read-only dashboard snapshot from a run ledger.")
+    dashboard.add_argument("ledger", help="Path to a run ledger JSONL file.")
+    dashboard.add_argument("--harnessfile", help="Optional Harnessfile for agents, owners, and repository context.")
+    dashboard.add_argument("--json", action="store_true", help="Print the dashboard snapshot as JSON.")
+    dashboard.set_defaults(func=cmd_dashboard)
+
     otel = subparsers.add_parser("otel", help="Export a JSONL run ledger to local OpenTelemetry-style JSON.")
     otel.add_argument("ledger", help="Path to a run ledger JSONL file.")
     otel.add_argument("--output", help="Write the telemetry export JSON to this path.")
@@ -693,6 +767,17 @@ def build_parser() -> argparse.ArgumentParser:
     feedback.add_argument("--json", action="store_true", help="Print feedback issue drafts as JSON.")
     feedback.add_argument("--write", action="store_true", help="Append planned feedback issue events to the ledger.")
     feedback.set_defaults(func=cmd_feedback)
+
+    recover_feedback = subparsers.add_parser(
+        "recover-feedback",
+        help="Draft dry-run GitHub Issue updates for feedback issues whose evals now pass.",
+    )
+    recover_feedback.add_argument("harnessfile")
+    recover_feedback.add_argument("--ledger", required=True, help="Read run ledger JSONL eval and feedback evidence.")
+    recover_feedback.add_argument("--repository", help="Target repository for planned feedback recovery issues.")
+    recover_feedback.add_argument("--json", action="store_true", help="Print feedback recovery drafts as JSON.")
+    recover_feedback.add_argument("--write", action="store_true", help="Append planned feedback recovery events.")
+    recover_feedback.set_defaults(func=cmd_recover_feedback)
 
     promote = subparsers.add_parser("promote", help="Evaluate agent promotion readiness.")
     promote.add_argument("harnessfile")

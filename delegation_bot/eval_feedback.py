@@ -68,6 +68,32 @@ class FeedbackIssueMemory:
         return self.existing_feedback_events > 0 or self.existing_live_issue_events > 0
 
 
+@dataclass(frozen=True)
+class FeedbackResolutionTarget:
+    eval_id: str
+    marker: str
+    existing_feedback_events: int = 0
+    existing_live_issue_events: int = 0
+    live_issue_number: int | None = None
+    live_issue_url: str | None = None
+    last_problem_sequence: int | None = None
+    last_resolution_sequence: int | None = None
+
+    @property
+    def has_live_issue(self) -> bool:
+        return self.existing_live_issue_events > 0 or self.live_issue_number is not None or bool(self.live_issue_url)
+
+    def needs_resolution_for(self, event: JsonMap) -> bool:
+        sequence = event.get("sequence") if isinstance(event.get("sequence"), int) else None
+        if self.last_problem_sequence is None or not self.has_live_issue:
+            return False
+        if sequence is not None and sequence <= self.last_problem_sequence:
+            return False
+        if self.last_resolution_sequence is not None and self.last_resolution_sequence >= self.last_problem_sequence:
+            return False
+        return True
+
+
 def default_repository(manifest: Manifest) -> str:
     policies = manifest.get("policies") if isinstance(manifest.get("policies"), dict) else {}
     permissions = policies.get("permissions") if isinstance(policies, dict) else {}
@@ -202,6 +228,57 @@ def _live_issue_reference(issue_number: int | None, issue_url: str | None) -> st
     return " ".join(parts)
 
 
+def issue_body_for_eval_recovery(
+    *,
+    marker: str,
+    event: JsonMap,
+    eval_details: JsonMap,
+    ledger_source: str,
+    target: FeedbackResolutionTarget,
+) -> str:
+    sanitized = sanitize_details(eval_details)
+    run_id = event.get("run_id", "unknown")
+    sequence = event.get("sequence", "unknown")
+    return "\n".join(
+        [
+            f"<!-- {marker} -->",
+            "",
+            "## What Recovered",
+            "",
+            "The eval is passing again after a prior feedback issue.",
+            "",
+            "## Recovery Evidence",
+            "",
+            f"- eval: `{target.eval_id}`",
+            f"- run_id: `{run_id}`",
+            f"- sequence: `{sequence}`",
+            f"- status: `passed`",
+            f"- source ledger: `{ledger_source}`",
+            f"- live GitHub issue: {_live_issue_reference(target.live_issue_number, target.live_issue_url)}",
+            "",
+            "## Prior Feedback",
+            "",
+            f"- feedback marker: `{target.marker}`",
+            f"- prior feedback events: `{target.existing_feedback_events}`",
+            f"- live issue events: `{target.existing_live_issue_events}`",
+            f"- last problem sequence: `{target.last_problem_sequence}`",
+            "",
+            "## Passing Eval Details",
+            "",
+            "```json",
+            _json_dumps(sanitized),
+            "```",
+            "",
+            "## Suggested Resolution",
+            "",
+            "- [ ] confirm the eval is passing for the right reason",
+            "- [ ] keep or add a regression eval so the issue stays fixed",
+            "- [ ] close the live feedback issue or leave a short resolution note",
+            "- [ ] rerun `python scripts/qa.py` before merging the fix",
+        ]
+    )
+
+
 def build_feedback_issue_draft(
     manifest: Manifest,
     event: JsonMap,
@@ -280,6 +357,63 @@ def build_feedback_issue_draft(
     )
 
 
+def build_feedback_resolution_draft(
+    manifest: Manifest,
+    event: JsonMap,
+    *,
+    target: FeedbackResolutionTarget,
+    repository: str,
+    ledger_source: str,
+) -> FeedbackIssueDraft:
+    adapter = get_builtin_adapter("github.issue")
+    if not adapter:
+        raise LookupError("github.issue dry-run adapter is required for feedback recovery drafts")
+
+    _, status, _, eval_details = _eval_event_payload(event)
+    if status != "passed":
+        raise ValueError("feedback recovery drafts require a passed eval event")
+
+    harness_id = str(manifest.get("id", "unknown-harness"))
+    title = f"Resolve eval passed: {target.eval_id}"
+    body = issue_body_for_eval_recovery(
+        marker=target.marker,
+        event=event,
+        eval_details=eval_details,
+        ledger_source=ledger_source,
+        target=target,
+    )
+    request = AdapterRequest(
+        adapter_id="github.issue",
+        action_id=f"feedback.resolve.{target.eval_id}.{target.marker.rsplit(':', 1)[-1]}",
+        mission_id=harness_id,
+        objective=f"Draft recovery update for eval feedback issue `{target.eval_id}`.",
+        inputs={
+            "repository": repository,
+            "issue_title": title,
+            "issue_body": body,
+        },
+    )
+    result = adapter.plan(request)
+    errors = validate_adapter_result(adapter.contract, result)
+    if errors:
+        raise ValueError("; ".join(errors))
+    return FeedbackIssueDraft(
+        eval_id=target.eval_id,
+        status="passed",
+        marker=target.marker,
+        title=title,
+        body=body,
+        adapter_result=result,
+        operation="resolve",
+        occurrence_count=1,
+        existing_feedback_events=target.existing_feedback_events,
+        existing_live_issue_events=target.existing_live_issue_events,
+        live_issue_number=target.live_issue_number,
+        live_issue_url=target.live_issue_url,
+        source_event=event,
+    )
+
+
 def _existing_feedback_memory(events: T.Sequence[JsonMap]) -> dict[str, FeedbackIssueMemory]:
     working: dict[str, JsonMap] = {}
 
@@ -334,6 +468,91 @@ def _issue_number(value: T.Any) -> int | None:
     return None
 
 
+def _feedback_resolution_targets(events: T.Sequence[JsonMap]) -> dict[str, FeedbackResolutionTarget]:
+    working: dict[str, JsonMap] = {}
+
+    def ensure(marker: str, eval_id: str | None = None) -> JsonMap:
+        resolved_eval_id = eval_id or _eval_id_from_marker(marker) or "unknown"
+        entry = working.setdefault(
+            marker,
+            {
+                "eval_id": resolved_eval_id,
+                "marker": marker,
+                "existing_feedback_events": 0,
+                "existing_live_issue_events": 0,
+                "live_issue_number": None,
+                "live_issue_url": None,
+                "last_problem_sequence": None,
+                "last_resolution_sequence": None,
+            },
+        )
+        if entry["eval_id"] == "unknown" and resolved_eval_id != "unknown":
+            entry["eval_id"] = resolved_eval_id
+        return entry
+
+    for event in events:
+        details = event.get("details") if isinstance(event.get("details"), dict) else {}
+        sequence = event.get("sequence") if isinstance(event.get("sequence"), int) else None
+        feedback = details.get("feedback") if isinstance(details.get("feedback"), dict) else {}
+        marker = feedback.get("marker")
+        if isinstance(marker, str) and marker.strip():
+            eval_id = feedback.get("eval_id") if isinstance(feedback.get("eval_id"), str) else None
+            entry = ensure(marker, eval_id)
+            entry["existing_feedback_events"] += 1
+            operation = feedback.get("operation") if isinstance(feedback.get("operation"), str) else ""
+            if operation == "resolve":
+                entry["last_resolution_sequence"] = _max_sequence(entry["last_resolution_sequence"], sequence)
+            else:
+                entry["last_problem_sequence"] = _max_sequence(entry["last_problem_sequence"], sequence)
+            if isinstance(feedback.get("live_issue_number"), int):
+                entry["live_issue_number"] = feedback["live_issue_number"]
+            if isinstance(feedback.get("live_issue_url"), str):
+                entry["live_issue_url"] = feedback["live_issue_url"]
+
+        if event.get("type") not in {"github.issue.created", "github.issue.updated"}:
+            continue
+        issue_marker = details.get("issue_marker")
+        if not isinstance(issue_marker, str) or not issue_marker.strip():
+            continue
+        entry = ensure(issue_marker)
+        entry["existing_live_issue_events"] += 1
+        issue_number = _issue_number(details.get("issue_number"))
+        if issue_number is not None:
+            entry["live_issue_number"] = issue_number
+        if isinstance(details.get("issue_url"), str):
+            entry["live_issue_url"] = details["issue_url"]
+
+    return {
+        marker: FeedbackResolutionTarget(
+            eval_id=str(entry["eval_id"]),
+            marker=marker,
+            existing_feedback_events=int(entry["existing_feedback_events"]),
+            existing_live_issue_events=int(entry["existing_live_issue_events"]),
+            live_issue_number=T.cast(int | None, entry["live_issue_number"]),
+            live_issue_url=T.cast(str | None, entry["live_issue_url"]),
+            last_problem_sequence=T.cast(int | None, entry["last_problem_sequence"]),
+            last_resolution_sequence=T.cast(int | None, entry["last_resolution_sequence"]),
+        )
+        for marker, entry in working.items()
+        if entry["eval_id"] != "unknown"
+    }
+
+
+def _max_sequence(current: T.Any, candidate: int | None) -> int | None:
+    if candidate is None:
+        return current if isinstance(current, int) else None
+    if isinstance(current, int):
+        return max(current, candidate)
+    return candidate
+
+
+def _eval_id_from_marker(marker: str) -> str | None:
+    parts = marker.split(":")
+    if len(parts) >= 4 and parts[0] == "delegation-bot" and parts[1] == "eval" and parts[2]:
+        return parts[2]
+    return None
+
+
 def build_feedback_issue_drafts(
     manifest: Manifest,
     events: T.Sequence[JsonMap],
@@ -383,6 +602,39 @@ def build_feedback_issue_drafts(
             )
         )
     return drafts
+
+
+def build_feedback_resolution_drafts(
+    manifest: Manifest,
+    events: T.Sequence[JsonMap],
+    *,
+    repository: str | None = None,
+    ledger_source: str = "<ledger>",
+) -> list[FeedbackIssueDraft]:
+    target_repository = repository or default_repository(manifest)
+    targets = _feedback_resolution_targets(events)
+    latest_passed: dict[str, JsonMap] = {}
+    for event in events:
+        if event.get("type") != "eval.result" or event.get("status") != "passed":
+            continue
+        eval_id, _, _, _ = _eval_event_payload(event)
+        latest_passed[eval_id] = event
+
+    drafts: list[FeedbackIssueDraft] = []
+    for target in targets.values():
+        event = latest_passed.get(target.eval_id)
+        if event is None or not target.needs_resolution_for(event):
+            continue
+        drafts.append(
+            build_feedback_resolution_draft(
+                manifest,
+                event,
+                target=target,
+                repository=target_repository,
+                ledger_source=ledger_source,
+            )
+        )
+    return sorted(drafts, key=lambda draft: (draft.eval_id, draft.marker))
 
 
 def eval_result_to_event(

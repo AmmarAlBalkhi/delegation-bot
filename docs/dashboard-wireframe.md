@@ -117,3 +117,15 @@ The first prototype should be read-only:
 
 Live operations should remain in the CLI until the policy and approval model is
 boring and proven.
+
+## Implemented Data Slice
+
+The first read-only data model now exists as:
+
+```bash
+python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
+```
+
+It returns a mission snapshot with status, next safe action, adapter evidence,
+latest evals, feedback issue memory, and agent summaries. See
+`docs/dashboard-data-model.md`.

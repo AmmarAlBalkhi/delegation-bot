@@ -12,6 +12,8 @@ They live in `examples/ledgers/`:
   and recorded with issue evidence
 - `feedback-issue-memory.jsonl`: an eval feedback issue was created live, then
   a later matching failure drafted an update pointing at the same issue
+- `feedback-recovery.jsonl`: a feedback issue later sees a passing eval and
+  drafts a recovery update
 
 ## Why They Exist
 
@@ -50,6 +52,13 @@ Feedback issue memory:
 
 ```bash
 python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
+```
+
+Feedback recovery:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/feedback-recovery.jsonl --adapter github.issue
+python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
 ```
 
 ## Eval Behavior

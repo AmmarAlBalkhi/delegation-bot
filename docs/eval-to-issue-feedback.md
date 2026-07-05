@@ -200,7 +200,28 @@ Inspect the feedback memory fixture without touching GitHub:
 python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
 ```
 
-Next, the feedback loop should update or close the live issue when the eval
-later passes.
+## Recovery Drafts
+
+When an eval passes after a prior live feedback issue exists, Delegation Bot can
+draft a recovery update:
+
+```bash
+python scripts/delegation.py recover-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl
+```
+
+This command is preview-only unless `--write` is supplied. It does not close the
+GitHub issue by itself. It drafts the evidence a human or future approved live
+gate can use to close or update the issue.
+
+Inspect the recovery fixture:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/feedback-recovery.jsonl --adapter github.issue
+python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
+```
+
+Next, the live apply path should learn issue comments or close actions, still
+behind explicit approval.
 
 This keeps the project aligned with its own rule: evidence first, then action.
