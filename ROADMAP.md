@@ -213,12 +213,12 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
-2. Link dry-run feedback update drafts to live GitHub issue numbers.
-3. Open the first small public roadmap issue set from
+1. Link dry-run feedback update drafts to live GitHub issue numbers.
+2. Add a real-world adapter candidate matrix.
+3. Prototype the read-only dashboard data model with fixture ledgers.
+4. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
-4. Add a real-world adapter candidate matrix.
-5. Prototype the read-only dashboard data model with fixture ledgers.
+5. Add local-model provider design for `delegation suggest`.
 
 The million-star path starts with one quiet miracle: a developer can understand
 what an AI system is about to do before it does it.

@@ -20,18 +20,18 @@ Every issue should strengthen the control-plane loop.
   model credits, or live GitHub writes.
 - Close stale roadmap issues when the plan changes.
 
-## Draft 1: Opt-In Live Model-Backed Harnessfile Suggestions
+## Draft 1: Local Model Provider For Harnessfile Suggestions
 
 Suggested title:
 
 ```text
-Add opt-in live model-backed delegation suggest
+Add local model provider path for delegation suggest
 ```
 
 Suggested labels:
 
 ```text
-enhancement, trust-layer, live-gate, roadmap
+enhancement, trust-layer, roadmap
 ```
 
 Body:
@@ -39,30 +39,25 @@ Body:
 ```markdown
 ## Goal
 
-Allow `delegation suggest` to use a live model provider when the user explicitly
-opts in, while keeping validation, dry-run planning, ledgers, evals, and human
-approval deterministic.
+Allow `delegation suggest` to draft Harnessfiles through a local model provider
+using the same suggestion draft envelope.
 
 ## Why
 
-Users should not start from a blank Harnessfile. AI can draft the mission, but
-Delegation Bot must still verify it before anything executes.
+Some users will want privacy-sensitive drafting without sending repository
+context to a hosted model.
 
 ## Scope
 
-- Add explicit provider configuration.
-- Require an opt-in flag for live model calls.
-- Keep fixture mode as the default test path.
+- Add local provider design and command shape.
 - Validate model output against `schemas/harness-suggestion-draft.v1.schema.json`.
-- Refuse to run if required secrets are missing.
-- Never apply live actions from model output directly.
+- Keep deterministic validation, planning, ledger, eval, and approval gates.
+- Keep fixture tests no-network.
 
 ## Acceptance criteria
 
-- `delegation suggest --draft-source model --provider openai` is gated and documented.
-- Anthropic path has the same contract shape.
-- Fixture tests remain no-network.
-- Bad model output fails with a clear validation error.
+- Local provider path uses the same draft envelope as OpenAI and Anthropic.
+- Bad local model output fails with a clear validation error.
 - Docs explain the trust boundary in simple language.
 ```
 

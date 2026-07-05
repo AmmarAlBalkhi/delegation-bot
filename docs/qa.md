@@ -49,6 +49,7 @@ The QA command currently checks:
 - adapter contract listing and inspection
 - adapter fixture generation
 - no-network model-backed suggestion fixtures
+- mocked live model-backed suggestion provider tests
 - release artifact workflow checks for ledgers, fixtures, QA logs, `LICENSE`,
   and `NOTICE`
 - built-in eval generation from the generated QA ledger
@@ -60,6 +61,7 @@ The QA command currently checks:
 - playbook catalog tag and adapter filtering
 - playbook catalog validation through unit tests
 - GitHub issue templates and label metadata through unit tests
+- live model suggest API gate and parsing through unit tests
 - JSON parsing for schema files
 
 ## Type Discipline

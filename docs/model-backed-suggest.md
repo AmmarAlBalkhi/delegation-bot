@@ -1,6 +1,10 @@
 # Model-Backed Harnessfile Suggest
 
-This is the design for the future model-backed version of `delegation suggest`.
+`delegation suggest` has three paths:
+
+- `template`: default, no-network, deterministic
+- `fixture`: no-network saved model draft for tests and demos
+- `model`: explicit live provider call
 
 Simple version:
 
@@ -20,24 +24,61 @@ The default command remains no-network and template-backed:
 delegation suggest "prepare this repo for release"
 ```
 
-A future model-backed command should look explicit:
+Live model-backed suggestions require a provider and a second confirmation
+flag:
 
 ```bash
-delegation suggest "prepare this repo for release" --draft-source model --provider openai
+delegation suggest "prepare this repo for release" \
+  --draft-source model \
+  --provider openai \
+  --allow-live-model \
+  --output .delegation/model-openai-release.yaml \
+  --plan \
+  --ledger .delegation/model-openai-release.jsonl
 ```
 
 or:
 
 ```bash
-delegation suggest "review this pull request" --draft-source model --provider anthropic
+delegation suggest "review this pull request" \
+  --draft-source model \
+  --provider anthropic \
+  --allow-live-model \
+  --output .delegation/model-anthropic-review.yaml \
+  --plan \
+  --ledger .delegation/model-anthropic-review.jsonl
 ```
 
 No hidden model calls. No surprise cost. No surprise data sharing.
 
+Required environment variables:
+
+- OpenAI: `OPENAI_API_KEY`
+- Anthropic: `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`
+
+If the key is missing, the command fails before any provider call.
+
+## Ease-Of-Use Rule
+
+Plain `delegation suggest "goal"` stays short. It prints a summary and next
+command, not a wall of YAML.
+
+Use `--output` to write a Harnessfile. Use `--yaml` only when you want the full
+Harnessfile in the terminal.
+
+Caveman version:
+
+```text
+AI drafts.
+Bot checks.
+No key, no call.
+No approval, no live action.
+```
+
 ## No-Network Fixture Mode
 
-The project now has fixture-backed model drafts for testing the future provider
-paths without calling any model API:
+The project has fixture-backed model drafts for testing provider paths without
+calling any model API:
 
 ```bash
 delegation suggest "prepare this repo for release" --draft-source fixture --provider openai --output .delegation/model-openai-release.yaml --plan --ledger .delegation/model-openai-release.jsonl
@@ -47,8 +88,7 @@ delegation suggest "review this pull request" --draft-source fixture --provider 
 These fixtures live in `examples/model-suggestions/`.
 
 They are not live model calls. They are saved draft envelopes that prove the
-schema, validation, planning, and ledger loop works before real provider calls
-are added.
+schema, validation, planning, and ledger loop works without cost or network.
 
 ## Trust Boundary
 
@@ -82,23 +122,23 @@ The control plane still owns:
 
 OpenAI path:
 
-- use structured outputs so the draft follows a known JSON shape
-- request a `harness-suggestion-draft` envelope
-- validate the returned `manifest` with the normal Harnessfile validator
-- reject or repair invalid drafts before planning
+- uses the Responses API
+- requests a `harness-suggestion-draft` envelope
+- validates the returned `manifest` with the normal Harnessfile validator
+- rejects invalid drafts before planning
 
 Anthropic path:
 
-- use Messages API tool use with an `input_schema`
-- define one client tool such as `propose_harnessfile`
-- treat returned `tool_use` input as the draft envelope
-- validate the returned `manifest` with the normal Harnessfile validator
+- uses the Messages API
+- treats JSON text or tool-use input as the draft envelope
+- validates the returned `manifest` with the normal Harnessfile validator
+- rejects invalid drafts before planning
 
 Local model path:
 
-- use the same draft envelope
-- prefer local models for privacy-sensitive policy review or rough drafts
-- require deterministic validation before the draft becomes a plan
+- should use the same draft envelope later
+- should be designed for privacy-sensitive drafting
+- must still use deterministic validation before the draft becomes a plan
 
 ## Draft Envelope
 
@@ -126,13 +166,13 @@ If the model returns invalid JSON:
 
 - show a short error
 - suggest falling back to the template-backed command
-- do not write a Harnessfile unless `--output-invalid` exists later
+- do not write a Harnessfile
 
 If the draft envelope is valid but the Harnessfile is invalid:
 
 - show the Harnessfile validation errors
 - do not compile a plan
-- optionally write the invalid draft only when the user asks for debugging
+- do not write a ledger
 
 If the Harnessfile validates:
 
@@ -142,11 +182,11 @@ If the Harnessfile validates:
 
 ## Prompt Contract
 
-The system prompt should be boring and strict:
+The system prompt is intentionally strict:
 
 ```text
 You draft Delegation Bot Harnessfiles.
-Return only the requested structured draft envelope.
+Return only one JSON object.
 Prefer dry-run adapters.
 Require human approval for risky actions.
 Do not claim execution happened.
@@ -154,36 +194,33 @@ Do not mark evals passed.
 Do not include secrets.
 ```
 
-The user message should include:
+The user message includes:
 
 - plain-language goal
 - repository
 - owner
-- allowed adapters
-- allowed files if known
-- whether the user wants release, CI, docs, review, planning, or general work
+- provider and model
+- template hint
+- valid reference manifest
+- required draft envelope shape
 
-## MVP Acceptance
+## Current Acceptance
 
-Model-backed suggest is ready only when:
+Model-backed suggest is considered safe for early use because:
 
 1. It is off by default.
-2. It supports at least OpenAI and Anthropic through the same draft envelope.
-3. It can run in a no-network fixture mode for tests. The first fixture mode is now implemented.
-4. Invalid model output cannot create a plan.
-5. Valid model output still goes through `validate`, `plan`, ledger, evals, and promotion.
-6. The README explains cost and data-sharing plainly.
+2. Live calls require `--allow-live-model`.
+3. OpenAI and Anthropic use the same draft envelope.
+4. Fixture mode remains no-network for tests.
+5. Invalid model output cannot create a plan.
+6. Valid model output still goes through `validate`, `plan`, ledger, evals, and promotion.
+7. The README explains cost and data-sharing plainly.
 
 ## Research Notes
 
-Checked on 2026-07-04:
+Checked on 2026-07-05:
 
-- OpenAI Structured Outputs are intended for model responses that follow a JSON schema:
-  <https://developers.openai.com/api/docs/guides/structured-outputs>
-- OpenAI Responses API can generate JSON outputs and call tools:
-  <https://developers.openai.com/api/reference/resources/responses/methods/create/>
-- Anthropic Claude tool use supports tools with an `input_schema`, returning a structured
-  `tool_use` block for the application to execute:
-  <https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview>
-- Anthropic Messages API remains the base request path for Claude applications:
+- OpenAI Responses API is the request path used for live OpenAI suggestions:
+  <https://platform.openai.com/docs/api-reference/responses/create>
+- Anthropic Messages API is the request path used for Claude suggestions:
   <https://docs.anthropic.com/en/api/messages>

@@ -730,3 +730,25 @@ Evidence:
 - `CONTRIBUTING.md`
 - `README.md`
 - `docs/next-actions.md`
+
+## 2026-07-05: Add Opt-In Live Model Suggestions
+
+Decision: Add live OpenAI and Anthropic provider paths for `delegation suggest`,
+guarded by `--allow-live-model`, provider API-key checks, draft envelope
+validation, normal Harnessfile validation, and deterministic dry-run planning.
+
+Why: The product should enable AI, not suppress it. Users should be able to ask
+AI for a Harnessfile draft, but the control plane must still own trust:
+validation, policy gates, ledger writes, evals, and human approval. The default
+output also became shorter so the first run feels useful instead of like
+homework.
+
+Evidence:
+
+- `delegation_bot/model_suggest_live.py`
+- `delegation_bot/cli.py`
+- `delegation_bot/model_suggest_fixtures.py`
+- `docs/model-backed-suggest.md`
+- `docs/harnessfile-suggest.md`
+- `tests/test_model_suggest_live.py`
+- `tests/test_delegation_cli.py`

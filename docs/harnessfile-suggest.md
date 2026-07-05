@@ -19,9 +19,8 @@ value. A user should be able to start with:
 delegation suggest "prepare this repo for release"
 ```
 
-The first implementation is template-backed and no-network. It does not call a
-live LLM. That is intentional: the command proves the product shape while
-keeping the trust boundary crisp.
+The default path is template-backed and no-network. It does not call a live LLM.
+That keeps the first run calm and predictable.
 
 ## Trust Boundary
 
@@ -35,10 +34,10 @@ Ledger records everything.
 Evals decide whether trust increases.
 ```
 
-Today, the "AI proposes" slot is represented by safe templates and CLI intent.
-Later, a model-backed drafting mode can be added behind explicit configuration,
-but it should still output a normal Harnessfile that the deterministic control
-plane must validate and dry-run.
+Today, the "AI proposes" slot can be represented by safe templates, no-network
+fixtures, or an explicit live model-backed drafting mode. Every path still
+outputs a normal Harnessfile that the deterministic control plane must validate
+and dry-run.
 
 See `docs/model-backed-suggest.md` for the opt-in model-backed design.
 
@@ -57,6 +56,18 @@ Print only the suggested YAML:
 
 ```bash
 delegation suggest "refresh the README docs" --yaml
+```
+
+Run an explicit live model-backed suggestion:
+
+```bash
+delegation suggest "prepare this repo for release" \
+  --draft-source model \
+  --provider openai \
+  --allow-live-model \
+  --output .delegation/model-openai-release.yaml \
+  --plan \
+  --ledger .delegation/model-openai-release.jsonl
 ```
 
 Force a template:
