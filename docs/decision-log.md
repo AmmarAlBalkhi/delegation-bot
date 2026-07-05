@@ -983,3 +983,17 @@ Evidence: The script builds `dist\delegation.exe` with PyInstaller, bundles
 runtime assets used by demos and fixtures, and runs safe demo/init/validate
 smoke checks before reporting success. A local Windows build passed on
 2026-07-05.
+
+## 2026-07-05: Add Local Classifier Policy Profiles
+
+Decision: Add deterministic policy profiles to `local.classifier`.
+
+Why: Delegation Bot should enable local AI and local classification, but the
+trust boundary must stay clear. A classifier can explain risk and recommend a
+gate, while deterministic profiles, approval gates, ledger evidence, and evals
+remain responsible for trust decisions.
+
+Evidence: `local.classifier` now emits `policy_profile`, `recommended_gate`,
+matched terms, and reasons. Release-readiness paths use a stricter
+`release-readiness` profile, while general first-run paths use
+`delegation.default`.

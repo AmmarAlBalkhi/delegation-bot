@@ -104,6 +104,7 @@ executors:
     model: local_policy_model
     purpose: Classify whether the release candidate has risky gaps before promotion.
     inputs:
+      profile: release-readiness
       plan: Verify package metadata, license, docs, changelog, tests, and artifacts before release.
       policy: Require approvals for release publication, pull requests, workflows, and agent execution.
 

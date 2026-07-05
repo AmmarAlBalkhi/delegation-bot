@@ -32,7 +32,7 @@ without making the project depend on one agent framework.
 | `mcp.tool` | tool | dry-run, risk-eval, policy-gate | Plan MCP tool call with allowlist, permission, and prompt-injection risk evidence | `tool_name`, `tool_result`, `permission_scope`, `risk_level`, `prompt_injection_risk` |
 | `openclaw.gateway` | AI harness | dry-run | Plan local assistant gateway handoff | `channel`, `assistant_result` |
 | `hermes.agent` | AI harness | dry-run | Plan skill-learning agent step | `skill_id`, `agent_result` |
-| `local.classifier` | ML model | dry-run | Plan local risk classification | `classification` |
+| `local.classifier` | ML model | dry-run, policy-profile | Plan local risk classification with deterministic profile evidence | `classification`, `policy_profile`, `recommended_gate` |
 | `human.approval` | human | dry-run | Plan human approval checkpoint | `approver`, `approval_status` |
 
 No built-in adapter has unrestricted live execution. That is intentional.
@@ -116,7 +116,8 @@ not a side conversation.
 
 1. Use the `github.actions` preview gate as the design base for a future live
    dispatch client.
-2. Add packaged demo/install artifacts before adding more adapter families.
-3. Add fixture generation examples for more adapter families.
+2. Add local-model explanations for classifier recommendations without making
+   the model authoritative.
+3. Run executable packaging on a clean release host and record evidence.
 4. Add contribution labels for adapter requests.
 5. Add a compatibility badge once live-gated adapters exist.

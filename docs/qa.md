@@ -64,6 +64,7 @@ The QA command currently checks:
 - GitHub Actions dispatch preview gate and fixture coverage
 - MCP tool risk evidence eval and fixture coverage
 - MCP tool policy gate coverage
+- local-classifier policy profile evidence
 - optional Windows EXE packaging dependency metadata
 - Windows EXE build script structure and generated artifact ignores
 - read-only CLI behavior without eager live-network imports

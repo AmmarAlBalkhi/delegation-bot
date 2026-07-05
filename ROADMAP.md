@@ -215,13 +215,13 @@ Current focus:
 
 1. Use the `github.actions` dispatch preview gate as the base for a future live
    dispatch client without enabling it yet.
-2. Add a local-classifier policy profile so local risk review can become more
-   useful without handing trust to the model.
-3. Run the Windows `.exe` build script on a clean Windows release host and
+2. Run the Windows `.exe` build script on a clean Windows release host and
    record the executable smoke evidence.
-4. Open the first small public roadmap issue set from
+3. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
-5. Design live feedback issue comments or close actions behind explicit gates.
+4. Design live feedback issue comments or close actions behind explicit gates.
+5. Add a local-model explanation path for classifier recommendations without
+   making the model authoritative.
 
 The million-star path starts with one quiet miracle: a developer can understand
 what an AI system is about to do before it does it.
