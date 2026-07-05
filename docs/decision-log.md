@@ -907,3 +907,37 @@ Evidence:
 - `examples/ai-harness-control-plane.yaml`
 - `tests/test_mcp_policy_gate.py`
 - `tests/test_delegation_cli.py`
+
+## 2026-07-05: Make The First Run A Real Product Moment
+
+Decision: Add `delegation demo` as a one-command, install-safe mission-control
+demo.
+
+Why: A new user should not need to understand Harnessfile structure before the
+idea clicks. The demo writes a dry-run ledger, checks MCP policy, previews
+GitHub Actions dispatch, and runs evals without relying on source-repo example
+files.
+
+Decision: Add `delegation init` for starter Harnessfiles.
+
+Why: Users should be able to start from a plain-language goal instead of a blank
+YAML file. The command detects the GitHub origin when possible, refuses to
+overwrite by default, and can optionally compile the starter into a ledger.
+
+Decision: Add an installed-package demo smoke test.
+
+Why: The future `.exe` and public package need the same proof: after install,
+the product can run from outside the source checkout and show the core value
+quickly.
+
+Evidence:
+
+- `delegation_bot/first_run.py`
+- `delegation_bot/cli.py`
+- `scripts/package_smoke.py`
+- `scripts/qa.py`
+- `docs/demo.md`
+- `docs/product-experience.md`
+- `docs/release.md`
+- `docs/windows-exe.md`
+- `tests/test_delegation_cli.py`

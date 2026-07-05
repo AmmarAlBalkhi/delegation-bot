@@ -4,7 +4,7 @@ Goal:
 
 ```text
 Download delegation.exe.
-Run delegation doctor.
+Run delegation demo.
 Try the demo without learning Python packaging.
 ```
 
@@ -15,6 +15,7 @@ Delegation Bot is a Python CLI package today:
 ```bash
 python -m pip install -e .
 delegation --help
+delegation demo
 ```
 
 This is the right foundation. The console command and QA suite should stay
@@ -38,9 +39,9 @@ dist/delegation.exe
 Expected smoke test:
 
 ```powershell
-dist\delegation.exe doctor --skip-github
-dist\delegation.exe plan examples\ai-harness-control-plane.yaml --ledger .delegation\exe-smoke.jsonl
-dist\delegation.exe mcp-gate examples\ai-harness-control-plane.yaml --ledger .delegation\exe-smoke.jsonl
+dist\delegation.exe demo --ledger .delegation\exe-smoke.jsonl
+dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --output Harnessfile.yaml
+dist\delegation.exe validate Harnessfile.yaml
 ```
 
 ## Why PyInstaller
@@ -60,6 +61,7 @@ can be an intermediate artifact, not the final beginner-friendly Windows path.
 Do not publish an `.exe` until:
 
 - `python scripts/qa.py` passes
+- `python scripts/package_smoke.py` passes
 - the executable smoke test passes on Windows
 - the artifact is built from a tagged commit
 - docs explain that live writes remain gated

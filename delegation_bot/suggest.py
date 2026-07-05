@@ -73,9 +73,15 @@ def infer_template(goal: str) -> tuple[str, str]:
         ),
     ]
     for template_id, keywords, reason in keyword_groups:
-        if any(keyword in normalized for keyword in keywords):
+        if any(_matches_keyword(normalized, keyword) for keyword in keywords):
             return template_id, reason
     return "general-agentic-work", "No narrow template matched, so a general safe delegation mission was selected."
+
+
+def _matches_keyword(text: str, keyword: str) -> bool:
+    if " " in keyword:
+        return keyword in text
+    return bool(re.search(rf"\b{re.escape(keyword)}\b", text))
 
 
 def build_suggestion(

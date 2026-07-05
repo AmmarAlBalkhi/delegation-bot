@@ -94,6 +94,8 @@ The project is currently pre-release.
   a `mcp_tool_risk_review` eval, and a high-risk MCP fixture.
 - Added `delegation mcp-gate` for MCP server/tool allowlist and risk gate
   reports, plus a 60-second demo guide and Windows EXE packaging plan.
+- Added `delegation demo`, `delegation init`, and an installed-package demo
+  smoke test to make first-run setup faster and more production-like.
 - Made read-only CLI commands avoid importing live network dependencies until
   a live apply or live model call needs them.
 - Added a researched adapter candidate matrix for prioritizing real-world

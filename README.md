@@ -21,21 +21,21 @@ Evals decide whether trust increases.
 
 ```bash
 python -m pip install -r requirements.txt
-python scripts/delegation.py doctor --skip-github
-python scripts/delegation.py suggest "prepare this repo for release" --output .delegation/suggested-release.yaml --plan --ledger .delegation/suggested-release.jsonl
-python scripts/delegation.py ledger .delegation/suggested-release.jsonl
+python scripts/delegation.py demo
 ```
 
-That gives you a valid Harnessfile draft, a dry-run execution plan, and a JSONL
-ledger without writing to GitHub, calling a model, or running an agent.
+That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
+GitHub Actions preview, and evals. It does not write to GitHub, call a model, or
+run an agent.
 
-Want to see the learning loop?
+Want to start your own repo?
 
 ```bash
-python scripts/delegation.py eval .delegation/suggested-release.yaml --ledger .delegation/suggested-release.jsonl --feedback --feedback-include-blocked
+python scripts/delegation.py init --goal "prepare this repo for safe AI delegation"
+python scripts/delegation.py plan Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
-Want the flagship mission-control demo?
+Want the larger flagship Harnessfile?
 
 ```bash
 python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
@@ -90,6 +90,8 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 
 | Command | Purpose |
 | --- | --- |
+| `delegation demo` | Run the install-safe mission-control demo in one command. |
+| `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
 | `delegation suggest "goal" --plan --ledger .delegation/run.jsonl` | Draft a Harnessfile from plain language and dry-run it. |
 | `delegation plan Harnessfile.yaml --ledger .delegation/run.jsonl` | Compile a Harnessfile into a dry-run ledger. |
