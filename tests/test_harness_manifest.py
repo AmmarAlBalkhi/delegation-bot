@@ -101,6 +101,20 @@ class HarnessManifestTests(unittest.TestCase):
             errors,
         )
 
+    def test_rejects_invalid_mcp_allowlist_policy_shape(self) -> None:
+        manifest = dict(VALID_MANIFEST)
+        manifest["policies"] = {
+            "permissions": {
+                "allowed_mcp_servers": "local",
+                "allowed_mcp_tools": ["inspect_repository", ""],
+            }
+        }
+
+        errors = validate_manifest(manifest)
+
+        self.assertIn("`policies.permissions.allowed_mcp_servers` must be a list when provided", errors)
+        self.assertIn("`policies.permissions.allowed_mcp_tools[1]` must be a non-empty string", errors)
+
     def test_summary_names_adapters_and_outputs(self) -> None:
         summary = summarize_manifest(VALID_MANIFEST)
 

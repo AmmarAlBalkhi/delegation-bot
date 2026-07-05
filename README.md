@@ -35,6 +35,17 @@ Want to see the learning loop?
 python scripts/delegation.py eval .delegation/suggested-release.yaml --ledger .delegation/suggested-release.jsonl --feedback --feedback-include-blocked
 ```
 
+Want the flagship mission-control demo?
+
+```bash
+python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+python scripts/delegation.py mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+python scripts/delegation.py apply-actions examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+```
+
+For a guided version with what to look for, see
+[`docs/demo.md`](docs/demo.md).
+
 ## What It Does
 
 - Compiles a Harnessfile into a dry-run execution plan.
@@ -84,6 +95,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation plan Harnessfile.yaml --ledger .delegation/run.jsonl` | Compile a Harnessfile into a dry-run ledger. |
 | `delegation ledger .delegation/run.jsonl` | Inspect run evidence. |
 | `delegation dashboard .delegation/run.jsonl` | Build a read-only mission snapshot for future UI/cockpit work. |
+| `delegation mcp-gate Harnessfile.yaml --ledger .delegation/run.jsonl` | Check MCP tool allowlists and risk evidence. |
 | `delegation eval Harnessfile.yaml --ledger .delegation/run.jsonl --feedback` | Run evals and draft improvement issues. |
 | `delegation recover-feedback Harnessfile.yaml --ledger .delegation/run.jsonl` | Draft recovery updates when previously failing evals pass. |
 | `delegation promote Harnessfile.yaml --ledger .delegation/run.jsonl` | Check whether agents can earn more autonomy. |
@@ -133,6 +145,7 @@ user experience that feels useful quickly.
 
 Start here:
 
+- [60-second demo](docs/demo.md)
 - [Vision](docs/vision.md)
 - [Architecture](docs/architecture.md)
 - [Positioning](docs/positioning.md)
@@ -166,6 +179,7 @@ Launch readiness:
 
 - [QA and backup discipline](docs/qa.md)
 - [Release checklist](docs/release.md)
+- [Windows EXE plan](docs/windows-exe.md)
 - [TestPyPI dry run](docs/testpypi-dry-run.md)
 - [Business model notes](docs/business-model.md)
 - [Domain strategy](docs/domain-strategy.md)

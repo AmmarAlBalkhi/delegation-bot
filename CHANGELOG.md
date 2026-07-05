@@ -92,6 +92,8 @@ The project is currently pre-release.
   gate with run URL evidence, fixture coverage, and docs.
 - Added MCP tool permission scope, risk-level, prompt-injection risk evidence,
   a `mcp_tool_risk_review` eval, and a high-risk MCP fixture.
+- Added `delegation mcp-gate` for MCP server/tool allowlist and risk gate
+  reports, plus a 60-second demo guide and Windows EXE packaging plan.
 - Made read-only CLI commands avoid importing live network dependencies until
   a live apply or live model call needs them.
 - Added a researched adapter candidate matrix for prioritizing real-world

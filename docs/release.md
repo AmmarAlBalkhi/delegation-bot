@@ -21,6 +21,7 @@ Current package facts:
 - Python support: `>=3.11`
 - console command: `delegation`
 - packaging style: setuptools with modern `pyproject.toml`
+- optional EXE packaging tools: `python -m pip install -e ".[exe]"`
 - import namespace: `delegation_bot`
 
 The code is still alpha. The package metadata exists so contributors and early
@@ -54,6 +55,7 @@ Before a public package release:
 - publish to TestPyPI before PyPI
 
 See `docs/testpypi-dry-run.md` for the rehearsal commands and smoke checks.
+See `docs/windows-exe.md` for the future standalone Windows executable path.
 
 ## Package Boundaries
 

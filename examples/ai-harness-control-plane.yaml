@@ -273,6 +273,10 @@ policies:
   permissions:
     allowed_repositories:
       - AmmarAlBalkhi/delegation-bot
+    allowed_mcp_servers:
+      - local-repository-tools
+    allowed_mcp_tools:
+      - local-repository-tools/inspect_repository
     network: restricted
 
 outputs:

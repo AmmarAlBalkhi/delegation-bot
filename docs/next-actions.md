@@ -32,7 +32,8 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Add explicit MCP server/tool allowlist policy and gate reports.
+1. Add a packaged demo/install path: source install smoke, `.pyz` experiment,
+   and future Windows `.exe` build script.
 2. Add local-model provider design for `delegation suggest` and
    `local.classifier`.
 3. Use the new `github.actions` dispatch preview gate to design the future live
@@ -43,6 +44,8 @@ Deep only when the user asks for depth.
 
 ## Completed Recently
 
+- Added `delegation mcp-gate`, explicit MCP server/tool allowlist policy,
+  a 60-second demo path, and a Windows EXE packaging plan.
 - Added MCP tool permission scope, risk-level, prompt-injection risk evidence,
   `mcp_tool_risk_review`, a high-risk fixture, and docs.
 - Added a `github.actions` dispatch preview gate with run URL evidence,

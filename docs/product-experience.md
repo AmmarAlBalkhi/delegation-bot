@@ -46,6 +46,7 @@ The public experience should move toward this:
 delegation doctor
 delegation suggest "prepare this repo for release"
 delegation plan Harnessfile.yaml
+delegation mcp-gate Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write
 delegation promote Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation apply-issues Harnessfile.yaml --ledger .delegation/latest.jsonl
@@ -80,6 +81,7 @@ Avoid:
 - making safe dry-runs feel like compliance work
 - adding dashboards before the CLI loop feels clear
 - treating every action as equally risky
+- making people install Python packaging tools before they understand the demo
 
 ## Product Test
 
@@ -88,6 +90,9 @@ Before adding a feature, ask:
 ```text
 Does this make trustworthy AI delegation faster, clearer, or easier?
 ```
+
+The future Windows `.exe` should serve that same test: faster first run, same
+trust gates.
 
 If it adds safety but also adds friction, pair it with a shortcut, template,
 plain-English explanation, or AI-assisted draft.

@@ -12,6 +12,8 @@ without making the project depend on one agent framework.
 - `dry-run`: the adapter can produce local ledger evidence without live calls
 - `preview-gate`: the adapter has a command that checks policy and evidence
   before any future live action
+- `policy-gate`: the adapter has explicit policy checks that produce a user
+  report
 - `live-gate`: live execution is designed, gated, and intentionally limited
 - `live`: live execution exists
 
@@ -27,7 +29,7 @@ without making the project depend on one agent framework.
 | `anthropic.messages` | model provider | dry-run | Plan Claude Messages API call | `model`, `usage`, `final_output` |
 | `claude.code` | AI harness | dry-run | Plan Claude Code handoff | `changed_files`, `qa_result` |
 | `langgraph.graph` | workflow | dry-run | Plan durable graph workflow and checkpoint | `checkpoint_id` |
-| `mcp.tool` | tool | dry-run, risk-eval | Plan MCP tool call with permission and prompt-injection risk evidence | `tool_name`, `tool_result`, `permission_scope`, `risk_level`, `prompt_injection_risk` |
+| `mcp.tool` | tool | dry-run, risk-eval, policy-gate | Plan MCP tool call with allowlist, permission, and prompt-injection risk evidence | `tool_name`, `tool_result`, `permission_scope`, `risk_level`, `prompt_injection_risk` |
 | `openclaw.gateway` | AI harness | dry-run | Plan local assistant gateway handoff | `channel`, `assistant_result` |
 | `hermes.agent` | AI harness | dry-run | Plan skill-learning agent step | `skill_id`, `agent_result` |
 | `local.classifier` | ML model | dry-run | Plan local risk classification | `classification` |
@@ -112,9 +114,9 @@ not a side conversation.
 
 ## Next Compatibility Work
 
-1. Add explicit MCP server/tool allowlist policy.
-2. Use the `github.actions` preview gate as the design base for a future live
+1. Use the `github.actions` preview gate as the design base for a future live
    dispatch client.
+2. Add packaged demo/install artifacts before adding more adapter families.
 3. Add fixture generation examples for more adapter families.
 4. Add contribution labels for adapter requests.
 5. Add a compatibility badge once live-gated adapters exist.

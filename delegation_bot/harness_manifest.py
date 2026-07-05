@@ -57,6 +57,17 @@ def _optional_list(manifest: Manifest, field: str, errors: ValidationErrors) -> 
     return value if isinstance(value, list) else []
 
 
+def _validate_optional_string_list(value: T.Any, field_path: str, errors: ValidationErrors) -> None:
+    if value is None:
+        return
+    if not isinstance(value, list):
+        errors.append(f"`{field_path}` must be a list when provided")
+        return
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or not item.strip():
+            errors.append(f"`{field_path}[{index}]` must be a non-empty string")
+
+
 def validate_manifest(manifest: Manifest) -> ValidationErrors:
     errors: ValidationErrors = []
 
@@ -164,6 +175,15 @@ def validate_manifest(manifest: Manifest) -> ValidationErrors:
             for field in ("id", "type"):
                 if not isinstance(item.get(field), str) or not item[field].strip():
                     errors.append(f"`evals[{index}].{field}` must be a non-empty string")
+
+    policies = manifest.get("policies") if isinstance(manifest.get("policies"), dict) else {}
+    permissions = policies.get("permissions") if isinstance(policies.get("permissions"), dict) else {}
+    for field in ("allowed_mcp_servers", "allowed_mcp_tools"):
+        _validate_optional_string_list(
+            permissions.get(field),
+            f"policies.permissions.{field}",
+            errors,
+        )
 
     return errors
 

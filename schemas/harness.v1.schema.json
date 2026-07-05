@@ -167,6 +167,28 @@
     },
     "policies": {
       "type": "object",
+      "properties": {
+        "permissions": {
+          "type": "object",
+          "properties": {
+            "allowed_mcp_servers": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "allowed_mcp_tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      },
       "additionalProperties": true
     },
     "outputs": {
