@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import typing as T
 
 from delegation_bot.adapter_sdk import (
@@ -51,6 +52,14 @@ def _preview(value: T.Any, limit: int = 240) -> T.Any:
         text = json.dumps(value, sort_keys=True, default=str)
         return text[:limit]
     return value
+
+
+ISSUE_MARKER_RE = re.compile(r"delegation-bot(?::[A-Za-z0-9_.-]+)+")
+
+
+def _embedded_issue_marker(text: str) -> str | None:
+    match = ISSUE_MARKER_RE.search(text)
+    return match.group(0) if match else None
 
 
 class GitHubIssueDryRunAdapter(ContractBackedDryRunAdapter):
@@ -118,6 +127,10 @@ class GitHubIssueDryRunAdapter(ContractBackedDryRunAdapter):
         return tuple(events)
 
     def issue_marker(self, request: AdapterRequest) -> str:
+        body = _string_input(request, "issue_body")
+        embedded = _embedded_issue_marker(body)
+        if embedded:
+            return embedded
         repository = _string_input(request, "repository", "unknown-repository")
         title = _string_input(request, "issue_title", request.action_id)
         raw = f"{repository}|{title}|{request.action_id}".encode("utf-8")

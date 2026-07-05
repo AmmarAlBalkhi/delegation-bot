@@ -752,3 +752,34 @@ Evidence:
 - `docs/harnessfile-suggest.md`
 - `tests/test_model_suggest_live.py`
 - `tests/test_delegation_cli.py`
+
+## 2026-07-05: Remember Live Feedback Issues
+
+Decision: Link eval feedback drafts to live GitHub issue numbers and URLs when
+prior apply events exist, and allow intentional feedback update lifecycles in
+the duplicate marker eval.
+
+Why: The feedback loop should make the project smarter without creating issue
+noise. If an eval failure already became issue #321, the next matching failure
+should draft an update to #321. This keeps control and learning visible while
+still avoiding duplicate public clutter.
+
+Decision: Delay importing live network dependencies until live GitHub apply or
+live model calls need them.
+
+Why: Read-only commands such as `delegation ledger` should work for first-time
+users and contributors even before optional network dependencies are installed.
+
+Evidence:
+
+- `delegation_bot/eval_feedback.py`
+- `delegation_bot/builtin_adapters.py`
+- `delegation_bot/evals.py`
+- `delegation_bot/github_issue_apply.py`
+- `delegation_bot/model_suggest_live.py`
+- `examples/ledgers/feedback-issue-memory.jsonl`
+- `docs/eval-to-issue-feedback.md`
+- `docs/github-issue-apply.md`
+- `tests/test_eval_feedback.py`
+- `tests/test_evals.py`
+- `tests/test_ledger_fixtures.py`

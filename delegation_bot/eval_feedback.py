@@ -33,6 +33,9 @@ class FeedbackIssueDraft:
     operation: str = "create"
     occurrence_count: int = 1
     existing_feedback_events: int = 0
+    existing_live_issue_events: int = 0
+    live_issue_number: int | None = None
+    live_issue_url: str | None = None
     source_event: JsonMap = field(default_factory=dict)
 
     def to_dict(self) -> JsonMap:
@@ -46,8 +49,23 @@ class FeedbackIssueDraft:
             "operation": self.operation,
             "occurrence_count": self.occurrence_count,
             "existing_feedback_events": self.existing_feedback_events,
+            "existing_live_issue_events": self.existing_live_issue_events,
+            "live_issue_number": self.live_issue_number,
+            "live_issue_url": self.live_issue_url,
             "source_event": self.source_event,
         }
+
+
+@dataclass(frozen=True)
+class FeedbackIssueMemory:
+    existing_feedback_events: int = 0
+    existing_live_issue_events: int = 0
+    live_issue_number: int | None = None
+    live_issue_url: str | None = None
+
+    @property
+    def has_existing_signal(self) -> bool:
+        return self.existing_feedback_events > 0 or self.existing_live_issue_events > 0
 
 
 def default_repository(manifest: Manifest) -> str:
@@ -126,6 +144,9 @@ def issue_body_for_eval(
     operation: str = "create",
     occurrence_count: int = 1,
     existing_feedback_events: int = 0,
+    existing_live_issue_events: int = 0,
+    live_issue_number: int | None = None,
+    live_issue_url: str | None = None,
 ) -> str:
     sanitized = sanitize_details(eval_details)
     run_id = event.get("run_id", "unknown")
@@ -151,6 +172,8 @@ def issue_body_for_eval(
             f"- planned operation: `{operation}`",
             f"- matching eval occurrences in this ledger: `{occurrence_count}`",
             f"- existing feedback events in this ledger: `{existing_feedback_events}`",
+            f"- existing live issue events in this ledger: `{existing_live_issue_events}`",
+            f"- live GitHub issue: {_live_issue_reference(live_issue_number, live_issue_url)}",
             "",
             "## Failure Details",
             "",
@@ -168,6 +191,17 @@ def issue_body_for_eval(
     )
 
 
+def _live_issue_reference(issue_number: int | None, issue_url: str | None) -> str:
+    if issue_number is None and not issue_url:
+        return "`none`"
+    parts: list[str] = []
+    if issue_number is not None:
+        parts.append(f"`#{issue_number}`")
+    if issue_url:
+        parts.append(issue_url)
+    return " ".join(parts)
+
+
 def build_feedback_issue_draft(
     manifest: Manifest,
     event: JsonMap,
@@ -176,6 +210,9 @@ def build_feedback_issue_draft(
     ledger_source: str,
     occurrence_count: int = 1,
     existing_feedback_events: int = 0,
+    existing_live_issue_events: int = 0,
+    live_issue_number: int | None = None,
+    live_issue_url: str | None = None,
 ) -> FeedbackIssueDraft:
     adapter = get_builtin_adapter("github.issue")
     if not adapter:
@@ -185,7 +222,17 @@ def build_feedback_issue_draft(
     harness_id = str(manifest.get("id", "unknown-harness"))
     marker = eval_issue_marker(repository, harness_id, eval_id, eval_details)
     issue_status = "failed" if status == "failed" else "blocked"
-    operation = "update" if occurrence_count > 1 or existing_feedback_events else "create"
+    operation = (
+        "update"
+        if (
+            occurrence_count > 1
+            or existing_feedback_events
+            or existing_live_issue_events
+            or live_issue_number
+            or live_issue_url
+        )
+        else "create"
+    )
     title_prefix = "Update eval" if operation == "update" else "Eval"
     title = f"{title_prefix} {issue_status}: {eval_id}"
     body = issue_body_for_eval(
@@ -197,6 +244,9 @@ def build_feedback_issue_draft(
         operation=operation,
         occurrence_count=occurrence_count,
         existing_feedback_events=existing_feedback_events,
+        existing_live_issue_events=existing_live_issue_events,
+        live_issue_number=live_issue_number,
+        live_issue_url=live_issue_url,
     )
     request = AdapterRequest(
         adapter_id="github.issue",
@@ -223,19 +273,65 @@ def build_feedback_issue_draft(
         operation=operation,
         occurrence_count=occurrence_count,
         existing_feedback_events=existing_feedback_events,
+        existing_live_issue_events=existing_live_issue_events,
+        live_issue_number=live_issue_number,
+        live_issue_url=live_issue_url,
         source_event=event,
     )
 
 
-def _existing_feedback_marker_counts(events: T.Sequence[JsonMap]) -> dict[str, int]:
-    counts: dict[str, int] = {}
+def _existing_feedback_memory(events: T.Sequence[JsonMap]) -> dict[str, FeedbackIssueMemory]:
+    working: dict[str, JsonMap] = {}
+
+    def ensure(marker: str) -> JsonMap:
+        return working.setdefault(
+            marker,
+            {
+                "existing_feedback_events": 0,
+                "existing_live_issue_events": 0,
+                "live_issue_number": None,
+                "live_issue_url": None,
+            },
+        )
+
     for event in events:
         details = event.get("details") if isinstance(event.get("details"), dict) else {}
         feedback = details.get("feedback") if isinstance(details.get("feedback"), dict) else {}
         marker = feedback.get("marker")
         if isinstance(marker, str) and marker.strip():
-            counts[marker] = counts.get(marker, 0) + 1
-    return counts
+            ensure(marker)["existing_feedback_events"] += 1
+
+        if event.get("type") not in {"github.issue.created", "github.issue.updated"}:
+            continue
+        issue_marker = details.get("issue_marker")
+        if not isinstance(issue_marker, str) or not issue_marker.strip():
+            continue
+        entry = ensure(issue_marker)
+        entry["existing_live_issue_events"] += 1
+        issue_number = _issue_number(details.get("issue_number"))
+        issue_url = details.get("issue_url") if isinstance(details.get("issue_url"), str) else None
+        if issue_number is not None:
+            entry["live_issue_number"] = issue_number
+        if issue_url:
+            entry["live_issue_url"] = issue_url
+
+    return {
+        marker: FeedbackIssueMemory(
+            existing_feedback_events=int(entry["existing_feedback_events"]),
+            existing_live_issue_events=int(entry["existing_live_issue_events"]),
+            live_issue_number=T.cast(int | None, entry["live_issue_number"]),
+            live_issue_url=T.cast(str | None, entry["live_issue_url"]),
+        )
+        for marker, entry in working.items()
+    }
+
+
+def _issue_number(value: T.Any) -> int | None:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return None
 
 
 def build_feedback_issue_drafts(
@@ -252,7 +348,7 @@ def build_feedback_issue_drafts(
 
     target_repository = repository or default_repository(manifest)
     harness_id = str(manifest.get("id", "unknown-harness"))
-    existing_feedback_counts = _existing_feedback_marker_counts(events)
+    existing_feedback_memory = _existing_feedback_memory(events)
     grouped: dict[str, list[JsonMap]] = {}
 
     for event in events:
@@ -266,11 +362,11 @@ def build_feedback_issue_drafts(
     for marker, matching_events in grouped.items():
         latest_event = matching_events[-1]
         _, status, _, _ = _eval_event_payload(latest_event)
-        existing_feedback_events = existing_feedback_counts.get(marker, 0)
+        memory = existing_feedback_memory.get(marker, FeedbackIssueMemory())
         if (
             status == "blocked"
             and len(matching_events) < blocked_repeat_threshold
-            and existing_feedback_events == 0
+            and not memory.has_existing_signal
         ):
             continue
         drafts.append(
@@ -280,7 +376,10 @@ def build_feedback_issue_drafts(
                 repository=target_repository,
                 ledger_source=ledger_source,
                 occurrence_count=len(matching_events),
-                existing_feedback_events=existing_feedback_events,
+                existing_feedback_events=memory.existing_feedback_events,
+                existing_live_issue_events=memory.existing_live_issue_events,
+                live_issue_number=memory.live_issue_number,
+                live_issue_url=memory.live_issue_url,
             )
         )
     return drafts
@@ -322,7 +421,7 @@ def build_feedback_issue_drafts_from_results(
 
     target_repository = repository or default_repository(manifest)
     harness_id = str(manifest.get("id", "unknown-harness"))
-    existing_feedback_counts = _existing_feedback_marker_counts(ledger_events)
+    existing_feedback_memory = _existing_feedback_memory(ledger_events)
     historical_eval_counts = _historical_eval_marker_counts(
         target_repository,
         harness_id,
@@ -346,11 +445,11 @@ def build_feedback_issue_drafts_from_results(
         eval_id, status, _, eval_details = _eval_event_payload(event)
         marker = eval_issue_marker(target_repository, harness_id, eval_id, eval_details)
         occurrence_count = historical_eval_counts.get(marker, 0) + 1
-        existing_feedback_events = existing_feedback_counts.get(marker, 0)
+        memory = existing_feedback_memory.get(marker, FeedbackIssueMemory())
         if (
             status == "blocked"
             and occurrence_count < blocked_repeat_threshold
-            and existing_feedback_events == 0
+            and not memory.has_existing_signal
         ):
             continue
         drafts.append(
@@ -360,7 +459,10 @@ def build_feedback_issue_drafts_from_results(
                 repository=target_repository,
                 ledger_source=ledger_source,
                 occurrence_count=occurrence_count,
-                existing_feedback_events=existing_feedback_events,
+                existing_feedback_events=memory.existing_feedback_events,
+                existing_live_issue_events=memory.existing_live_issue_events,
+                live_issue_number=memory.live_issue_number,
+                live_issue_url=memory.live_issue_url,
             )
         )
     return drafts
@@ -416,6 +518,9 @@ def feedback_drafts_to_events(
                 "operation": draft.operation,
                 "occurrence_count": draft.occurrence_count,
                 "existing_feedback_events": draft.existing_feedback_events,
+                "existing_live_issue_events": draft.existing_live_issue_events,
+                "live_issue_number": draft.live_issue_number,
+                "live_issue_url": draft.live_issue_url,
                 "source_sequence": draft.source_event.get("sequence"),
             }
             details["adapter_result"] = {
@@ -456,6 +561,8 @@ def render_feedback_report(drafts: T.Sequence[FeedbackIssueDraft]) -> str:
         lines.append(f"  eval: {draft.eval_id} ({draft.status})")
         lines.append(f"  operation: {draft.operation}")
         lines.append(f"  occurrences: {draft.occurrence_count}")
+        if draft.live_issue_number is not None or draft.live_issue_url:
+            lines.append(f"  live issue: {_live_issue_reference(draft.live_issue_number, draft.live_issue_url)}")
         lines.append(f"  marker: {draft.marker}")
         lines.append(f"  action: {draft.adapter_result.action_id}")
     return "\n".join(lines)

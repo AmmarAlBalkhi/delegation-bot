@@ -84,3 +84,9 @@ The project is currently pre-release.
   envelope validation, Harnessfile validation, and dry-run planning.
 - Made default `delegation suggest` output shorter so full YAML appears only
   with `--yaml` or `--output`.
+- Linked eval feedback update drafts to live GitHub issue numbers and URLs so
+  repeated failures reuse existing issues.
+- Added a feedback issue memory ledger fixture and duplicate-marker handling for
+  intentional feedback update lifecycles.
+- Made read-only CLI commands avoid importing live network dependencies until
+  a live apply or live model call needs them.

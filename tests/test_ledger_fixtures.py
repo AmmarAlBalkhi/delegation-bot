@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from delegation_bot.eval_feedback import build_feedback_issue_drafts, render_feedback_report
 from delegation_bot.evals import eval_ledger_is_valid, eval_no_duplicate_issue_markers, eval_required_adapter_evidence
 from delegation_bot.ledger import LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
 
@@ -54,6 +55,31 @@ class LedgerFixtureTests(unittest.TestCase):
         self.assertEqual(view.total_events, 6)
         self.assertIn("github.issue.created", text)
         self.assertIn("issue_number=123", text)
+
+    def test_feedback_issue_memory_fixture_reuses_live_issue_link(self) -> None:
+        events = load_ledger_events(FIXTURES / "feedback-issue-memory.jsonl")
+        manifest = {
+            "id": "feedback-memory-fixture",
+            "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+        }
+        view = build_ledger_view(events, ledger_filter=LedgerFilter(adapter="github.issue"))
+        text = render_ledger_view(view)
+
+        drafts = build_feedback_issue_drafts(
+            manifest,
+            events,
+            repository="AmmarAlBalkhi/delegation-bot",
+            ledger_source="examples/ledgers/feedback-issue-memory.jsonl",
+        )
+        report = render_feedback_report(drafts)
+
+        self.assertEqual(eval_ledger_is_valid(events).status, "passed")
+        self.assertEqual(eval_no_duplicate_issue_markers(events).status, "passed")
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(drafts[0].operation, "update")
+        self.assertEqual(drafts[0].live_issue_number, 321)
+        self.assertIn("live_issue_number=321", text)
+        self.assertIn("live issue: `#321` https://github.com/AmmarAlBalkhi/delegation-bot/issues/321", report)
 
 
 if __name__ == "__main__":

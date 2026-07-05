@@ -155,6 +155,37 @@ class EvalTests(unittest.TestCase):
         self.assertEqual(result.status, "failed")
         self.assertEqual(result.details["duplicates"], ["delegation-bot:abc123"])
 
+    def test_duplicate_issue_marker_allows_feedback_update_lifecycle(self) -> None:
+        marker = "delegation-bot:eval:required_adapter_evidence:abc123"
+        result = eval_no_duplicate_issue_markers(
+            [
+                {
+                    **VALID_LEDGER[0],
+                    "sequence": 1,
+                    "type": "github.issue.planned",
+                    "action_id": "feedback.create.required_adapter_evidence.abc123",
+                    "details": {"issue_marker": marker, "feedback": {"marker": marker, "operation": "create"}},
+                },
+                {
+                    **VALID_LEDGER[0],
+                    "sequence": 2,
+                    "type": "github.issue.created",
+                    "status": "executed",
+                    "action_id": "feedback.create.required_adapter_evidence.abc123",
+                    "details": {"issue_marker": marker, "issue_number": 17},
+                },
+                {
+                    **VALID_LEDGER[0],
+                    "sequence": 3,
+                    "type": "github.issue.planned",
+                    "action_id": "feedback.update.required_adapter_evidence.abc123",
+                    "details": {"issue_marker": marker, "feedback": {"marker": marker, "operation": "update"}},
+                },
+            ]
+        )
+
+        self.assertEqual(result.status, "passed")
+
     def test_required_adapter_evidence_passes_for_sdk_adapter_result(self) -> None:
         result = eval_required_adapter_evidence(ADAPTER_RESULT_LEDGER)
 

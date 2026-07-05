@@ -57,6 +57,8 @@ class EvalFeedbackTests(unittest.TestCase):
         self.assertNotIn("secret-value", drafts[0].body)
         self.assertEqual(drafts[0].adapter_result.status, "planned")
         self.assertIn("github.issue", drafts[0].adapter_result.outputs)
+        self.assertEqual(drafts[0].adapter_result.evidence["issue_marker"], drafts[0].marker)
+        self.assertEqual(drafts[0].adapter_result.outputs["github.issue"]["issue_marker"], drafts[0].marker)
         self.assertEqual(drafts[0].operation, "create")
         self.assertEqual(drafts[0].occurrence_count, 1)
 
@@ -135,6 +137,50 @@ class EvalFeedbackTests(unittest.TestCase):
         self.assertEqual(drafts[0].operation, "update")
         self.assertEqual(drafts[0].existing_feedback_events, 1)
         self.assertIn("existing feedback events in this ledger: `1`", drafts[0].body)
+
+    def test_live_feedback_issue_memory_turns_later_draft_into_update(self) -> None:
+        first_draft = build_feedback_issue_drafts(MANIFEST, [BASE_EVENT], ledger_source="ledger.jsonl")[0]
+        applied_event = {
+            "run_id": "run-1",
+            "sequence": 2,
+            "timestamp": "2026-07-04T08:02:00+00:00",
+            "type": "github.issue.created",
+            "status": "executed",
+            "message": "GitHub Issue created.",
+            "action_id": first_draft.adapter_result.action_id,
+            "details": {
+                "adapter": "github.issue",
+                "repository": "AmmarAlBalkhi/delegation-bot",
+                "issue_marker": first_draft.marker,
+                "issue_number": 17,
+                "issue_url": "https://github.com/AmmarAlBalkhi/delegation-bot/issues/17",
+            },
+        }
+
+        drafts = build_feedback_issue_drafts(
+            MANIFEST,
+            [BASE_EVENT, applied_event],
+            ledger_source="ledger.jsonl",
+        )
+        events = feedback_drafts_to_events(
+            drafts,
+            run_id="run-1",
+            start_sequence=3,
+            timestamp="2026-07-04T08:03:00+00:00",
+        )
+        feedback_details = events[0].details["feedback"]
+        report = render_feedback_report(drafts)
+
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(drafts[0].operation, "update")
+        self.assertEqual(drafts[0].existing_live_issue_events, 1)
+        self.assertEqual(drafts[0].live_issue_number, 17)
+        self.assertEqual(drafts[0].live_issue_url, "https://github.com/AmmarAlBalkhi/delegation-bot/issues/17")
+        self.assertIn("existing live issue events in this ledger: `1`", drafts[0].body)
+        self.assertIn("live GitHub issue: `#17` https://github.com/AmmarAlBalkhi/delegation-bot/issues/17", drafts[0].body)
+        self.assertEqual(feedback_details["live_issue_number"], 17)
+        self.assertEqual(feedback_details["live_issue_url"], "https://github.com/AmmarAlBalkhi/delegation-bot/issues/17")
+        self.assertIn("live issue: `#17` https://github.com/AmmarAlBalkhi/delegation-bot/issues/17", report)
 
     def test_feedback_drafts_can_be_appended_as_valid_ledger_events(self) -> None:
         drafts = build_feedback_issue_drafts(MANIFEST, [BASE_EVENT], ledger_source="ledger.jsonl")
