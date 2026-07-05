@@ -65,6 +65,7 @@ Live model-backed suggest is allowed only when the user explicitly opts in:
 
 ```text
 delegation suggest "prepare this repo for release" --draft-source model --provider openai --allow-live-model
+delegation suggest "prepare this repo for safe AI delegation" --draft-source model --provider ollama --allow-live-model
 ```
 
 Playbooks remain another no-blank-page path:

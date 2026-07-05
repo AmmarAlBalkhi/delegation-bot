@@ -190,6 +190,47 @@ class AdapterSdkTests(unittest.TestCase):
         self.assertEqual(result.evidence["prompt_injection_risk"], "high")
         self.assertEqual(result.evidence["recommended_gate"], "approval_required")
 
+    def test_local_classifier_profile_recommends_gate_from_policy_terms(self) -> None:
+        contract = get_adapter_contract("local.classifier")
+        adapter = get_builtin_adapter("local.classifier")
+        self.assertIsNotNone(contract)
+        self.assertIsNotNone(adapter)
+        request = adapter_request(
+            "local.classifier",
+            profile="release-readiness",
+            plan="Publish the package and create the release tag.",
+            policy="Require approval before release publication.",
+        )
+
+        result = adapter.plan(request) if adapter else None
+        errors = validate_adapter_result(contract, result) if contract and result else ["missing result"]
+
+        self.assertEqual(errors, [])
+        self.assertEqual(result.outputs["classification"]["label"], "high")
+        self.assertEqual(result.outputs["classification"]["policy_profile"], "release-readiness")
+        self.assertEqual(result.outputs["classification"]["recommended_gate"], "approval_required")
+        self.assertIn("publish", result.outputs["classification"]["matched_terms"]["approval_required"])
+        self.assertEqual(result.evidence["recommended_gate"], "approval_required")
+
+    def test_local_classifier_profile_keeps_low_risk_work_lightweight(self) -> None:
+        contract = get_adapter_contract("local.classifier")
+        adapter = get_builtin_adapter("local.classifier")
+        self.assertIsNotNone(contract)
+        self.assertIsNotNone(adapter)
+        request = adapter_request(
+            "local.classifier",
+            plan="Summarize a dry-run ledger for a local demo.",
+            policy="Read-only local evidence summary.",
+        )
+
+        result = adapter.plan(request) if adapter else None
+        errors = validate_adapter_result(contract, result) if contract and result else ["missing result"]
+
+        self.assertEqual(errors, [])
+        self.assertEqual(result.outputs["classification"]["label"], "low")
+        self.assertEqual(result.outputs["classification"]["recommended_gate"], "none")
+        self.assertEqual(result.evidence["policy_profile"], "delegation.default")
+
     def test_new_harness_dry_run_adapters_satisfy_contracts_without_network(self) -> None:
         requests = {
             "mcp.tool": adapter_request(

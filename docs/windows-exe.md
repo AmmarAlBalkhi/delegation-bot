@@ -21,7 +21,7 @@ delegation demo
 This is the right foundation. The console command and QA suite should stay
 stable before we ship a standalone executable.
 
-## Future EXE Path
+## Build Script
 
 The project now has an optional packaging group:
 
@@ -29,20 +29,46 @@ The project now has an optional packaging group:
 python -m pip install -e ".[exe]"
 ```
 
-That installs PyInstaller for local packaging experiments. A future Windows
-build command should create:
+That installs PyInstaller for local packaging experiments. The Windows build
+script is:
+
+```powershell
+.\scripts\build-windows-exe.ps1 -Python python -InstallDependencies
+```
+
+The script creates:
 
 ```text
 dist/delegation.exe
 ```
 
-Expected smoke test:
+It also runs this safe smoke test unless `-SkipSmoke` is passed:
 
 ```powershell
 dist\delegation.exe demo --ledger .delegation\exe-smoke.jsonl
-dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --output Harnessfile.yaml
-dist\delegation.exe validate Harnessfile.yaml
+dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --output .delegation\exe-Harnessfile.yaml --force
+dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
 ```
+
+The executable build bundles `examples/`, `playbooks/`, `schemas/`, `LICENSE`,
+`NOTICE`, and `README.md` so the demo, catalog, fixture, and doctor paths do
+not depend on a full source checkout.
+
+## Local Verification
+
+Local build verification on 2026-07-05:
+
+```text
+script: .\scripts\build-windows-exe.ps1 -InstallDependencies
+python: 3.12.13
+platform: Windows 11
+artifact: dist\delegation.exe
+smoke: demo, init, validate passed
+```
+
+This proves the build path works on a development machine. It is not yet a
+public release artifact; publishing still needs a clean release host, tag, and
+checksums.
 
 ## Why PyInstaller
 
@@ -62,7 +88,7 @@ Do not publish an `.exe` until:
 
 - `python scripts/qa.py` passes
 - `python scripts/package_smoke.py` passes
-- the executable smoke test passes on Windows
+- `.\scripts\build-windows-exe.ps1 -InstallDependencies` passes on Windows
 - the artifact is built from a tagged commit
 - docs explain that live writes remain gated
 - the executable version matches `pyproject.toml`
@@ -72,5 +98,5 @@ Do not publish an `.exe` until:
 
 Source check date: 2026-07-05.
 
-- [PyInstaller documentation](https://pyinstaller.org/)
+- [PyInstaller usage documentation](https://pyinstaller.org/en/stable/usage.html)
 - [Python zipapp documentation](https://docs.python.org/3/library/zipapp.html)

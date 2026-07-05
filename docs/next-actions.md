@@ -32,19 +32,26 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Add local-model provider design for `delegation suggest` and
-   `local.classifier`.
-2. Use the new `github.actions` dispatch preview gate to design the future live
+1. Use the new `github.actions` dispatch preview gate to design the future live
    dispatch client without enabling it yet.
-3. Add a Windows `.exe` build script after the package smoke path stays green.
-4. Open the first small public roadmap issue set from
+2. Run the Windows `.exe` build script on a clean Windows release host and
+   record the executable smoke evidence.
+3. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
-5. Design live feedback issue comments or close actions behind explicit gates.
+4. Design live feedback issue comments or close actions behind explicit gates.
+5. Add a local-model explanation path for classifier recommendations without
+   making the model authoritative.
 
 ## Completed Recently
 
 - Added `delegation demo`, `delegation init`, and an installed-package smoke
   check so first-run users can see the product and create a Harnessfile quickly.
+- Added opt-in Ollama-backed `delegation suggest` for local Harnessfile drafts
+  that still pass through deterministic validation and dry-run ledgers.
+- Added a Windows `.exe` build script with bundled runtime assets and safe
+  demo/init/validate smoke checks.
+- Added deterministic local-classifier policy profiles with recommended gate
+  evidence.
 - Added `delegation mcp-gate`, explicit MCP server/tool allowlist policy,
   a 60-second demo path, and a Windows EXE packaging plan.
 - Added MCP tool permission scope, risk-level, prompt-injection risk evidence,

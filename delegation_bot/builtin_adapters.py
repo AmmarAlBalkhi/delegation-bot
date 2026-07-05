@@ -70,6 +70,50 @@ PROMPT_ATTACK_RE = re.compile(
     r"(disregard|ignore|override).{0,40}(instruction|policy|previous|system)|system prompt|developer message",
     re.IGNORECASE,
 )
+LOCAL_PROFILE_DEFAULT = "delegation.default"
+LOCAL_CLASSIFIER_PROFILES: dict[str, dict[str, tuple[str, ...]]] = {
+    LOCAL_PROFILE_DEFAULT: {
+        "approval_required_terms": (
+            "credential",
+            "delete",
+            "deploy",
+            "external",
+            "merge",
+            "production",
+            "publish",
+            "secret",
+            "token",
+            "write",
+        ),
+        "review_terms": ("agent", "github", "mcp", "model", "network", "pull request", "workflow"),
+    },
+    "release-readiness": {
+        "approval_required_terms": (
+            "credential",
+            "deploy",
+            "package",
+            "production",
+            "publish",
+            "release",
+            "secret",
+            "tag",
+            "token",
+        ),
+        "review_terms": ("changelog", "license", "package", "test", "version", "workflow"),
+    },
+    "code-review": {
+        "approval_required_terms": (
+            "auth",
+            "credential",
+            "delete",
+            "permission",
+            "secret",
+            "security",
+            "token",
+        ),
+        "review_terms": ("diff", "dependency", "mcp", "model", "test", "workflow"),
+    },
+}
 
 
 def _embedded_issue_marker(text: str) -> str | None:
@@ -601,37 +645,92 @@ class LocalClassifierDryRunAdapter(ContractBackedDryRunAdapter):
     def __init__(self) -> None:
         super().__init__(_contract_or_raise("local.classifier"))
 
-    def classification(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> str:
-        if missing_inputs:
-            return "blocked"
+    def assessment(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> JsonMap:
+        profile_id = _string_input(request, "profile", LOCAL_PROFILE_DEFAULT)
+        profile = LOCAL_CLASSIFIER_PROFILES.get(profile_id) or LOCAL_CLASSIFIER_PROFILES[LOCAL_PROFILE_DEFAULT]
         raw = f"{_preview(_input_value(request, 'plan', ''))} {_preview(_input_value(request, 'policy', ''))}".lower()
-        if any(term in raw for term in ("deploy", "secret", "production", "external", "write")):
-            return "medium"
-        return "low"
+        approval_matches = _matched_terms(raw, profile["approval_required_terms"])
+        review_matches = _matched_terms(raw, profile["review_terms"])
+        reasons: list[str] = []
+
+        if missing_inputs:
+            classification = "blocked"
+            recommended_gate = "fix_missing_inputs"
+            reasons.append("required classifier inputs are missing")
+        elif approval_matches:
+            classification = "high"
+            recommended_gate = "approval_required"
+            reasons.append("matched approval-required policy terms")
+        elif review_matches:
+            classification = "medium"
+            recommended_gate = "review_recommended"
+            reasons.append("matched review policy terms")
+        else:
+            classification = "low"
+            recommended_gate = "none"
+            reasons.append("no profile risk terms matched")
+
+        if profile_id not in LOCAL_CLASSIFIER_PROFILES:
+            reasons.append(f"unknown profile `{profile_id}`; used {LOCAL_PROFILE_DEFAULT}")
+            profile_id = LOCAL_PROFILE_DEFAULT
+
+        score = {"low": 0.2, "medium": 0.6, "high": 0.9, "blocked": 0.0}.get(classification, 0.5)
+        return {
+            "classification": classification,
+            "score": score,
+            "profile": profile_id,
+            "recommended_gate": recommended_gate,
+            "reasons": reasons,
+            "matched_terms": {
+                "approval_required": approval_matches,
+                "review": review_matches,
+            },
+        }
 
     def build_outputs(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> JsonMap:
-        classification = self.classification(request, missing_inputs)
-        risk_score = {"low": 0.2, "medium": 0.6, "blocked": 0.0}.get(classification, 0.5)
+        assessment = self.assessment(request, missing_inputs)
+        profile_id = str(assessment["profile"])
+        profile = LOCAL_CLASSIFIER_PROFILES[profile_id]
         return {
             "risk_score": {
-                "score": risk_score,
+                "score": assessment["score"],
                 "scale": "0.0-1.0",
                 "dry_run": True,
                 "missing_inputs": list(missing_inputs),
             },
             "classification": {
-                "label": classification,
+                "label": assessment["classification"],
+                "recommended_gate": assessment["recommended_gate"],
+                "policy_profile": profile_id,
+                "reasons": assessment["reasons"],
+                "matched_terms": assessment["matched_terms"],
                 "plan_preview": _preview(_input_value(request, "plan", "")),
                 "policy_preview": _preview(_input_value(request, "policy", "")),
+                "dry_run": True,
+            },
+            "policy_profile": {
+                "id": profile_id,
+                "source": "deterministic",
+                "approval_required_terms": list(profile["approval_required_terms"]),
+                "review_terms": list(profile["review_terms"]),
                 "dry_run": True,
             },
         }
 
     def build_evidence(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> JsonMap:
-        evidence: JsonMap = {"classification": self.classification(request, missing_inputs)}
+        assessment = self.assessment(request, missing_inputs)
+        evidence: JsonMap = {
+            "classification": assessment["classification"],
+            "policy_profile": assessment["profile"],
+            "recommended_gate": assessment["recommended_gate"],
+        }
         if missing_inputs:
             evidence["missing_inputs"] = list(missing_inputs)
         return evidence
+
+
+def _matched_terms(text: str, terms: T.Iterable[str]) -> list[str]:
+    return [term for term in terms if term in text]
 
 
 class LangGraphDryRunAdapter(ContractBackedDryRunAdapter):

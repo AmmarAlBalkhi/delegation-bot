@@ -941,3 +941,59 @@ Evidence:
 - `docs/release.md`
 - `docs/windows-exe.md`
 - `tests/test_delegation_cli.py`
+
+## 2026-07-05: Add Local Model Harnessfile Drafting
+
+Decision: Add `ollama` as an opt-in live model provider for `delegation
+suggest`.
+
+Why: Delegation Bot should enable AI without forcing every AI draft through a
+hosted provider. Ollama gives privacy-sensitive users a local model path while
+the control plane keeps the same trust boundary: the model proposes, then
+Delegation Bot validates, dry-runs, writes the ledger, and runs evals.
+
+Decision: Keep local model drafting behind `--allow-live-model`.
+
+Why: A local model call has no hosted API key, but it still reads prompt
+context, can be slow, and can return bad output. The explicit flag keeps the
+product honest: no hidden model calls, even local ones.
+
+Evidence:
+
+- `delegation_bot/model_suggest_live.py`
+- `delegation_bot/model_suggest_fixtures.py`
+- `delegation_bot/cli.py`
+- `schemas/harness-suggestion-draft.v1.schema.json`
+- `docs/model-backed-suggest.md`
+- `docs/harnessfile-suggest.md`
+- `tests/test_model_suggest_live.py`
+- `tests/test_delegation_cli.py`
+
+## 2026-07-05: Add Windows EXE Build Script
+
+Decision: Add `scripts\build-windows-exe.ps1` as the first executable build
+path.
+
+Why: The product should become easy to try without forcing new users to learn
+Python packaging first. A Windows `.exe` supports that goal, but it must still
+ship the same safe first-run loop: demo, starter Harnessfile init, validation,
+and no live writes by default.
+
+Evidence: The script builds `dist\delegation.exe` with PyInstaller, bundles
+runtime assets used by demos and fixtures, and runs safe demo/init/validate
+smoke checks before reporting success. A local Windows build passed on
+2026-07-05.
+
+## 2026-07-05: Add Local Classifier Policy Profiles
+
+Decision: Add deterministic policy profiles to `local.classifier`.
+
+Why: Delegation Bot should enable local AI and local classification, but the
+trust boundary must stay clear. A classifier can explain risk and recommend a
+gate, while deterministic profiles, approval gates, ledger evidence, and evals
+remain responsible for trust decisions.
+
+Evidence: `local.classifier` now emits `policy_profile`, `recommended_gate`,
+matched terms, and reasons. Release-readiness paths use a stricter
+`release-readiness` profile, while general first-run paths use
+`delegation.default`.

@@ -22,6 +22,7 @@ Current package facts:
 - console command: `delegation`
 - packaging style: setuptools with modern `pyproject.toml`
 - optional EXE packaging tools: `python -m pip install -e ".[exe]"`
+- Windows EXE build script: `.\scripts\build-windows-exe.ps1`
 - import namespace: `delegation_bot`
 
 The code is still alpha. The package metadata exists so contributors and early
@@ -52,6 +53,8 @@ Before a public package release:
 - confirm `LICENSE`, `NOTICE`, and `pyproject.toml` agree
 - confirm GitHub Actions uploads ledgers, generated adapter fixtures, QA logs,
   and release metadata
+- confirm `.\scripts\build-windows-exe.ps1 -InstallDependencies` passes on
+  Windows before publishing any standalone executable
 - confirm `CHANGELOG.md` has a release entry
 - rehearse the package on TestPyPI
 - create a git tag

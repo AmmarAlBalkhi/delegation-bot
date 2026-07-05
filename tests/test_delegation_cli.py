@@ -225,6 +225,61 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(json.loads(ledger_lines[0])["type"], "plan.compiled")
         self.assertTrue(fetch_mock.called)
 
+    def test_suggest_model_can_use_mocked_ollama_provider(self) -> None:
+        suggestion = build_suggestion("prepare this repo for release")
+        manifest = dict(suggestion.manifest)
+        manifest["metadata"] = {**manifest["metadata"], "suggested_by": "delegation.suggest.model"}
+        draft = ModelSuggestionDraft(
+            goal="prepare this repo for release",
+            provider="ollama",
+            model="llama-test",
+            rationale="Mocked local model draft.",
+            manifest=manifest,
+            safety_notes=("Dry-run first.",),
+            validation_expectations=("Harnessfile validates.",),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            harnessfile = Path(tmpdir) / "local.yaml"
+            ledger = Path(tmpdir) / "local.jsonl"
+            with patch("delegation_bot.cli.build_live_model_config") as config_mock, patch(
+                "delegation_bot.cli.fetch_live_model_suggestion", return_value=draft
+            ) as fetch_mock, redirect_stdout(io.StringIO()) as output:
+                config_mock.return_value = object()
+                status = main(
+                    [
+                        "suggest",
+                        "prepare this repo for release",
+                        "--draft-source",
+                        "model",
+                        "--provider",
+                        "ollama",
+                        "--allow-live-model",
+                        "--model",
+                        "llama-test",
+                        "--base-url",
+                        "http://127.0.0.1:11434",
+                        "--output",
+                        str(harnessfile),
+                        "--plan",
+                        "--ledger",
+                        str(ledger),
+                    ]
+                )
+            ledger_lines = ledger.read_text(encoding="utf-8").splitlines()
+
+        self.assertEqual(status, 0)
+        self.assertIn("Live ollama model draft", output.getvalue())
+        self.assertEqual(json.loads(ledger_lines[0])["type"], "plan.compiled")
+        self.assertTrue(fetch_mock.called)
+
+    def test_fixture_mode_rejects_ollama_without_network(self) -> None:
+        with redirect_stderr(io.StringIO()) as error:
+            status = main(["suggest", "prepare this repo for release", "--draft-source", "fixture", "--provider", "ollama"])
+
+        self.assertEqual(status, 1)
+        self.assertIn("no-network fixtures", error.getvalue())
+
     def test_promote_example_reads_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"

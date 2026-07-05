@@ -96,6 +96,12 @@ The project is currently pre-release.
   reports, plus a 60-second demo guide and Windows EXE packaging plan.
 - Added `delegation demo`, `delegation init`, and an installed-package demo
   smoke test to make first-run setup faster and more production-like.
+- Added opt-in Ollama-backed `delegation suggest` so local models can draft
+  Harnessfiles through the same validation and dry-run ledger path.
+- Added a Windows `.exe` build script with bundled runtime assets and safe
+  demo/init/validate smoke checks.
+- Added deterministic local-classifier policy profiles with recommended gate
+  evidence.
 - Made read-only CLI commands avoid importing live network dependencies until
   a live apply or live model call needs them.
 - Added a researched adapter candidate matrix for prioritizing real-world

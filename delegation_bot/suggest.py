@@ -307,7 +307,7 @@ def _release_readiness_manifest(goal: str, repository: str, owner: str) -> Manif
             "release-readiness",
             "Release readiness suggestion drafted without live model or GitHub writes.",
         ),
-        _risk_executor("Verify release risk before any publication step."),
+        _risk_executor("Verify release risk before any publication step.", profile="release-readiness"),
         {
             "id": "qa_workflow",
             "kind": "workflow",
@@ -501,7 +501,7 @@ def _echo_executor(label: str, message: str) -> dict[str, T.Any]:
     }
 
 
-def _risk_executor(plan: str) -> dict[str, T.Any]:
+def _risk_executor(plan: str, *, profile: str = "delegation.default") -> dict[str, T.Any]:
     return {
         "id": "risk_classifier",
         "kind": "ml_model",
@@ -509,6 +509,7 @@ def _risk_executor(plan: str) -> dict[str, T.Any]:
         "model": "local_policy_model",
         "purpose": "Classify plan risk before execution.",
         "inputs": {
+            "profile": profile,
             "plan": plan,
             "policy": "Require approvals for agent execution, workflows, pull requests, and external messages.",
         },

@@ -97,6 +97,10 @@ live.
 `prompt_injection_risk` evidence so tool calls can be reviewed before any live
 tool invocation.
 
+`local.classifier` now includes deterministic `policy_profile` and
+`recommended_gate` evidence so local risk review can help users without letting
+AI approve itself.
+
 ## Design Notes
 
 Good adapter contracts should be boring and precise.
@@ -128,9 +132,10 @@ The adapter SDK now exists, the dry-run planner uses SDK-backed adapter results,
 the ledger viewer can inspect that evidence, and `required_adapter_evidence` can
 judge it. Dry-run adapters now exist for every built-in contract.
 
-The next implementation step is to expand usage around those adapters:
+The next implementation steps are to expand usage around those adapters:
 
-1. add explicit MCP server/tool allowlist policy
-2. use `github.actions` dispatch previews to design a future live client
-3. add playbook examples that use adapter requirements
+1. use `github.actions` dispatch previews to design a future live client
+2. add local-model explanations for classifier recommendations without making
+   the model authoritative
+3. add clean release-host evidence for the Windows executable path
 4. keep live execution behind policy, approval, and eval gates

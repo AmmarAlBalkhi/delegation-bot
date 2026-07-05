@@ -105,6 +105,7 @@ executors:
     model: local_policy_model
     purpose: Classify whether the repair can stay in draft mode or needs stronger approval.
     inputs:
+      profile: delegation.default
       plan: Diagnose failing CI and propose a scoped repair.
       policy: Require approval for workflow changes, agent execution, and pull requests.
 

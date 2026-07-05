@@ -191,6 +191,7 @@ executors:
     model: local_policy_model
     purpose: Classify plan risk before execution.
     inputs:
+      profile: delegation.default
       plan: Coordinate humans, agents, workflows, and tool calls through dry-run evidence.
       policy: Require approvals for agent execution, pull requests, external messages, and secret access.
 

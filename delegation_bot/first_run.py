@@ -210,6 +210,7 @@ def build_demo_manifest(*, repository: str = DEFAULT_REPOSITORY, owner: str = "m
                 "model": "local_policy_model",
                 "purpose": "Classify mission risk before any live execution.",
                 "inputs": {
+                    "profile": "delegation.default",
                     "plan": "Preview agent planning, MCP tools, and workflow dispatch with ledger evidence.",
                     "policy": "Require approval before live writes, tool execution, workflow dispatch, or external messages.",
                 },

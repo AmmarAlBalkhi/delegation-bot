@@ -13,7 +13,8 @@ from delegation_bot.harness_manifest import Manifest, validate_manifest
 
 JsonMap = dict[str, T.Any]
 FIXTURE_VERSION = "delegation.ai/harness-suggestion-draft/v1"
-SUPPORTED_PROVIDERS = ("openai", "anthropic")
+FIXTURE_PROVIDERS = ("openai", "anthropic")
+SUPPORTED_PROVIDERS = ("openai", "anthropic", "ollama", "local")
 SUPPORTED_SUGGESTED_BY = ("delegation.suggest.model_fixture", "delegation.suggest.model")
 DEFAULT_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "examples" / "model-suggestions"
 
@@ -66,6 +67,10 @@ def load_model_suggestion_fixture(
     *,
     root: Path | None = None,
 ) -> ModelSuggestionDraft:
+    if provider not in FIXTURE_PROVIDERS:
+        raise ModelSuggestionFixtureError(
+            f"No no-network fixture provider `{provider}`. Fixture providers: {', '.join(FIXTURE_PROVIDERS)}."
+        )
     path = fixture_path(provider, template_id, root=root)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))

@@ -136,8 +136,11 @@ Delegation Bot is pre-release, but the foundation is working:
 - preview-first live GitHub Issue apply
 - preview-first GitHub Actions dispatch gate
 - MCP tool permission and prompt-injection risk evidence
-- no-network and opt-in live model-backed Harnessfile suggestions
+- deterministic local-classifier policy profiles
+- no-network and opt-in live model-backed Harnessfile suggestions for OpenAI,
+  Anthropic, and Ollama
 - package metadata for the `delegation` console command
+- a Windows `.exe` build script for local packaging smoke tests
 
 Live agent execution is intentionally not the default yet. The current focus is
 trustworthy plans, evidence, adapter portability, feedback loops, and a first
@@ -171,6 +174,7 @@ Trust and operations:
 - [GitHub Issue apply](docs/github-issue-apply.md)
 - [GitHub Actions apply](docs/github-actions-apply.md)
 - [MCP tool risk](docs/mcp-tool-risk.md)
+- [Local classifier policy](docs/local-classifier-policy.md)
 - [Eval-to-issue feedback](docs/eval-to-issue-feedback.md)
 - [Ledger viewer](docs/ledger-viewer.md)
 - [Ledger fixtures](docs/ledger-fixtures.md)

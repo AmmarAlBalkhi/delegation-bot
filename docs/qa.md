@@ -52,6 +52,7 @@ The QA command currently checks:
 - adapter fixture generation
 - no-network model-backed suggestion fixtures
 - mocked live model-backed suggestion provider tests
+- mocked Ollama-backed local model suggestion tests
 - release artifact workflow checks for ledgers, fixtures, QA logs, `LICENSE`,
   and `NOTICE`
 - built-in eval generation from the generated QA ledger
@@ -63,7 +64,9 @@ The QA command currently checks:
 - GitHub Actions dispatch preview gate and fixture coverage
 - MCP tool risk evidence eval and fixture coverage
 - MCP tool policy gate coverage
+- local-classifier policy profile evidence
 - optional Windows EXE packaging dependency metadata
+- Windows EXE build script structure and generated artifact ignores
 - read-only CLI behavior without eager live-network imports
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning

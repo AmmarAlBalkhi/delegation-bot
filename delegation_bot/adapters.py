@@ -165,9 +165,9 @@ BUILT_IN_ADAPTERS: dict[str, AdapterContract] = {
         risk="low",
         approval_required_for=(),
         inputs=("plan", "policy"),
-        outputs=("risk_score", "classification", "run_ledger"),
+        outputs=("risk_score", "classification", "policy_profile", "run_ledger"),
         planned_event_types=("adapter.local.classifier.prepare", "local.classifier.planned"),
-        required_evidence=("classification",),
+        required_evidence=("classification", "policy_profile", "recommended_gate"),
     ),
     "human.approval": AdapterContract(
         id="human.approval",
