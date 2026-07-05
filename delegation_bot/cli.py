@@ -34,6 +34,13 @@ from delegation_bot.model_suggest_fixtures import (
     SUPPORTED_PROVIDERS,
     load_model_suggestion_fixture,
 )
+from delegation_bot.model_suggest_live import (
+    DEFAULT_MAX_OUTPUT_TOKENS,
+    DEFAULT_TIMEOUT_SECONDS,
+    LiveModelSuggestionError,
+    build_live_model_config,
+    fetch_live_model_suggestion,
+)
 from delegation_bot.otel_export import OtelExportError, build_otel_export, render_otel_export, write_otel_export
 from delegation_bot.playbook_catalog import (
     PlaybookCatalogError,
@@ -117,6 +124,36 @@ def cmd_suggest(args: argparse.Namespace) -> int:
                 template_reason=f"No-network {draft.provider} model fixture loaded from `{source_name}`.",
                 manifest=draft.manifest,
             )
+        elif args.draft_source == "model":
+            if not args.provider:
+                print("ERROR: --provider is required when --draft-source model is used", file=sys.stderr)
+                return 1
+            if not args.allow_live_model:
+                print(
+                    "ERROR: live model suggestions are opt-in. Add --allow-live-model to confirm "
+                    "you want a provider API call and possible cost.",
+                    file=sys.stderr,
+                )
+                return 1
+            config = build_live_model_config(
+                args.provider,
+                model=args.model,
+                timeout_seconds=args.timeout_seconds,
+                max_output_tokens=args.max_output_tokens,
+            )
+            draft = fetch_live_model_suggestion(
+                args.goal,
+                config=config,
+                repository=args.repository,
+                owner=args.owner,
+                template=args.template,
+            )
+            suggestion = HarnessSuggestion(
+                goal=draft.goal,
+                template_id=draft.template_id,
+                template_reason=f"Live {draft.provider} model draft from `{draft.model}`. {draft.rationale}",
+                manifest=draft.manifest,
+            )
         else:
             suggestion = build_suggestion(
                 args.goal,
@@ -125,7 +162,7 @@ def cmd_suggest(args: argparse.Namespace) -> int:
                 template=args.template,
             )
         manifest_yaml = manifest_to_yaml(suggestion.manifest)
-    except (RuntimeError, ValueError, ModelSuggestionFixtureError) as exc:
+    except (RuntimeError, ValueError, ModelSuggestionFixtureError, LiveModelSuggestionError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
@@ -147,9 +184,9 @@ def cmd_suggest(args: argparse.Namespace) -> int:
         print(manifest_yaml)
     else:
         print(render_suggestion(suggestion, output_path=str(output_path) if output_path else None))
-        if not output_path:
-            print("\n---")
-            print(manifest_yaml)
+        if not output_path and not args.plan:
+            print("\nTip: add `--output .delegation/suggested.yaml --plan` to write and dry-run it.")
+            print("Use `--yaml` when you want the full Harnessfile in the terminal.")
 
     if args.plan:
         try:
@@ -521,14 +558,32 @@ def build_parser() -> argparse.ArgumentParser:
     )
     suggest.add_argument(
         "--draft-source",
-        choices=("template", "fixture"),
+        choices=("template", "fixture", "model"),
         default="template",
-        help="Use the built-in template path or a no-network model-backed fixture.",
+        help="Use the built-in template path, a no-network model fixture, or an opt-in live model call.",
     )
     suggest.add_argument(
         "--provider",
         choices=SUPPORTED_PROVIDERS,
-        help="Fixture provider to load when --draft-source fixture is used.",
+        help="Provider to use when --draft-source fixture or --draft-source model is used.",
+    )
+    suggest.add_argument(
+        "--allow-live-model",
+        action="store_true",
+        help="Confirm that --draft-source model may call a provider API and incur cost.",
+    )
+    suggest.add_argument("--model", help="Override the default live model for --draft-source model.")
+    suggest.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help="Live model request timeout in seconds.",
+    )
+    suggest.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=DEFAULT_MAX_OUTPUT_TOKENS,
+        help="Maximum live model output tokens.",
     )
     suggest.add_argument("--plan", action="store_true", help="Also compile and print the dry-run plan.")
     suggest.add_argument("--ledger", help="Write a dry-run ledger; requires --plan.")

@@ -52,6 +52,15 @@ delegation apply-issues Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
 `delegation suggest` now exists as a no-network, template-backed first version.
+Plain suggest output should stay short; full YAML is available with `--yaml` or
+`--output`.
+
+Live model-backed suggest is allowed only when the user explicitly opts in:
+
+```text
+delegation suggest "prepare this repo for release" --draft-source model --provider openai --allow-live-model
+```
+
 Playbooks remain another no-blank-page path:
 
 ```text

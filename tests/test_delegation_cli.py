@@ -6,8 +6,11 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from delegation_bot.cli import main
+from delegation_bot.model_suggest_fixtures import ModelSuggestionDraft
+from delegation_bot.suggest import build_suggestion
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +60,15 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(harnessfile_exists)
         self.assertEqual(json.loads(ledger_lines[0])["type"], "plan.compiled")
 
+    def test_suggest_default_output_stays_short(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["suggest", "refresh the README docs"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("Suggested Harnessfile", output.getvalue())
+        self.assertIn("Tip: add `--output", output.getvalue())
+        self.assertNotIn("version: delegation.ai/v1", output.getvalue())
+
     def test_suggest_fixture_writes_valid_model_backed_harnessfile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             harnessfile = Path(tmpdir) / "suggested.yaml"
@@ -84,6 +96,68 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("No-network openai model fixture", output.getvalue())
         self.assertIn("model-fixture-openai-release-readiness", harness_text)
         self.assertEqual(json.loads(lines[0])["type"], "plan.compiled")
+
+    def test_suggest_model_requires_explicit_live_gate(self) -> None:
+        with redirect_stderr(io.StringIO()) as error:
+            status = main(
+                [
+                    "suggest",
+                    "prepare this repo for release",
+                    "--draft-source",
+                    "model",
+                    "--provider",
+                    "openai",
+                ]
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn("--allow-live-model", error.getvalue())
+
+    def test_suggest_model_can_use_mocked_live_provider(self) -> None:
+        suggestion = build_suggestion("prepare this repo for release")
+        manifest = dict(suggestion.manifest)
+        manifest["metadata"] = {**manifest["metadata"], "suggested_by": "delegation.suggest.model"}
+        draft = ModelSuggestionDraft(
+            goal="prepare this repo for release",
+            provider="openai",
+            model="gpt-test",
+            rationale="Mocked live model draft.",
+            manifest=manifest,
+            safety_notes=("Dry-run first.",),
+            validation_expectations=("Harnessfile validates.",),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            harnessfile = Path(tmpdir) / "live.yaml"
+            ledger = Path(tmpdir) / "live.jsonl"
+            with patch("delegation_bot.cli.build_live_model_config") as config_mock, patch(
+                "delegation_bot.cli.fetch_live_model_suggestion", return_value=draft
+            ) as fetch_mock, redirect_stdout(io.StringIO()) as output:
+                config_mock.return_value = object()
+                status = main(
+                    [
+                        "suggest",
+                        "prepare this repo for release",
+                        "--draft-source",
+                        "model",
+                        "--provider",
+                        "openai",
+                        "--allow-live-model",
+                        "--model",
+                        "gpt-test",
+                        "--output",
+                        str(harnessfile),
+                        "--plan",
+                        "--ledger",
+                        str(ledger),
+                    ]
+                )
+            ledger_lines = ledger.read_text(encoding="utf-8").splitlines()
+
+        self.assertEqual(status, 0)
+        self.assertIn("Live openai model draft", output.getvalue())
+        self.assertEqual(json.loads(ledger_lines[0])["type"], "plan.compiled")
+        self.assertTrue(fetch_mock.called)
 
     def test_promote_example_reads_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

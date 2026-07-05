@@ -14,6 +14,7 @@ from delegation_bot.harness_manifest import Manifest, validate_manifest
 JsonMap = dict[str, T.Any]
 FIXTURE_VERSION = "delegation.ai/harness-suggestion-draft/v1"
 SUPPORTED_PROVIDERS = ("openai", "anthropic")
+SUPPORTED_SUGGESTED_BY = ("delegation.suggest.model_fixture", "delegation.suggest.model")
 DEFAULT_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "examples" / "model-suggestions"
 
 
@@ -134,8 +135,10 @@ def validate_model_suggestion_draft(data: JsonMap) -> list[str]:
     else:
         errors.extend(f"manifest: {error}" for error in validate_manifest(T.cast(Manifest, manifest)))
         metadata = manifest.get("metadata") if isinstance(manifest.get("metadata"), dict) else {}
-        if metadata.get("suggested_by") != "delegation.suggest.model_fixture":
-            errors.append("manifest metadata.suggested_by must be `delegation.suggest.model_fixture`")
+        if metadata.get("suggested_by") not in SUPPORTED_SUGGESTED_BY:
+            errors.append(
+                "manifest metadata.suggested_by must be one of: " + ", ".join(SUPPORTED_SUGGESTED_BY)
+            )
     return errors
 
 

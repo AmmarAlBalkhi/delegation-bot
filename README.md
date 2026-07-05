@@ -74,6 +74,8 @@ smallest possible form.
 - `delegation doctor` for local readiness checks and a clear next command
 - `delegation suggest` for no-blank-page Harnessfile drafts from plain-language
   goals
+- opt-in live model-backed `delegation suggest` for OpenAI and Anthropic,
+  gated by `--allow-live-model`
 - `delegation apply-issues` for preview-first, live-gated `github.issue` writes
 - `delegation otel` for local OpenTelemetry-style trace/log JSON exports
 - no-network model-backed suggestion fixtures for OpenAI and Anthropic paths
@@ -313,6 +315,18 @@ Try no-network model-backed suggestion fixtures:
 python scripts/delegation.py suggest "prepare this repo for release" --draft-source fixture --provider openai --output .delegation/model-openai-release.yaml --plan --ledger .delegation/model-openai-release.jsonl
 python scripts/delegation.py suggest "review this pull request" --draft-source fixture --provider anthropic --output .delegation/model-anthropic-review.yaml --plan --ledger .delegation/model-anthropic-review.jsonl
 ```
+
+Run an explicit live model-backed suggestion only when you want a provider API
+call:
+
+```bash
+OPENAI_API_KEY=sk_your_key python scripts/delegation.py suggest "prepare this repo for release" --draft-source model --provider openai --allow-live-model --output .delegation/model-openai-release.yaml --plan --ledger .delegation/model-openai-release.jsonl
+ANTHROPIC_API_KEY=sk-ant-your_key python scripts/delegation.py suggest "review this pull request" --draft-source model --provider anthropic --allow-live-model --output .delegation/model-anthropic-review.yaml --plan --ledger .delegation/model-anthropic-review.jsonl
+```
+
+Live suggestions only draft Harnessfiles. Delegation Bot still validates,
+dry-runs, writes ledgers, runs evals, and requires human approval for risky
+actions.
 
 List built-in adapter contracts:
 

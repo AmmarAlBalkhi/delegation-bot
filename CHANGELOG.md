@@ -79,3 +79,8 @@ The project is currently pre-release.
 - Added GitHub App installation design notes.
 - Improved issue templates for adapters, evals, playbooks, bugs, and design
   proposals.
+- Added opt-in live model-backed `delegation suggest` for OpenAI and Anthropic.
+- Kept live model calls behind `--allow-live-model`, API-key checks, draft
+  envelope validation, Harnessfile validation, and dry-run planning.
+- Made default `delegation suggest` output shorter so full YAML appears only
+  with `--yaml` or `--output`.
