@@ -45,7 +45,7 @@ python scripts/delegation.py eval .delegation/suggested-release.yaml --ledger .d
 - Writes a run ledger so every plan, adapter result, eval, approval, and future
   live action has evidence.
 - Runs evals for duplicate issue markers, missing adapter evidence, risky
-  approvals, ledger validity, and pull-request readiness.
+  approvals, MCP tool risk, ledger validity, and pull-request readiness.
 - Drafts feedback issues from failed evals, then reuses live GitHub issue links
   when the same failure appears again.
 - Promotes agents only when ledger evidence and evals show they are ready.
@@ -102,6 +102,7 @@ python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapte
 python scripts/delegation.py ledger examples/ledgers/adapter-blocked.jsonl --status blocked
 python scripts/delegation.py ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
 python scripts/delegation.py ledger examples/ledgers/github-actions-preview.jsonl --adapter github.actions
+python scripts/delegation.py ledger examples/ledgers/mcp-tool-risk.jsonl --adapter mcp.tool
 python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
 python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
 ```
@@ -120,6 +121,7 @@ Delegation Bot is pre-release, but the foundation is working:
 - evals, feedback drafts, and promotion reports
 - preview-first live GitHub Issue apply
 - preview-first GitHub Actions dispatch gate
+- MCP tool permission and prompt-injection risk evidence
 - no-network and opt-in live model-backed Harnessfile suggestions
 - package metadata for the `delegation` console command
 
@@ -153,6 +155,7 @@ Trust and operations:
 - [Live execution gate](docs/live-execution-gate.md)
 - [GitHub Issue apply](docs/github-issue-apply.md)
 - [GitHub Actions apply](docs/github-actions-apply.md)
+- [MCP tool risk](docs/mcp-tool-risk.md)
 - [Eval-to-issue feedback](docs/eval-to-issue-feedback.md)
 - [Ledger viewer](docs/ledger-viewer.md)
 - [Ledger fixtures](docs/ledger-fixtures.md)

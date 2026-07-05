@@ -7,6 +7,7 @@ from pathlib import Path
 
 from delegation_bot.evals import (
     eval_approvals_before_risky_actions,
+    eval_mcp_tool_risk_review,
     eval_required_adapter_evidence,
     eval_results_to_events,
     eval_tests_pass_before_pr,
@@ -22,6 +23,7 @@ MANIFEST = {
         {"id": "no_duplicate_issue_markers", "type": "invariant"},
         {"id": "approvals_before_risky_actions", "type": "policy"},
         {"id": "required_adapter_evidence", "type": "invariant"},
+        {"id": "mcp_tool_risk_review", "type": "policy"},
         {"id": "tests_pass_before_pr", "type": "quality_gate"},
     ]
 }
@@ -58,6 +60,42 @@ ADAPTER_RESULT_LEDGER = [
                 "message": "Dry-run planned.",
                 "outputs": {"github.issue": {"title": "Demo"}},
                 "evidence": {"issue_marker": "delegation-bot:abc123"},
+                "dry_run": True,
+            },
+        },
+    },
+]
+
+MCP_TOOL_LEDGER = [
+    VALID_LEDGER[0],
+    {
+        "run_id": "run-1",
+        "sequence": 2,
+        "timestamp": "2026-07-03T20:00:00+00:00",
+        "type": "mcp.tool.planned",
+        "status": "planned",
+        "message": "Planned MCP tool.",
+        "action_id": "executor.tool_probe",
+        "details": {
+            "adapter": "mcp.tool",
+            "adapter_result": {
+                "status": "planned",
+                "message": "Dry-run planned.",
+                "outputs": {
+                    "tool_result": {
+                        "server": "local-repository-tools",
+                        "tool_name": "inspect_repository",
+                        "planned_result_id": "fixture-tool-result",
+                    }
+                },
+                "evidence": {
+                    "tool_name": "inspect_repository",
+                    "tool_result": "fixture-tool-result",
+                    "permission_scope": "filesystem_read",
+                    "risk_level": "low",
+                    "prompt_injection_risk": "low",
+                    "recommended_gate": "none",
+                },
                 "dry_run": True,
             },
         },
@@ -218,6 +256,46 @@ class EvalTests(unittest.TestCase):
 
         self.assertEqual(result.status, "blocked")
 
+    def test_mcp_tool_risk_review_passes_for_low_risk_tool(self) -> None:
+        result = eval_mcp_tool_risk_review(MCP_TOOL_LEDGER)
+
+        self.assertEqual(result.status, "passed")
+        self.assertEqual(result.details["checked_tools"], 1)
+
+    def test_mcp_tool_risk_review_blocks_high_risk_tool(self) -> None:
+        risky_event = {
+            **MCP_TOOL_LEDGER[1],
+            "action_id": "executor.shell_tool",
+            "details": {
+                "adapter": "mcp.tool",
+                "adapter_result": {
+                    "status": "planned",
+                    "message": "Dry-run planned.",
+                    "outputs": {
+                        "tool_result": {
+                            "server": "local-shell",
+                            "tool_name": "run_shell_command",
+                            "planned_result_id": "fixture-shell-result",
+                        }
+                    },
+                    "evidence": {
+                        "tool_name": "run_shell_command",
+                        "tool_result": "fixture-shell-result",
+                        "permission_scope": "write_or_execute",
+                        "risk_level": "high",
+                        "prompt_injection_risk": "medium",
+                        "recommended_gate": "approval_required",
+                    },
+                    "dry_run": True,
+                },
+            },
+        }
+
+        result = eval_mcp_tool_risk_review([VALID_LEDGER[0], risky_event])
+
+        self.assertEqual(result.status, "blocked")
+        self.assertEqual(result.details["high_risk_tools"][0]["tool_name"], "run_shell_command")
+
     def test_run_declared_evals_includes_ledger_validity(self) -> None:
         results = run_declared_evals(MANIFEST, VALID_LEDGER)
         ids = [result.id for result in results]
@@ -225,6 +303,7 @@ class EvalTests(unittest.TestCase):
         self.assertEqual(ids[0], "ledger_is_valid")
         self.assertIn("approvals_before_risky_actions", ids)
         self.assertIn("required_adapter_evidence", ids)
+        self.assertIn("mcp_tool_risk_review", ids)
 
     def test_eval_results_become_ledger_events(self) -> None:
         results = run_declared_evals(MANIFEST, VALID_LEDGER)

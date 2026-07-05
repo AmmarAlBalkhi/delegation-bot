@@ -81,8 +81,7 @@ value, high dry-run clarity, and medium-or-lower contributor difficulty.
 
 ## Next Implementation Picks
 
-1. Strengthen `mcp.tool` with explicit server, tool, arguments, permissions,
-   and prompt-injection risk evidence.
+1. Add explicit MCP server/tool allowlist policy and gate reports.
 2. Add local model provider design for `delegation suggest` and
    `local.classifier`.
 3. Use the new `github.actions` preview gate to design a future live dispatch

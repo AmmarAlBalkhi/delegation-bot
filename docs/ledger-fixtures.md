@@ -12,6 +12,8 @@ They live in `examples/ledgers/`:
   and recorded with issue evidence
 - `github-actions-preview.jsonl`: a planned `github.actions` workflow dispatch
   has run URL and approval evidence without live dispatch
+- `mcp-tool-risk.jsonl`: a planned `mcp.tool` call shows high-risk permission
+  and prompt-injection evidence without invoking the tool
 - `feedback-issue-memory.jsonl`: an eval feedback issue was created live, then
   a later matching failure drafted an update pointing at the same issue
 - `feedback-recovery.jsonl`: a feedback issue later sees a passing eval and
@@ -54,6 +56,12 @@ GitHub Actions dispatch preview:
 
 ```bash
 python scripts/delegation.py ledger examples/ledgers/github-actions-preview.jsonl --adapter github.actions
+```
+
+MCP tool risk evidence:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/mcp-tool-risk.jsonl --adapter mcp.tool
 ```
 
 Feedback issue memory:

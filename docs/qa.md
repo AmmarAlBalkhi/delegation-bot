@@ -59,6 +59,7 @@ The QA command currently checks:
 - feedback recovery fixture coverage
 - dashboard snapshot generation from fixture ledgers
 - GitHub Actions dispatch preview gate and fixture coverage
+- MCP tool risk evidence eval and fixture coverage
 - read-only CLI behavior without eager live-network imports
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning

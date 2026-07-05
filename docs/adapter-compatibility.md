@@ -27,7 +27,7 @@ without making the project depend on one agent framework.
 | `anthropic.messages` | model provider | dry-run | Plan Claude Messages API call | `model`, `usage`, `final_output` |
 | `claude.code` | AI harness | dry-run | Plan Claude Code handoff | `changed_files`, `qa_result` |
 | `langgraph.graph` | workflow | dry-run | Plan durable graph workflow and checkpoint | `checkpoint_id` |
-| `mcp.tool` | tool | dry-run | Plan MCP tool call | `tool_name`, `tool_result` |
+| `mcp.tool` | tool | dry-run, risk-eval | Plan MCP tool call with permission and prompt-injection risk evidence | `tool_name`, `tool_result`, `permission_scope`, `risk_level`, `prompt_injection_risk` |
 | `openclaw.gateway` | AI harness | dry-run | Plan local assistant gateway handoff | `channel`, `assistant_result` |
 | `hermes.agent` | AI harness | dry-run | Plan skill-learning agent step | `skill_id`, `agent_result` |
 | `local.classifier` | ML model | dry-run | Plan local risk classification | `classification` |
@@ -112,7 +112,7 @@ not a side conversation.
 
 ## Next Compatibility Work
 
-1. Strengthen `mcp.tool` with permission and prompt-injection evidence.
+1. Add explicit MCP server/tool allowlist policy.
 2. Use the `github.actions` preview gate as the design base for a future live
    dispatch client.
 3. Add fixture generation examples for more adapter families.

@@ -32,8 +32,7 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Strengthen the `mcp.tool` adapter with server/tool permission evidence and
-   prompt-injection risk notes.
+1. Add explicit MCP server/tool allowlist policy and gate reports.
 2. Add local-model provider design for `delegation suggest` and
    `local.classifier`.
 3. Use the new `github.actions` dispatch preview gate to design the future live
@@ -44,6 +43,8 @@ Deep only when the user asks for depth.
 
 ## Completed Recently
 
+- Added MCP tool permission scope, risk-level, prompt-injection risk evidence,
+  `mcp_tool_risk_review`, a high-risk fixture, and docs.
 - Added a `github.actions` dispatch preview gate with run URL evidence,
   approval policy checks, CLI coverage, fixture coverage, and docs.
 - Added a researched real-world adapter candidate matrix.

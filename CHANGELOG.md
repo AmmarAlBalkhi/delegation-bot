@@ -90,6 +90,8 @@ The project is currently pre-release.
   intentional feedback update lifecycles.
 - Added `delegation apply-actions` as a preview-first GitHub Actions dispatch
   gate with run URL evidence, fixture coverage, and docs.
+- Added MCP tool permission scope, risk-level, prompt-injection risk evidence,
+  a `mcp_tool_risk_review` eval, and a high-risk MCP fixture.
 - Made read-only CLI commands avoid importing live network dependencies until
   a live apply or live model call needs them.
 - Added a researched adapter candidate matrix for prioritizing real-world
