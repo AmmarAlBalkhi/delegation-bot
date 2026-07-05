@@ -173,6 +173,7 @@ Examples:
 - no duplicate issue markers
 - tests pass before PR creation
 - every risky tool call had approval
+- MCP tool calls expose permission and prompt-injection risk evidence
 - child tasks have backlinks to parents
 - final answer contains required evidence links
 
@@ -187,6 +188,8 @@ can append `eval.result` events back into the ledger.
 Failed or blocked evals should become focused improvement issues only after
 dedupe and policy checks. See `docs/eval-to-issue-feedback.md` for the staged
 design.
+
+MCP tool risk evidence is documented in `docs/mcp-tool-risk.md`.
 
 ## Data Flow
 

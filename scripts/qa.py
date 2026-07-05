@@ -341,6 +341,17 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "fixture MCP tool risk ledger report",
+            [
+                python,
+                "scripts/delegation.py",
+                "ledger",
+                "examples/ledgers/mcp-tool-risk.jsonl",
+                "--adapter",
+                "mcp.tool",
+            ],
+        ),
+        Check(
             "fixture feedback issue memory ledger report",
             [
                 python,

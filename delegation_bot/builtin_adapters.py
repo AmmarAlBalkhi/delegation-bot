@@ -55,6 +55,21 @@ def _preview(value: T.Any, limit: int = 240) -> T.Any:
 
 
 ISSUE_MARKER_RE = re.compile(r"delegation-bot(?::[A-Za-z0-9_.-]+)+")
+WRITE_TOOL_RE = re.compile(
+    r"(apply|build|cancel|commit|create|delete|deploy|edit|execute|merge|move|patch|post|publish|push|remove|run|send|shell|update|write)",
+    re.IGNORECASE,
+)
+READ_TOOL_RE = re.compile(r"(get|inspect|list|query|read|retrieve|search|summarize|view)", re.IGNORECASE)
+NETWORK_TOOL_RE = re.compile(r"(api|browser|fetch|http|request|url|web)", re.IGNORECASE)
+SECRET_KEY_RE = re.compile(r"(api[_-]?key|credential|password|secret|token)", re.IGNORECASE)
+PROMPT_SURFACE_RE = re.compile(
+    r"(content|description|html|issue|markdown|message|prompt|query|text|transcript|url|webpage)",
+    re.IGNORECASE,
+)
+PROMPT_ATTACK_RE = re.compile(
+    r"(disregard|ignore|override).{0,40}(instruction|policy|previous|system)|system prompt|developer message",
+    re.IGNORECASE,
+)
 
 
 def _embedded_issue_marker(text: str) -> str | None:
@@ -265,6 +280,115 @@ class GitHubActionsDryRunAdapter(ContractBackedDryRunAdapter):
         return evidence
 
 
+def _mcp_tool_assessment(server: str, tool_name: str, arguments: T.Any) -> JsonMap:
+    text_parts = [server, tool_name, *_argument_text(arguments)]
+    joined_text = " ".join(text_parts)
+    keys = set(_argument_keys(arguments))
+    capability_tags: set[str] = set()
+    risk_reasons: list[str] = []
+
+    if WRITE_TOOL_RE.search(tool_name) or any(WRITE_TOOL_RE.search(key) for key in keys):
+        capability_tags.add("write")
+        risk_reasons.append("tool name or argument keys suggest write/execute behavior")
+    if NETWORK_TOOL_RE.search(joined_text):
+        capability_tags.add("network")
+        risk_reasons.append("tool name or arguments mention network or web access")
+    if SECRET_KEY_RE.search(joined_text):
+        capability_tags.add("secret_access")
+        risk_reasons.append("arguments mention secret-like material")
+    if _arguments_include_path(arguments):
+        capability_tags.add("filesystem")
+    if READ_TOOL_RE.search(tool_name) and not {"write", "secret_access"} & capability_tags:
+        capability_tags.add("read")
+
+    permission_scope = _permission_scope(capability_tags)
+    prompt_injection_risk = _prompt_injection_risk(tool_name, arguments)
+    if prompt_injection_risk != "low":
+        risk_reasons.append(f"tool arguments expose {prompt_injection_risk} prompt-injection surface")
+
+    risk_level = _mcp_risk_level(capability_tags, prompt_injection_risk)
+    if not risk_reasons:
+        risk_reasons.append("read-only local tool shape")
+
+    recommended_gate = "approval_required" if risk_level == "high" else "review_recommended" if risk_level == "medium" else "none"
+    return {
+        "permission_scope": permission_scope,
+        "capability_tags": sorted(capability_tags) or ["unknown"],
+        "risk_level": risk_level,
+        "prompt_injection_risk": prompt_injection_risk,
+        "risk_reasons": risk_reasons,
+        "recommended_gate": recommended_gate,
+    }
+
+
+def _permission_scope(capability_tags: set[str]) -> str:
+    if "secret_access" in capability_tags:
+        return "secret_access"
+    if "write" in capability_tags and "network" in capability_tags:
+        return "network_write"
+    if "write" in capability_tags:
+        return "write_or_execute"
+    if "network" in capability_tags:
+        return "network_read"
+    if "filesystem" in capability_tags:
+        return "filesystem_read"
+    if "read" in capability_tags:
+        return "read"
+    return "unknown"
+
+
+def _mcp_risk_level(capability_tags: set[str], prompt_injection_risk: str) -> str:
+    if "secret_access" in capability_tags or "write" in capability_tags or prompt_injection_risk == "high":
+        return "high"
+    if not capability_tags or "network" in capability_tags or prompt_injection_risk == "medium":
+        return "medium"
+    return "low"
+
+
+def _prompt_injection_risk(tool_name: str, arguments: T.Any) -> str:
+    text_values = list(_argument_text(arguments))
+    joined_text = " ".join([tool_name, *text_values])
+    if PROMPT_ATTACK_RE.search(joined_text):
+        return "high"
+    keys = set(_argument_keys(arguments))
+    if any(PROMPT_SURFACE_RE.search(key) for key in keys):
+        return "medium"
+    if any("http://" in value.lower() or "https://" in value.lower() for value in text_values):
+        return "medium"
+    return "low"
+
+
+def _arguments_include_path(value: T.Any) -> bool:
+    for key in _argument_keys(value):
+        if key in {"file", "files", "folder", "path", "paths", "repo", "repository"}:
+            return True
+    return False
+
+
+def _argument_keys(value: T.Any) -> T.Iterator[str]:
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            yield str(key)
+            yield from _argument_keys(nested)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _argument_keys(item)
+
+
+def _argument_text(value: T.Any) -> T.Iterator[str]:
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for key, nested in value.items():
+            yield str(key)
+            yield from _argument_text(nested)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _argument_text(item)
+    elif value is not None:
+        yield str(value)
+
+
 class McpToolDryRunAdapter(ContractBackedDryRunAdapter):
     """Dry-run adapter for planning an MCP tool call."""
 
@@ -276,12 +400,19 @@ class McpToolDryRunAdapter(ContractBackedDryRunAdapter):
         tool_name = _string_input(request, "tool_name", "unknown-tool")
         arguments = _input_value(request, "arguments", {})
         result_id = _json_digest(self.contract.id, request.action_id, server, tool_name, arguments)
+        assessment = _mcp_tool_assessment(server, tool_name, arguments)
         return {
             "tool_result": {
                 "server": server,
                 "tool_name": tool_name,
                 "arguments_preview": _preview(arguments),
                 "planned_result_id": result_id,
+                "permission_scope": assessment["permission_scope"],
+                "capability_tags": assessment["capability_tags"],
+                "risk_level": assessment["risk_level"],
+                "prompt_injection_risk": assessment["prompt_injection_risk"],
+                "risk_reasons": assessment["risk_reasons"],
+                "recommended_gate": assessment["recommended_gate"],
                 "dry_run": True,
                 "missing_inputs": list(missing_inputs),
             }
@@ -292,6 +423,10 @@ class McpToolDryRunAdapter(ContractBackedDryRunAdapter):
         evidence: JsonMap = {
             "tool_name": outputs["tool_result"]["tool_name"],
             "tool_result": outputs["tool_result"]["planned_result_id"],
+            "permission_scope": outputs["tool_result"]["permission_scope"],
+            "risk_level": outputs["tool_result"]["risk_level"],
+            "prompt_injection_risk": outputs["tool_result"]["prompt_injection_risk"],
+            "recommended_gate": outputs["tool_result"]["recommended_gate"],
         }
         if missing_inputs:
             evidence["missing_inputs"] = list(missing_inputs)

@@ -4,7 +4,12 @@ import unittest
 from pathlib import Path
 
 from delegation_bot.eval_feedback import build_feedback_issue_drafts, render_feedback_report
-from delegation_bot.evals import eval_ledger_is_valid, eval_no_duplicate_issue_markers, eval_required_adapter_evidence
+from delegation_bot.evals import (
+    eval_ledger_is_valid,
+    eval_mcp_tool_risk_review,
+    eval_no_duplicate_issue_markers,
+    eval_required_adapter_evidence,
+)
 from delegation_bot.ledger import LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
 
 
@@ -66,6 +71,18 @@ class LedgerFixtureTests(unittest.TestCase):
         self.assertEqual(view.total_events, 5)
         self.assertIn("github.actions.planned", text)
         self.assertIn("workflow_run_url=https://github.com/AmmarAlBalkhi/delegation-bot/actions/runs/dryrun-gha-fixture-preview", text)
+
+    def test_mcp_tool_risk_fixture_blocks_mcp_risk_review(self) -> None:
+        events = load_ledger_events(FIXTURES / "mcp-tool-risk.jsonl")
+        view = build_ledger_view(events, ledger_filter=LedgerFilter(adapter="mcp.tool"))
+        text = render_ledger_view(view)
+
+        self.assertEqual(eval_ledger_is_valid(events).status, "passed")
+        self.assertEqual(eval_required_adapter_evidence(events).status, "passed")
+        self.assertEqual(eval_mcp_tool_risk_review(events).status, "blocked")
+        self.assertEqual(view.total_events, 4)
+        self.assertIn("risk_level=high", text)
+        self.assertIn("prompt_injection_risk=high", text)
 
     def test_feedback_issue_memory_fixture_reuses_live_issue_link(self) -> None:
         events = load_ledger_events(FIXTURES / "feedback-issue-memory.jsonl")

@@ -300,6 +300,9 @@ evals:
   - id: required_adapter_evidence
     type: invariant
     description: SDK-backed adapters must leave required contract evidence and outputs.
+  - id: mcp_tool_risk_review
+    type: policy
+    description: MCP tool calls must expose permission scope and prompt-injection risk evidence.
   - id: tests_pass_before_pr
     type: quality_gate
     description: Pull requests require a passing test event in the run ledger.

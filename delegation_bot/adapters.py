@@ -134,7 +134,7 @@ BUILT_IN_ADAPTERS: dict[str, AdapterContract] = {
         inputs=("server", "tool_name", "arguments"),
         outputs=("tool_result", "run_ledger"),
         planned_event_types=("adapter.mcp.tool.prepare", "mcp.tool.planned"),
-        required_evidence=("tool_name", "tool_result"),
+        required_evidence=("tool_name", "tool_result", "permission_scope", "risk_level", "prompt_injection_risk"),
     ),
     "openclaw.gateway": AdapterContract(
         id="openclaw.gateway",

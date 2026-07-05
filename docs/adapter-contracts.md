@@ -93,6 +93,10 @@ implementations. They are not live integrations yet.
 gate through `delegation apply-actions`. It still does not dispatch workflows
 live.
 
+`mcp.tool` now includes `permission_scope`, `risk_level`, and
+`prompt_injection_risk` evidence so tool calls can be reviewed before any live
+tool invocation.
+
 ## Design Notes
 
 Good adapter contracts should be boring and precise.
@@ -126,7 +130,7 @@ judge it. Dry-run adapters now exist for every built-in contract.
 
 The next implementation step is to expand usage around those adapters:
 
-1. strengthen `mcp.tool` permission and prompt-injection evidence
+1. add explicit MCP server/tool allowlist policy
 2. use `github.actions` dispatch previews to design a future live client
 3. add playbook examples that use adapter requirements
 4. keep live execution behind policy, approval, and eval gates

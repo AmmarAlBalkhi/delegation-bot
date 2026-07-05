@@ -362,12 +362,63 @@ def eval_required_adapter_evidence(events: T.Sequence[JsonMap]) -> EvalResult:
     )
 
 
+def eval_mcp_tool_risk_review(events: T.Sequence[JsonMap]) -> EvalResult:
+    records = [record for record in _adapter_result_records(events) if record.get("adapter") == "mcp.tool"]
+    if not records:
+        return EvalResult(
+            "mcp_tool_risk_review",
+            "passed",
+            "No MCP tool plans found in the ledger.",
+            {"checked_tools": 0},
+        )
+
+    high_risk: list[JsonMap] = []
+    medium_risk: list[JsonMap] = []
+    for record in records:
+        evidence = record.get("evidence") if isinstance(record.get("evidence"), dict) else {}
+        risk_level = str(evidence.get("risk_level") or "unknown")
+        prompt_injection_risk = str(evidence.get("prompt_injection_risk") or "unknown")
+        item = {
+            "adapter": "mcp.tool",
+            "action_id": record.get("action_id"),
+            "tool_name": evidence.get("tool_name"),
+            "permission_scope": evidence.get("permission_scope"),
+            "risk_level": risk_level,
+            "prompt_injection_risk": prompt_injection_risk,
+            "recommended_gate": evidence.get("recommended_gate"),
+        }
+        if risk_level == "high" or prompt_injection_risk == "high" or evidence.get("recommended_gate") == "approval_required":
+            high_risk.append(item)
+        elif risk_level == "medium" or prompt_injection_risk == "medium":
+            medium_risk.append(item)
+
+    details = {
+        "checked_tools": len(records),
+        "high_risk_tools": high_risk,
+        "medium_risk_tools": medium_risk,
+    }
+    if high_risk:
+        return EvalResult(
+            "mcp_tool_risk_review",
+            "blocked",
+            "One or more MCP tool plans need human review before execution.",
+            details,
+        )
+    return EvalResult(
+        "mcp_tool_risk_review",
+        "passed",
+        "MCP tool plans do not require additional human review based on current risk evidence.",
+        details,
+    )
+
+
 BUILT_INS: dict[str, T.Callable[[T.Sequence[JsonMap]], EvalResult]] = {
     "ledger_is_valid": eval_ledger_is_valid,
     "no_duplicate_issue_markers": eval_no_duplicate_issue_markers,
     "approvals_before_risky_actions": eval_approvals_before_risky_actions,
     "required_adapter_evidence": eval_required_adapter_evidence,
     "tests_pass_before_pr": eval_tests_pass_before_pr,
+    "mcp_tool_risk_review": eval_mcp_tool_risk_review,
 }
 
 

@@ -852,3 +852,30 @@ Evidence:
 - `tests/test_github_actions_apply.py`
 - `tests/test_delegation_cli.py`
 - `tests/test_ledger_fixtures.py`
+
+## 2026-07-05: Make MCP Tool Risk Visible Before Tool Use
+
+Decision: Strengthen `mcp.tool` dry-run evidence with `permission_scope`,
+`risk_level`, `prompt_injection_risk`, `recommended_gate`, capability tags, and
+plain-language risk reasons.
+
+Why: MCP tools are meant to let models interact with external systems. That is
+useful and dangerous. Delegation Bot should enable tool use, but the run ledger
+must show what kind of power the tool is asking for before any live invocation.
+
+Decision: Add `mcp_tool_risk_review` as a deterministic eval.
+
+Why: The adapter should write facts, and evals should make those facts useful.
+High-risk tool plans now become a clear blocked eval instead of hidden
+metadata.
+
+Evidence:
+
+- `delegation_bot/builtin_adapters.py`
+- `delegation_bot/adapters.py`
+- `delegation_bot/evals.py`
+- `examples/ledgers/mcp-tool-risk.jsonl`
+- `docs/mcp-tool-risk.md`
+- `tests/test_adapter_sdk.py`
+- `tests/test_evals.py`
+- `tests/test_ledger_fixtures.py`

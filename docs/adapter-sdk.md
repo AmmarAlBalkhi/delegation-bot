@@ -97,7 +97,7 @@ execute only when policy allows it.
 - `codex.thread`: dry-run Codex handoff planner with changed-file and QA
   evidence
 - `mcp.tool`: dry-run MCP tool-call planner with `tool_name` and
-  `tool_result` evidence
+  `tool_result`, permission, risk, and prompt-injection evidence
 - `openai.agents`: dry-run OpenAI Agents SDK workflow planner with `trace_id`
   and `final_output` evidence
 - `anthropic.messages`: dry-run Anthropic Messages planner with model, usage,
@@ -120,7 +120,7 @@ are still not live execution adapters.
 
 ## Next SDK Moves
 
-1. Strengthen `mcp.tool` permission and prompt-injection evidence.
+1. Add explicit MCP server/tool allowlist policy.
 2. Use `github.actions` dispatch previews to design a future live client.
 3. Keep live execution behind policy, approval, and eval gates.
 
