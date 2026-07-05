@@ -1,0 +1,42 @@
+- name: adapter
+  color: "0E8A16"
+  description: Work on adapter contracts, SDK implementations, or harness integrations.
+- name: bug
+  color: "D73A4A"
+  description: Something is broken, confusing, or producing incorrect output.
+- name: design
+  color: "5319E7"
+  description: Product, architecture, schema, or trust-model design work.
+- name: docs
+  color: "0075CA"
+  description: Documentation, examples, README, roadmap, and contributor guidance.
+- name: enhancement
+  color: "A2EEEF"
+  description: Improvement to an existing feature or user workflow.
+- name: eval
+  color: "FBCA04"
+  description: Quality, safety, policy, evidence, or regression checks.
+- name: good first issue
+  color: "7057FF"
+  description: Small scoped contribution with clear acceptance criteria.
+- name: github-app
+  color: "1D76DB"
+  description: GitHub App installation, permissions, webhooks, or hosted integration work.
+- name: help wanted
+  color: "008672"
+  description: Useful contribution where maintainers can guide implementation.
+- name: live-gate
+  color: "B60205"
+  description: Live execution, approval gates, confirmations, or external writes.
+- name: playbook
+  color: "C5DEF5"
+  description: Reusable Harnessfile workflows and catalog metadata.
+- name: proposal
+  color: "D4C5F9"
+  description: Proposal that needs design review before implementation.
+- name: roadmap
+  color: "0052CC"
+  description: Public roadmap milestone or launch-readiness work.
+- name: trust-layer
+  color: "006B75"
+  description: Plans, policies, approvals, ledgers, evidence, evals, or promotion.

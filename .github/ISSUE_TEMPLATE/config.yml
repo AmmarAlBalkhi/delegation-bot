@@ -1,5 +1,8 @@
-blank_issues_enabled: true
+blank_issues_enabled: false
 contact_links:
+  - name: Public roadmap issue drafts
+    url: https://github.com/AmmarAlBalkhi/delegation-bot/blob/main/docs/public-roadmap-issues.md
+    about: Use these curated issue drafts when opening milestone work.
   - name: Security reports
     url: https://github.com/AmmarAlBalkhi/delegation-bot/security
     about: Please report sensitive security issues privately when possible.

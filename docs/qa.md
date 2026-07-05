@@ -59,6 +59,7 @@ The QA command currently checks:
 - playbook catalog CLI summary
 - playbook catalog tag and adapter filtering
 - playbook catalog validation through unit tests
+- GitHub issue templates and label metadata through unit tests
 - JSON parsing for schema files
 
 ## Type Discipline

@@ -34,12 +34,18 @@ Deep only when the user asks for depth.
 
 1. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
 2. Link dry-run feedback update drafts to live GitHub issue numbers.
-3. Add public roadmap issues from this queue.
-4. Add GitHub App installation design notes.
-5. Add issue labels and good-first-issue curation.
+3. Open the first small public roadmap issue set from
+   `docs/public-roadmap-issues.md` when maintainers are ready.
+4. Add a real-world adapter candidate matrix.
+5. Prototype the read-only dashboard data model with fixture ledgers.
 
 ## Completed Recently
 
+- Added public roadmap issue drafts.
+- Added issue label source of truth and good-first-issue curation notes.
+- Added GitHub App installation design notes.
+- Improved issue templates for adapters, evals, playbooks, bugs, and design
+  proposals.
 - Added hosted dashboard wireframe notes.
 - Added Developer Certificate of Origin and contributor-license policy notes.
 - Added playbook catalog filtering by tag and adapter.

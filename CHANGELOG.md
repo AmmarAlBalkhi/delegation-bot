@@ -74,3 +74,8 @@ The project is currently pre-release.
 - Added playbook catalog filtering by tag and adapter.
 - Added hosted dashboard wireframe notes.
 - Added contributor license and DCO policy notes.
+- Added public roadmap issue drafts, issue label source of truth, and
+  good-first-issue curation notes.
+- Added GitHub App installation design notes.
+- Improved issue templates for adapters, evals, playbooks, bugs, and design
+  proposals.
