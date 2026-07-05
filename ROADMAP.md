@@ -215,9 +215,10 @@ Current focus:
 
 1. Use the `github.actions` dispatch preview gate as the base for a future live
    dispatch client without enabling it yet.
-2. Add a Windows `.exe` build script after the package smoke path stays green.
-3. Add a local-classifier policy profile so local risk review can become more
+2. Add a local-classifier policy profile so local risk review can become more
    useful without handing trust to the model.
+3. Run the Windows `.exe` build script on a clean Windows release host and
+   record the executable smoke evidence.
 4. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 5. Design live feedback issue comments or close actions behind explicit gates.

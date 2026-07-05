@@ -139,6 +139,7 @@ Delegation Bot is pre-release, but the foundation is working:
 - no-network and opt-in live model-backed Harnessfile suggestions for OpenAI,
   Anthropic, and Ollama
 - package metadata for the `delegation` console command
+- a Windows `.exe` build script for local packaging smoke tests
 
 Live agent execution is intentionally not the default yet. The current focus is
 trustworthy plans, evidence, adapter portability, feedback loops, and a first

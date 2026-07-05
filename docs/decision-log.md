@@ -968,3 +968,18 @@ Evidence:
 - `docs/harnessfile-suggest.md`
 - `tests/test_model_suggest_live.py`
 - `tests/test_delegation_cli.py`
+
+## 2026-07-05: Add Windows EXE Build Script
+
+Decision: Add `scripts\build-windows-exe.ps1` as the first executable build
+path.
+
+Why: The product should become easy to try without forcing new users to learn
+Python packaging first. A Windows `.exe` supports that goal, but it must still
+ship the same safe first-run loop: demo, starter Harnessfile init, validation,
+and no live writes by default.
+
+Evidence: The script builds `dist\delegation.exe` with PyInstaller, bundles
+runtime assets used by demos and fixtures, and runs safe demo/init/validate
+smoke checks before reporting success. A local Windows build passed on
+2026-07-05.

@@ -65,6 +65,7 @@ The QA command currently checks:
 - MCP tool risk evidence eval and fixture coverage
 - MCP tool policy gate coverage
 - optional Windows EXE packaging dependency metadata
+- Windows EXE build script structure and generated artifact ignores
 - read-only CLI behavior without eager live-network imports
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning
