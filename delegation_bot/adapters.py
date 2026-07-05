@@ -57,7 +57,7 @@ BUILT_IN_ADAPTERS: dict[str, AdapterContract] = {
         inputs=("repository", "workflow_ref"),
         outputs=("test_result", "workflow_run", "run_ledger"),
         planned_event_types=("adapter.github.actions.prepare", "github.actions.planned"),
-        required_evidence=("workflow_run_id", "conclusion"),
+        required_evidence=("workflow_run_id", "workflow_run_url", "conclusion"),
     ),
     "sample.echo": AdapterContract(
         id="sample.echo",

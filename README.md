@@ -88,6 +88,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation recover-feedback Harnessfile.yaml --ledger .delegation/run.jsonl` | Draft recovery updates when previously failing evals pass. |
 | `delegation promote Harnessfile.yaml --ledger .delegation/run.jsonl` | Check whether agents can earn more autonomy. |
 | `delegation apply-issues Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview live GitHub Issue writes. |
+| `delegation apply-actions Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview gated GitHub Actions dispatch. |
 
 Live writes stay behind explicit gates. For GitHub Issues, live mode requires
 `--apply --confirm LIVE_GITHUB_ISSUES` plus `GITHUB_TOKEN` or `GH_TOKEN`.
@@ -100,6 +101,7 @@ Fixtures are tiny ledgers that make the system easier to understand.
 python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapter sample.echo
 python scripts/delegation.py ledger examples/ledgers/adapter-blocked.jsonl --status blocked
 python scripts/delegation.py ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
+python scripts/delegation.py ledger examples/ledgers/github-actions-preview.jsonl --adapter github.actions
 python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
 python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
 ```
@@ -117,6 +119,7 @@ Delegation Bot is pre-release, but the foundation is working:
 - playbooks and catalog filtering
 - evals, feedback drafts, and promotion reports
 - preview-first live GitHub Issue apply
+- preview-first GitHub Actions dispatch gate
 - no-network and opt-in live model-backed Harnessfile suggestions
 - package metadata for the `delegation` console command
 
@@ -149,6 +152,7 @@ Trust and operations:
 - [Agent enablement](docs/agent-enablement.md)
 - [Live execution gate](docs/live-execution-gate.md)
 - [GitHub Issue apply](docs/github-issue-apply.md)
+- [GitHub Actions apply](docs/github-actions-apply.md)
 - [Eval-to-issue feedback](docs/eval-to-issue-feedback.md)
 - [Ledger viewer](docs/ledger-viewer.md)
 - [Ledger fixtures](docs/ledger-fixtures.md)

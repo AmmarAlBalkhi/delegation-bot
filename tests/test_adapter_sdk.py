@@ -108,6 +108,28 @@ class AdapterSdkTests(unittest.TestCase):
         self.assertEqual(result.evidence["missing_inputs"], ["repository", "issue_body"])
         self.assertEqual(result.outputs["github.issue"]["missing_inputs"], ["repository", "issue_body"])
 
+    def test_github_actions_dry_run_adapter_includes_run_url_evidence(self) -> None:
+        contract = get_adapter_contract("github.actions")
+        adapter = get_builtin_adapter("github.actions")
+        self.assertIsNotNone(contract)
+        self.assertIsNotNone(adapter)
+        request = adapter_request(
+            "github.actions",
+            repository="AmmarAlBalkhi/delegation-bot",
+            workflow_ref=".github/workflows/tests.yml",
+            ref="main",
+            inputs={"suite": "unit"},
+        )
+
+        result = adapter.plan(request) if adapter else None
+        errors = validate_adapter_result(contract, result) if contract and result else ["missing result"]
+
+        self.assertEqual(errors, [])
+        self.assertEqual(result.status if result else "", "planned")
+        self.assertIn("workflow_run_url", result.evidence)
+        self.assertIn("/actions/runs/dryrun-gha-", result.outputs["workflow_run"]["workflow_run_url"])
+        self.assertEqual(result.outputs["workflow_run"]["inputs"], {"suite": "unit"})
+
     def test_sample_echo_dry_run_adapter_satisfies_contract_without_network(self) -> None:
         contract = get_adapter_contract("sample.echo")
         adapter = get_builtin_adapter("sample.echo")

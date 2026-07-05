@@ -49,6 +49,10 @@ Do not enable these in the first live gate:
 
 Those can come later after the live-gate pattern is proven.
 
+`github.actions` now has a preview gate through `delegation apply-actions`.
+That command checks the dry-run ledger, repository policy, approval policy, and
+workflow run URL evidence, but it still blocks live dispatch.
+
 ## Required Gates
 
 A live `github.issue` apply should require:
@@ -93,6 +97,14 @@ delegation apply-issues Harnessfile.yaml \
 ```
 
 See `docs/github-issue-apply.md` for the user-facing guide.
+
+GitHub Actions dispatch preview:
+
+```bash
+delegation apply-actions Harnessfile.yaml --ledger .delegation/latest.jsonl
+```
+
+This does not call GitHub. See `docs/github-actions-apply.md`.
 
 ## Ledger Events
 
@@ -152,6 +164,17 @@ The first live gate is ready when:
 - documentation shows exactly how to preview before apply
 - the command can run safely in GitHub Actions with `apply=false`
 - live apply requires explicit user intent
+
+## GitHub Actions Preview Criteria
+
+The workflow dispatch preview is useful when:
+
+- the dry-run ledger contains `github.actions` adapter evidence
+- the evidence includes `workflow_run_id`, `workflow_run_url`, and conclusion
+- the command shows repository, workflow file, ref, and input keys
+- repository policy is checked before future dispatch
+- approval policy can require `approval.granted` evidence for workflow actions
+- live dispatch remains blocked until a dedicated dispatch client exists
 
 ## Why This Is The Right First Live Step
 

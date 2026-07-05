@@ -822,3 +822,33 @@ Evidence:
 - `tests/test_eval_feedback.py`
 - `tests/test_delegation_cli.py`
 - `tests/test_ledger_fixtures.py`
+
+## 2026-07-05: Preview GitHub Actions Dispatch Before Live Runs
+
+Decision: Add `delegation apply-actions` as a preview-first gate for
+`github.actions` workflow dispatch.
+
+Why: GitHub Actions is a real execution surface. Running a workflow can trigger
+tests, release jobs, deployments, artifacts, and follow-on automation. The next
+safe product step is to show exactly which workflow, ref, inputs, and run URL
+shape would be used, then stop before live dispatch.
+
+Decision: Require `workflow_run_url` evidence in the `github.actions` contract.
+
+Why: A run id alone is not enough for a human-friendly control plane. Users need
+a clickable place where the future run would be inspected. The dry-run URL is
+preview evidence today and prepares the ledger shape for a future live dispatch
+client.
+
+Evidence:
+
+- `delegation_bot/github_actions_apply.py`
+- `delegation_bot/builtin_adapters.py`
+- `delegation_bot/adapters.py`
+- `delegation_bot/cli.py`
+- `examples/ledgers/github-actions-preview.jsonl`
+- `docs/github-actions-apply.md`
+- `docs/live-execution-gate.md`
+- `tests/test_github_actions_apply.py`
+- `tests/test_delegation_cli.py`
+- `tests/test_ledger_fixtures.py`

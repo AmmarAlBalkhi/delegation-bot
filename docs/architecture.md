@@ -113,7 +113,7 @@ adapters`.
 Initial adapter targets:
 
 - `github.issue`: create and update Issues
-- `github.actions`: run a workflow and collect status
+- `github.actions`: preview workflow dispatch and collect status evidence
 - `codex.thread`: hand off implementation work
 - `openai.agents`: run an agent workflow
 - `anthropic.messages`: plan a Claude model call through the Messages API

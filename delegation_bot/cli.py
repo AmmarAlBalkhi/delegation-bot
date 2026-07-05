@@ -21,6 +21,7 @@ from delegation_bot.eval_feedback import (
     feedback_drafts_to_events,
     render_feedback_report,
 )
+from delegation_bot.github_actions_apply import build_actions_apply_report, render_actions_apply_report
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
     apply_github_issue_drafts,
@@ -600,6 +601,42 @@ def cmd_apply_issues(args: argparse.Namespace) -> int:
     return 1 if any(event.status == "failed" for event in events) else 0
 
 
+def cmd_apply_actions(args: argparse.Namespace) -> int:
+    path = Path(args.harnessfile)
+    manifest, status = _load_valid_manifest(path)
+    if status != 0 or manifest is None:
+        return status
+
+    try:
+        plan = compile_plan(manifest, source=str(path))
+    except PlanError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    token = github_token_from_env()
+    report = build_actions_apply_report(
+        manifest,
+        plan,
+        ledger_events,
+        ledger_source=str(ledger_path),
+        apply=args.apply,
+        confirmation=args.confirm,
+        token=token,
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_actions_apply_report(report))
+    return 1 if report.blocked else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -723,6 +760,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     apply_issues.add_argument("--json", action="store_true", help="Print the apply gate report as JSON.")
     apply_issues.set_defaults(func=cmd_apply_issues)
+
+    apply_actions = subparsers.add_parser(
+        "apply-actions",
+        help="Preview gated GitHub Actions workflow dispatch from a dry-run ledger.",
+    )
+    apply_actions.add_argument("harnessfile")
+    apply_actions.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
+    apply_actions.add_argument(
+        "--apply",
+        action="store_true",
+        help="Request live workflow dispatch. Currently blocked until the dispatch client is implemented.",
+    )
+    apply_actions.add_argument(
+        "--confirm",
+        help="Future confirmation token for live dispatch: LIVE_GITHUB_ACTIONS.",
+    )
+    apply_actions.add_argument("--json", action="store_true", help="Print the apply gate report as JSON.")
+    apply_actions.set_defaults(func=cmd_apply_actions)
 
     eval_parser = subparsers.add_parser("eval", help="Run built-in evals against a ledger.")
     eval_parser.add_argument("harnessfile")
