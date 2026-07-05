@@ -8,8 +8,6 @@ import typing as T
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-import requests
-
 from delegation_bot.adapter_sdk import AdapterRequest
 from delegation_bot.builtin_adapters import get_builtin_adapter
 from delegation_bot.evals import (
@@ -104,6 +102,7 @@ class GitHubIssueClient:
         self.api_url = api_url.rstrip("/")
 
     def find_issue_by_marker(self, repository: str, marker: str) -> JsonMap | None:
+        requests = _requests_module()
         owner, repo = _split_repository(repository)
         url = f"{self.api_url}/repos/{owner}/{repo}/issues"
         response = requests.get(
@@ -125,6 +124,7 @@ class GitHubIssueClient:
         return None
 
     def create_issue(self, repository: str, title: str, body: str) -> JsonMap:
+        requests = _requests_module()
         owner, repo = _split_repository(repository)
         response = requests.post(
             f"{self.api_url}/repos/{owner}/{repo}/issues",
@@ -137,6 +137,7 @@ class GitHubIssueClient:
         return data if isinstance(data, dict) else {}
 
     def update_issue(self, repository: str, number: int, title: str, body: str) -> JsonMap:
+        requests = _requests_module()
         owner, repo = _split_repository(repository)
         response = requests.patch(
             f"{self.api_url}/repos/{owner}/{repo}/issues/{number}",
@@ -525,7 +526,18 @@ def _split_repository(repository: str) -> tuple[str, str]:
     return parts[0], parts[1]
 
 
-def _raise_for_response(response: requests.Response) -> None:
+def _requests_module() -> T.Any:
+    try:
+        import requests
+    except ImportError as exc:
+        raise GitHubIssueApplyError(
+            "The `requests` package is required for live GitHub Issue apply. "
+            "Install dependencies with `python -m pip install -r requirements.txt`."
+        ) from exc
+    return requests
+
+
+def _raise_for_response(response: T.Any) -> None:
     if response.status_code < 400:
         return
     try:

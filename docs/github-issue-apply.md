@@ -62,10 +62,18 @@ GITHUB_TOKEN=... delegation apply-issues Harnessfile.yaml \
 If a matching issue marker already exists in the first 100 repository issues,
 the command updates that issue. Otherwise it creates a new issue.
 
-To inspect the lifecycle without touching GitHub, use the applied fixture:
+To inspect a normal applied lifecycle without touching GitHub, use the applied
+fixture:
 
 ```bash
 delegation ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
+```
+
+To inspect an eval feedback issue that remembers its live GitHub issue link,
+use the feedback memory fixture:
+
+```bash
+delegation ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
 ```
 
 ## Ledger Events
@@ -79,6 +87,10 @@ Live apply appends events to the same ledger:
 
 Each event includes the adapter id, repository, issue marker, title, body
 preview, and issue URL or number when GitHub returns it.
+
+Those live issue fields are not just display metadata. The eval feedback loop
+uses them so repeated failures can draft updates to the existing issue instead
+of creating duplicate issue noise.
 
 ## Safety Notes
 

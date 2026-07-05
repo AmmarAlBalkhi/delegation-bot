@@ -32,15 +32,20 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Link dry-run feedback update drafts to live GitHub issue numbers.
-2. Add a real-world adapter candidate matrix.
-3. Prototype the read-only dashboard data model with fixture ledgers.
+1. Add a real-world adapter candidate matrix.
+2. Prototype the read-only dashboard data model with fixture ledgers.
+3. Design the feedback resolution path for evals that later pass.
 4. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 5. Add local-model provider design for `delegation suggest`.
 
 ## Completed Recently
 
+- Linked eval feedback update drafts to live GitHub issue numbers and URLs.
+- Added feedback issue memory fixture coverage.
+- Allowed intentional feedback issue update lifecycles in the duplicate marker
+  eval.
+- Made read-only CLI imports avoid live network dependencies until needed.
 - Added opt-in live model-backed `delegation suggest` for OpenAI and Anthropic.
 - Added explicit `--allow-live-model` gating, API-key checks, model draft
   validation, and mocked provider tests.

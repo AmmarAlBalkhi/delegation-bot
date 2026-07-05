@@ -213,9 +213,9 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Link dry-run feedback update drafts to live GitHub issue numbers.
-2. Add a real-world adapter candidate matrix.
-3. Prototype the read-only dashboard data model with fixture ledgers.
+1. Add a real-world adapter candidate matrix.
+2. Prototype the read-only dashboard data model with fixture ledgers.
+3. Design the feedback resolution path for evals that later pass.
 4. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 5. Add local-model provider design for `delegation suggest`.

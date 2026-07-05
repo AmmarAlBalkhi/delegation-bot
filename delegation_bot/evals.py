@@ -158,6 +158,7 @@ def eval_ledger_is_valid(events: T.Sequence[JsonMap]) -> EvalResult:
 
 def eval_no_duplicate_issue_markers(events: T.Sequence[JsonMap]) -> EvalResult:
     marker_actions: dict[str, set[str]] = {}
+    marker_feedback_actions: dict[str, set[str]] = {}
     for event in events:
         details = event.get("details") if isinstance(event.get("details"), dict) else {}
         marker = details.get("issue_marker")
@@ -168,8 +169,14 @@ def eval_no_duplicate_issue_markers(events: T.Sequence[JsonMap]) -> EvalResult:
         if isinstance(marker, str):
             action_id = event.get("action_id") if isinstance(event.get("action_id"), str) else "unknown"
             marker_actions.setdefault(marker, set()).add(action_id)
+            if _is_feedback_issue_lifecycle(details, marker, action_id):
+                marker_feedback_actions.setdefault(marker, set()).add(action_id)
 
-    duplicates = sorted(marker for marker, action_ids in marker_actions.items() if len(action_ids) > 1)
+    duplicates = sorted(
+        marker
+        for marker, action_ids in marker_actions.items()
+        if len(action_ids) > 1 and not action_ids <= marker_feedback_actions.get(marker, set())
+    )
     if duplicates:
         return EvalResult(
             "no_duplicate_issue_markers",
@@ -183,6 +190,13 @@ def eval_no_duplicate_issue_markers(events: T.Sequence[JsonMap]) -> EvalResult:
         "No duplicate issue markers found.",
         {"marker_count": len(marker_actions)},
     )
+
+
+def _is_feedback_issue_lifecycle(details: JsonMap, marker: str, action_id: str) -> bool:
+    feedback = details.get("feedback") if isinstance(details.get("feedback"), dict) else {}
+    if feedback.get("marker") == marker:
+        return True
+    return marker.startswith("delegation-bot:eval:") and action_id.startswith("feedback.")
 
 
 def eval_approvals_before_risky_actions(events: T.Sequence[JsonMap]) -> EvalResult:

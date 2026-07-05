@@ -5,7 +5,7 @@ The feedback loop turns failed evidence into better future behavior.
 Simple version:
 
 ```text
-ledger event -> eval result -> dedupe marker -> GitHub Issue draft -> playbook or regression eval
+ledger event -> eval result -> dedupe marker -> GitHub Issue draft -> live issue memory -> playbook or regression eval
 ```
 
 Even simpler now:
@@ -66,6 +66,10 @@ The hash should include:
 
 That keeps recurring failures visible without creating duplicates every run.
 
+If a feedback issue has already been applied live, the ledger preserves the
+GitHub issue number and URL. Future matching failures become update drafts that
+point at the same issue instead of creating a fresh one.
+
 ## Draft Issue Shape
 
 Title:
@@ -89,6 +93,14 @@ Body:
 - sequence:
 - status:
 - source ledger:
+
+## Repeat Signal
+
+- planned operation:
+- matching eval occurrences in this ledger:
+- existing feedback events in this ledger:
+- existing live issue events in this ledger:
+- live GitHub issue:
 
 ## Failure Details
 
@@ -120,10 +132,10 @@ Phase 2:
 - require approval for issue creation on scheduled runs
 - allow manual `workflow_dispatch` apply mode
 - add the artifact URL or ledger path to the issue body
+- record the live GitHub issue number and URL after apply
 
 Phase 3:
 
-- link the generated issue back to the failed run
 - close or update the issue when the eval later passes
 - report recurring failures as playbook or adapter reliability signals
 
@@ -175,13 +187,20 @@ What it does:
 - groups repeated eval failures by deterministic marker
 - marks drafts as `create` or `update` based on repeated failures or existing
   feedback events
+- reuses live GitHub issue numbers and URLs from prior apply events
 - uses the existing `github.issue` adapter to emit planned issue evidence
 - can append planned feedback issue events with `--write`
 - can now draft feedback directly from current `EvalResult` objects with
   `eval --feedback`
 - can append planned feedback issue events directly with `eval --feedback-write`
 
-The next implementation slice should link dry-run update drafts to live GitHub
-issue numbers after apply mode exists.
+Inspect the feedback memory fixture without touching GitHub:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
+```
+
+Next, the feedback loop should update or close the live issue when the eval
+later passes.
 
 This keeps the project aligned with its own rule: evidence first, then action.

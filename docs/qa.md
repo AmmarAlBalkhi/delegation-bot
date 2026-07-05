@@ -55,6 +55,8 @@ The QA command currently checks:
 - built-in eval generation from the generated QA ledger
 - direct eval-result feedback issue draft generation
 - feedback issue draft generation from eval evidence
+- feedback issue memory fixture coverage
+- read-only CLI behavior without eager live-network imports
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning
 - playbook catalog CLI summary

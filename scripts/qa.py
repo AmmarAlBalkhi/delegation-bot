@@ -319,6 +319,17 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "fixture feedback issue memory ledger report",
+            [
+                python,
+                "scripts/delegation.py",
+                "ledger",
+                "examples/ledgers/feedback-issue-memory.jsonl",
+                "--adapter",
+                "github.issue",
+            ],
+        ),
+        Check(
             "adapter fixture generator",
             [
                 python,

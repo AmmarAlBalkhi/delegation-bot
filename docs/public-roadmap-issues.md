@@ -61,12 +61,12 @@ context to a hosted model.
 - Docs explain the trust boundary in simple language.
 ```
 
-## Draft 2: Link Feedback Drafts To Live GitHub Issue Numbers
+## Draft 2: Resolve Feedback Issues When Evals Recover
 
 Suggested title:
 
 ```text
-Track live GitHub issue numbers for eval feedback drafts
+Update feedback issues when evals recover
 ```
 
 Suggested labels:
@@ -80,28 +80,27 @@ Body:
 ```markdown
 ## Goal
 
-When a feedback draft is applied through `delegation apply-issues`, record the
-live GitHub issue number and URL in the ledger so future eval failures can
-update the right issue.
+When an eval that previously failed starts passing, draft a clear update for
+the existing feedback issue so humans can close it or mark it resolved.
 
 ## Why
 
-The feedback loop should improve the project without creating duplicate issue
-noise.
+The feedback loop should not only notice problems. It should also recognize
+recovery, reduce stale issue noise, and show that trust is being earned.
 
 ## Scope
 
-- Extend applied `github.issue` ledger evidence with issue number and URL.
-- Teach feedback grouping to prefer existing live issue links when present.
-- Keep preview mode readable before any write.
-- Add fixture coverage for applied and updated issue states.
+- Detect a passing eval with prior feedback issue memory.
+- Draft a GitHub Issue comment or update body in preview mode.
+- Keep live writes behind the existing apply gate.
+- Add a fixture showing failed -> issue -> later passed -> resolution draft.
 
 ## Acceptance criteria
 
-- Preview still works without a token.
-- Apply mode writes issue metadata into the ledger.
-- Repeated failures point to the existing issue.
-- Tests cover draft, applied, and update paths.
+- Passing evals can point at the existing feedback issue number.
+- Preview mode explains the proposed resolution without writing.
+- Live mode still requires explicit confirmation.
+- Tests cover the recovery path.
 ```
 
 ## Draft 3: Design The GitHub App Installation Flow

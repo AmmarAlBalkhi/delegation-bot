@@ -10,6 +10,8 @@ They live in `examples/ledgers/`:
 - `adapter-failed.jsonl`: adapter reported a failed result
 - `github-issue-applied.jsonl`: a planned `github.issue` action was applied
   and recorded with issue evidence
+- `feedback-issue-memory.jsonl`: an eval feedback issue was created live, then
+  a later matching failure drafted an update pointing at the same issue
 
 ## Why They Exist
 
@@ -42,6 +44,12 @@ Applied GitHub Issue:
 
 ```bash
 python scripts/delegation.py ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
+```
+
+Feedback issue memory:
+
+```bash
+python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
 ```
 
 ## Eval Behavior

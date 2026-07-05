@@ -7,8 +7,6 @@ import os
 import typing as T
 from dataclasses import dataclass
 
-import requests
-
 from delegation_bot.model_suggest_fixtures import (
     FIXTURE_VERSION,
     JsonMap,
@@ -271,6 +269,7 @@ def _call_anthropic(
 
 
 def _post_json(url: str, headers: dict[str, str], payload: JsonMap, timeout_seconds: int) -> JsonMap:
+    requests = _requests_module()
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=timeout_seconds)
         response.raise_for_status()
@@ -285,6 +284,18 @@ def _post_json(url: str, headers: dict[str, str], payload: JsonMap, timeout_seco
     if not isinstance(data, dict):
         raise LiveModelSuggestionError("Live model response must be a JSON object.")
     return data
+
+
+def _requests_module() -> T.Any:
+    try:
+        import requests
+    except ImportError as exc:
+        raise LiveModelSuggestionError(
+            "The `requests` package is required for live model suggestions. "
+            "Install dependencies with `python -m pip install -r requirements.txt`, or use "
+            "`--draft-source template` / `--draft-source fixture` for no-network mode."
+        ) from exc
+    return requests
 
 
 def _extract_openai_text(response: JsonMap) -> str:
