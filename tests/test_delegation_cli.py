@@ -502,6 +502,32 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("Live GitHub Actions dispatch is not implemented yet", output.getvalue())
 
+    def test_mcp_gate_reports_ready_policy_for_example(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["mcp-gate", str(EXAMPLE), "--ledger", str(ledger)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("MCP Tool Policy Gate", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("local-repository-tools/inspect_repository", output.getvalue())
+
+    def test_mcp_gate_json_contains_tool_drafts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["mcp-gate", str(EXAMPLE), "--ledger", str(ledger), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertEqual(data["drafts"][0]["tool_ref"], "local-repository-tools/inspect_repository")
+
 
 if __name__ == "__main__":
     unittest.main()

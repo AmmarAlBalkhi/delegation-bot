@@ -87,6 +87,11 @@ def validate_pyproject() -> int:
     if not isinstance(scripts, dict) or scripts.get("delegation") != "delegation_bot.cli:main":
         print("FAIL: package metadata parses (missing delegation console command)", flush=True)
         return 1
+    optional = project.get("optional-dependencies")
+    exe_dependencies = optional.get("exe") if isinstance(optional, dict) else None
+    if not isinstance(exe_dependencies, list) or not any("pyinstaller" in str(item).lower() for item in exe_dependencies):
+        print("FAIL: package metadata parses (missing exe optional dependency group)", flush=True)
+        return 1
 
     print("PASS: package metadata parses", flush=True)
     return 0
@@ -255,6 +260,17 @@ def build_checks(python: str) -> list[Check]:
                 python,
                 "scripts/delegation.py",
                 "apply-actions",
+                "examples/ai-harness-control-plane.yaml",
+                "--ledger",
+                ".delegation/qa-latest.jsonl",
+            ],
+        ),
+        Check(
+            "MCP tool policy gate",
+            [
+                python,
+                "scripts/delegation.py",
+                "mcp-gate",
                 "examples/ai-harness-control-plane.yaml",
                 "--ledger",
                 ".delegation/qa-latest.jsonl",

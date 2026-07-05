@@ -213,7 +213,8 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Add explicit MCP server/tool allowlist policy and gate reports.
+1. Add a packaged demo/install path: source install smoke, `.pyz` experiment,
+   and future Windows `.exe` build script.
 2. Add local-model provider design for `delegation suggest` and
    `local.classifier`.
 3. Use the `github.actions` dispatch preview gate as the base for a future live

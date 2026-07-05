@@ -36,6 +36,11 @@ dependencies = [
   "requests>=2.32,<3"
 ]
 
+[project.optional-dependencies]
+exe = [
+  "pyinstaller>=6.0,<7"
+]
+
 [project.scripts]
 delegation = "delegation_bot.cli:main"
 

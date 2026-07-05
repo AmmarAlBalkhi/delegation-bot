@@ -32,6 +32,7 @@ from delegation_bot.github_issue_apply import (
 from delegation_bot.harness_manifest import ManifestError, load_manifest, summarize_manifest, validate_manifest
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
+from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_policy_report
 from delegation_bot.model_suggest_fixtures import (
     ModelSuggestionFixtureError,
     SUPPORTED_PROVIDERS,
@@ -637,6 +638,38 @@ def cmd_apply_actions(args: argparse.Namespace) -> int:
     return 1 if report.blocked else 0
 
 
+def cmd_mcp_gate(args: argparse.Namespace) -> int:
+    path = Path(args.harnessfile)
+    manifest, status = _load_valid_manifest(path)
+    if status != 0 or manifest is None:
+        return status
+
+    try:
+        plan = compile_plan(manifest, source=str(path))
+    except PlanError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    report = build_mcp_policy_report(
+        manifest,
+        plan,
+        ledger_events,
+        ledger_source=str(ledger_path),
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_mcp_policy_report(report))
+    return 1 if report.blocked else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -778,6 +811,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     apply_actions.add_argument("--json", action="store_true", help="Print the apply gate report as JSON.")
     apply_actions.set_defaults(func=cmd_apply_actions)
+
+    mcp_gate = subparsers.add_parser(
+        "mcp-gate",
+        help="Check MCP tool allowlists and risk evidence from a dry-run ledger.",
+    )
+    mcp_gate.add_argument("harnessfile")
+    mcp_gate.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
+    mcp_gate.add_argument("--json", action="store_true", help="Print the MCP policy report as JSON.")
+    mcp_gate.set_defaults(func=cmd_mcp_gate)
 
     eval_parser = subparsers.add_parser("eval", help="Run built-in evals against a ledger.")
     eval_parser.add_argument("harnessfile")

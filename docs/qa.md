@@ -60,6 +60,8 @@ The QA command currently checks:
 - dashboard snapshot generation from fixture ledgers
 - GitHub Actions dispatch preview gate and fixture coverage
 - MCP tool risk evidence eval and fixture coverage
+- MCP tool policy gate coverage
+- optional Windows EXE packaging dependency metadata
 - read-only CLI behavior without eager live-network imports
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning

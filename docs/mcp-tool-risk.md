@@ -45,6 +45,7 @@ Inspect a normal plan:
 
 ```bash
 delegation plan examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+delegation mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
 delegation ledger .delegation/latest.jsonl --adapter mcp.tool
 ```
 
@@ -66,6 +67,21 @@ This is not a live sandbox. It is the first deterministic trust layer:
 ```text
 adapter writes facts -> eval makes review decision -> human sees next action
 ```
+
+## MCP Gate
+
+`delegation mcp-gate` is the user-friendly report over the same evidence. It
+checks:
+
+- `policies.permissions.allowed_mcp_servers`
+- `policies.permissions.allowed_mcp_tools`
+- ledger validity
+- required adapter evidence
+- MCP tool risk review
+- approval evidence for high-risk tool plans
+
+If something is blocked, the report names the missing policy list or approval
+evidence.
 
 ## Current Heuristics
 

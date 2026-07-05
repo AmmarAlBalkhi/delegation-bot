@@ -81,10 +81,10 @@ value, high dry-run clarity, and medium-or-lower contributor difficulty.
 
 ## Next Implementation Picks
 
-1. Add explicit MCP server/tool allowlist policy and gate reports.
-2. Add local model provider design for `delegation suggest` and
+1. Add local model provider design for `delegation suggest` and
    `local.classifier`.
-3. Use the new `github.actions` preview gate to design a future live dispatch
+2. Use the new `github.actions` preview gate to design a future live dispatch
    client without enabling live workflow runs yet.
+3. Add a packaged demo/install path before adding more adapter names.
 4. Add a small `crewai.crew` or Microsoft Agent Framework planning contract
    only after the current adapter docs are easy to follow.

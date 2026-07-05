@@ -879,3 +879,31 @@ Evidence:
 - `tests/test_adapter_sdk.py`
 - `tests/test_evals.py`
 - `tests/test_ledger_fixtures.py`
+
+## 2026-07-05: Make MCP Policy And Demo Easier To Try
+
+Decision: Add `delegation mcp-gate` as a friendly report over MCP tool
+allowlists and risk evidence.
+
+Why: Risk evidence is useful only if users can act on it quickly. The command
+turns ledger evidence into a plain allowed/blocked report with next actions for
+missing `allowed_mcp_servers`, missing `allowed_mcp_tools`, and missing
+approval evidence.
+
+Decision: Add a 60-second demo guide and a Windows EXE packaging plan.
+
+Why: Delegation Bot needs to become usable soon, not only architecturally
+interesting. The demo shows the core product promise quickly, and the EXE plan
+starts the path toward a download-and-run Windows experience without claiming
+that artifact exists yet.
+
+Evidence:
+
+- `delegation_bot/mcp_policy_gate.py`
+- `delegation_bot/cli.py`
+- `docs/demo.md`
+- `docs/windows-exe.md`
+- `pyproject.toml`
+- `examples/ai-harness-control-plane.yaml`
+- `tests/test_mcp_policy_gate.py`
+- `tests/test_delegation_cli.py`
