@@ -8,11 +8,13 @@ from pathlib import Path
 
 from delegation_bot.eval_feedback import (
     build_feedback_issue_drafts,
+    build_feedback_issue_drafts_from_results,
+    eval_result_to_event,
     feedback_drafts_to_events,
     render_feedback_report,
     sanitize_details,
 )
-from delegation_bot.evals import eval_ledger_is_valid
+from delegation_bot.evals import EvalResult, eval_ledger_is_valid
 
 
 MANIFEST = {
@@ -165,6 +167,74 @@ class EvalFeedbackTests(unittest.TestCase):
 
         self.assertIn("Feedback issue drafts", report)
         self.assertIn("Eval failed: required_adapter_evidence", report)
+
+    def test_eval_result_to_event_matches_feedback_event_shape(self) -> None:
+        result = EvalResult(
+            "required_adapter_evidence",
+            "failed",
+            "Adapter evidence missing.",
+            {"api_token": "secret-value"},
+        )
+
+        event = eval_result_to_event(
+            result,
+            run_id="run-1",
+            sequence=3,
+            timestamp="2026-07-04T08:00:00+00:00",
+        )
+
+        self.assertEqual(event["type"], "eval.result")
+        self.assertEqual(event["details"]["eval_id"], "required_adapter_evidence")
+        self.assertEqual(event["details"]["eval"]["details"]["api_token"], "secret-value")
+
+    def test_eval_results_become_feedback_drafts_without_written_eval_events(self) -> None:
+        result = EvalResult(
+            "required_adapter_evidence",
+            "failed",
+            "Adapter evidence missing.",
+            {"api_token": "secret-value"},
+        )
+
+        drafts = build_feedback_issue_drafts_from_results(
+            MANIFEST,
+            [result],
+            ledger_events=[],
+            ledger_source="ledger.jsonl",
+            run_id="run-1",
+            timestamp="2026-07-04T08:00:00+00:00",
+        )
+
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(drafts[0].eval_id, "required_adapter_evidence")
+        self.assertEqual(drafts[0].operation, "create")
+        self.assertIn("[redacted]", drafts[0].body)
+        self.assertNotIn("secret-value", drafts[0].body)
+
+    def test_direct_blocked_eval_can_use_history_for_update_threshold(self) -> None:
+        blocked_result = EvalResult("tests_pass_before_pr", "blocked", "No pull request evidence.", {})
+        prior_blocked = {
+            "run_id": "run-1",
+            "sequence": 3,
+            "timestamp": "2026-07-04T08:00:00+00:00",
+            "type": "eval.result",
+            "status": "blocked",
+            "message": "No pull request evidence.",
+            "action_id": None,
+            "details": {"eval_id": "tests_pass_before_pr", "eval": blocked_result.to_dict()},
+        }
+
+        drafts = build_feedback_issue_drafts_from_results(
+            MANIFEST,
+            [blocked_result],
+            ledger_events=[prior_blocked],
+            include_blocked=True,
+            blocked_repeat_threshold=2,
+            ledger_source="ledger.jsonl",
+        )
+
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(drafts[0].operation, "update")
+        self.assertEqual(drafts[0].occurrence_count, 2)
 
     def test_sanitize_details_redacts_nested_secret_keys(self) -> None:
         details = {"nested": [{"password": "abc"}, {"safe": "ok"}]}

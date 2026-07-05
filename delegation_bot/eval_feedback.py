@@ -12,6 +12,7 @@ from pathlib import Path
 
 from delegation_bot.adapter_sdk import AdapterRequest, AdapterResult, validate_adapter_result
 from delegation_bot.builtin_adapters import get_builtin_adapter
+from delegation_bot.evals import EvalResult
 from delegation_bot.harness_manifest import Manifest
 from delegation_bot.harness_plan import LedgerEvent
 
@@ -283,6 +284,117 @@ def build_feedback_issue_drafts(
             )
         )
     return drafts
+
+
+def eval_result_to_event(
+    result: EvalResult,
+    *,
+    run_id: str,
+    sequence: int,
+    timestamp: str,
+) -> JsonMap:
+    return {
+        "run_id": run_id,
+        "sequence": sequence,
+        "timestamp": timestamp,
+        "type": "eval.result",
+        "status": result.status,
+        "message": result.message,
+        "action_id": None,
+        "details": {"eval_id": result.id, "eval": result.to_dict()},
+    }
+
+
+def build_feedback_issue_drafts_from_results(
+    manifest: Manifest,
+    results: T.Sequence[EvalResult],
+    *,
+    repository: str | None = None,
+    ledger_events: T.Sequence[JsonMap] = (),
+    ledger_source: str = "<direct-eval-results>",
+    include_blocked: bool = False,
+    blocked_repeat_threshold: int = 1,
+    run_id: str | None = None,
+    timestamp: str | None = None,
+) -> list[FeedbackIssueDraft]:
+    if blocked_repeat_threshold < 1:
+        raise ValueError("blocked_repeat_threshold must be at least 1")
+
+    target_repository = repository or default_repository(manifest)
+    harness_id = str(manifest.get("id", "unknown-harness"))
+    existing_feedback_counts = _existing_feedback_marker_counts(ledger_events)
+    historical_eval_counts = _historical_eval_marker_counts(
+        target_repository,
+        harness_id,
+        ledger_events,
+        include_blocked=include_blocked,
+    )
+    result_run_id = run_id or _run_id_from_events(ledger_events)
+    event_time = timestamp or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    start_sequence = _next_sequence(ledger_events)
+
+    drafts: list[FeedbackIssueDraft] = []
+    for offset, result in enumerate(results):
+        event = eval_result_to_event(
+            result,
+            run_id=result_run_id,
+            sequence=start_sequence + offset,
+            timestamp=event_time,
+        )
+        if not is_feedback_candidate(event, include_blocked=include_blocked):
+            continue
+        eval_id, status, _, eval_details = _eval_event_payload(event)
+        marker = eval_issue_marker(target_repository, harness_id, eval_id, eval_details)
+        occurrence_count = historical_eval_counts.get(marker, 0) + 1
+        existing_feedback_events = existing_feedback_counts.get(marker, 0)
+        if (
+            status == "blocked"
+            and occurrence_count < blocked_repeat_threshold
+            and existing_feedback_events == 0
+        ):
+            continue
+        drafts.append(
+            build_feedback_issue_draft(
+                manifest,
+                event,
+                repository=target_repository,
+                ledger_source=ledger_source,
+                occurrence_count=occurrence_count,
+                existing_feedback_events=existing_feedback_events,
+            )
+        )
+    return drafts
+
+
+def _historical_eval_marker_counts(
+    repository: str,
+    harness_id: str,
+    events: T.Sequence[JsonMap],
+    *,
+    include_blocked: bool,
+) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for event in events:
+        if not is_feedback_candidate(event, include_blocked=include_blocked):
+            continue
+        eval_id, _, _, eval_details = _eval_event_payload(event)
+        marker = eval_issue_marker(repository, harness_id, eval_id, eval_details)
+        counts[marker] = counts.get(marker, 0) + 1
+    return counts
+
+
+def _run_id_from_events(events: T.Sequence[JsonMap]) -> str:
+    if events:
+        run_id = events[0].get("run_id")
+        if isinstance(run_id, str) and run_id.strip():
+            return run_id
+    return "eval-run"
+
+
+def _next_sequence(events: T.Sequence[JsonMap]) -> int:
+    sequences = [event.get("sequence") for event in events]
+    concrete = [sequence for sequence in sequences if isinstance(sequence, int)]
+    return max(concrete, default=0) + 1
 
 
 def feedback_drafts_to_events(

@@ -665,3 +665,22 @@ Evidence:
 - `docs/testpypi-dry-run.md`
 - `tests/test_otel_export.py`
 - `tests/test_model_suggest_fixtures.py`
+
+## 2026-07-05: Add Direct Eval-To-Feedback Drafts
+
+Decision: Add direct `EvalResult` to feedback issue draft conversion and expose
+it through `delegation eval --feedback`.
+
+Why: The feedback loop should not make users perform extra ceremony. Failed or
+blocked evals should be easy to turn into clear, deduped improvement issue
+drafts immediately after the eval run, while live GitHub writes remain behind
+the existing apply gate.
+
+Evidence:
+
+- `delegation_bot/eval_feedback.py`
+- `delegation_bot/cli.py`
+- `docs/eval-to-issue-feedback.md`
+- `tests/test_eval_feedback.py`
+- `tests/test_delegation_cli.py`
+- `scripts/qa.py`

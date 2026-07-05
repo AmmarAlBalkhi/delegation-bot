@@ -32,14 +32,15 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Add direct `EvalResult` to feedback issue draft conversion.
-2. Add hosted dashboard wireframe notes.
-3. Add Developer Certificate of Origin or contributor-license policy notes.
-4. Add playbook catalog filtering by tag and adapter.
-5. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
+1. Add hosted dashboard wireframe notes.
+2. Add Developer Certificate of Origin or contributor-license policy notes.
+3. Add playbook catalog filtering by tag and adapter.
+4. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
+5. Link dry-run feedback update drafts to live GitHub issue numbers.
 
 ## Completed Recently
 
+- Added direct `EvalResult` to feedback issue draft conversion.
 - Added the first local OpenTelemetry export command.
 - Added fixture artifact download examples to README.
 - Added TestPyPI dry-run release notes.
