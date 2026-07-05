@@ -12,7 +12,13 @@ from pathlib import Path
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
 from delegation_bot.doctor import render_doctor_report, run_doctor
 from delegation_bot.evals import EvalError, append_jsonl, eval_results_to_events, load_jsonl, render_eval_report, run_declared_evals
-from delegation_bot.eval_feedback import append_feedback_events, build_feedback_issue_drafts, feedback_drafts_to_events, render_feedback_report
+from delegation_bot.eval_feedback import (
+    append_feedback_events,
+    build_feedback_issue_drafts,
+    build_feedback_issue_drafts_from_results,
+    feedback_drafts_to_events,
+    render_feedback_report,
+)
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
     apply_github_issue_drafts,
@@ -180,6 +186,10 @@ def cmd_promote(args: argparse.Namespace) -> int:
 
 
 def cmd_eval(args: argparse.Namespace) -> int:
+    if args.feedback_write and not args.feedback:
+        print("ERROR: --feedback-write requires --feedback", file=sys.stderr)
+        return 1
+
     manifest, status = _load_valid_manifest(Path(args.harnessfile))
     if status != 0 or manifest is None:
         return status
@@ -192,10 +202,40 @@ def cmd_eval(args: argparse.Namespace) -> int:
         return 1
 
     results = run_declared_evals(manifest, ledger_events)
+    feedback_drafts = []
+    if args.feedback:
+        try:
+            feedback_drafts = build_feedback_issue_drafts_from_results(
+                manifest,
+                results,
+                repository=args.feedback_repository,
+                ledger_events=ledger_events,
+                ledger_source=str(ledger_path),
+                include_blocked=args.feedback_include_blocked,
+                blocked_repeat_threshold=args.feedback_blocked_repeat_threshold,
+            )
+        except (LookupError, ValueError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
     if args.json:
-        print(json.dumps([result.to_dict() for result in results], indent=2, sort_keys=True))
+        if args.feedback:
+            print(
+                json.dumps(
+                    {
+                        "evals": [result.to_dict() for result in results],
+                        "feedback_issue_drafts": [draft.to_dict() for draft in feedback_drafts],
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(json.dumps([result.to_dict() for result in results], indent=2, sort_keys=True))
     else:
         print(render_eval_report(results))
+        if args.feedback:
+            print("\n" + render_feedback_report(feedback_drafts))
 
     if args.write:
         run_id = str(ledger_events[0].get("run_id")) if ledger_events else "eval-run"
@@ -206,6 +246,21 @@ def cmd_eval(args: argparse.Namespace) -> int:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 1
         print(f"\nEval events appended: {ledger_path}")
+        ledger_events = [*ledger_events, *[event.to_dict() for event in result_events]]
+
+    if args.feedback_write and feedback_drafts:
+        run_id = str(ledger_events[0].get("run_id")) if ledger_events else "feedback-run"
+        result_events = feedback_drafts_to_events(
+            feedback_drafts,
+            run_id=run_id,
+            start_sequence=len(ledger_events) + 1,
+        )
+        try:
+            append_feedback_events(result_events, ledger_path)
+        except OSError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        print(f"\nFeedback issue events appended: {ledger_path}")
     return 0
 
 
@@ -509,6 +564,28 @@ def build_parser() -> argparse.ArgumentParser:
     eval_parser.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
     eval_parser.add_argument("--json", action="store_true", help="Print eval report as JSON.")
     eval_parser.add_argument("--write", action="store_true", help="Append eval result events to the ledger.")
+    eval_parser.add_argument(
+        "--feedback",
+        action="store_true",
+        help="Also draft feedback issues directly from the eval results.",
+    )
+    eval_parser.add_argument("--feedback-repository", help="Target repository for planned feedback issues.")
+    eval_parser.add_argument(
+        "--feedback-include-blocked",
+        action="store_true",
+        help="Also draft issues for blocked eval results.",
+    )
+    eval_parser.add_argument(
+        "--feedback-blocked-repeat-threshold",
+        type=int,
+        default=1,
+        help="Minimum matching blocked eval occurrences before direct feedback drafts.",
+    )
+    eval_parser.add_argument(
+        "--feedback-write",
+        action="store_true",
+        help="Append planned feedback issue events to the ledger.",
+    )
     eval_parser.set_defaults(func=cmd_eval)
 
     feedback = subparsers.add_parser("feedback", help="Draft dry-run GitHub Issues from failed eval results.")

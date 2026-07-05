@@ -69,3 +69,5 @@ The project is currently pre-release.
 - Added no-network model-backed suggestion fixtures for OpenAI and Anthropic.
 - Added an applied `github.issue` ledger fixture.
 - Added TestPyPI dry-run release notes.
+- Added direct `EvalResult` to feedback issue draft conversion through
+  `delegation eval --feedback`.

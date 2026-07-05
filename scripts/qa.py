@@ -204,6 +204,19 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "direct eval feedback drafts",
+            [
+                python,
+                "scripts/delegation.py",
+                "eval",
+                "examples/ai-harness-control-plane.yaml",
+                "--ledger",
+                ".delegation/qa-latest.jsonl",
+                "--feedback",
+                "--feedback-include-blocked",
+            ],
+        ),
+        Check(
             "example ledger report",
             [
                 python,

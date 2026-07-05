@@ -332,6 +332,12 @@ Run built-in evals and append eval evidence:
 python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --write
 ```
 
+Draft improvement issues directly from the eval results:
+
+```bash
+python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --feedback --feedback-include-blocked
+```
+
 Preview the live GitHub Issue apply gate:
 
 ```bash

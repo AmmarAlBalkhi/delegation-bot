@@ -52,6 +52,7 @@ The QA command currently checks:
 - release artifact workflow checks for ledgers, fixtures, QA logs, `LICENSE`,
   and `NOTICE`
 - built-in eval generation from the generated QA ledger
+- direct eval-result feedback issue draft generation
 - feedback issue draft generation from eval evidence
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning

@@ -4,7 +4,7 @@ import json
 import io
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 from delegation_bot.cli import main
@@ -115,6 +115,62 @@ class DelegationCliTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertTrue(any(json.loads(line)["type"] == "eval.result" for line in lines))
+
+    def test_eval_can_draft_feedback_directly_without_written_eval_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "eval",
+                        str(EXAMPLE),
+                        "--ledger",
+                        str(ledger),
+                        "--feedback",
+                        "--feedback-include-blocked",
+                    ]
+                )
+            lines = ledger.read_text(encoding="utf-8").splitlines()
+
+        self.assertEqual(status, 0)
+        self.assertIn("Eval report", output.getvalue())
+        self.assertIn("Feedback issue drafts", output.getvalue())
+        self.assertIn("Eval blocked: tests_pass_before_pr", output.getvalue())
+        self.assertFalse(any(json.loads(line)["type"] == "eval.result" for line in lines))
+
+    def test_eval_feedback_write_appends_planned_issue_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                status = main(
+                    [
+                        "eval",
+                        str(EXAMPLE),
+                        "--ledger",
+                        str(ledger),
+                        "--feedback",
+                        "--feedback-include-blocked",
+                        "--feedback-write",
+                    ]
+                )
+            lines = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(status, 0)
+        self.assertTrue(any(line["type"] == "github.issue.planned" for line in lines))
+        self.assertFalse(any(line["type"] == "eval.result" for line in lines))
+
+    def test_eval_feedback_write_requires_feedback_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stderr(io.StringIO()):
+                status = main(["eval", str(EXAMPLE), "--ledger", str(ledger), "--feedback-write"])
+
+        self.assertEqual(status, 1)
 
     def test_feedback_example_drafts_issue_from_blocked_eval(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -8,6 +8,12 @@ Simple version:
 ledger event -> eval result -> dedupe marker -> GitHub Issue draft -> playbook or regression eval
 ```
 
+Even simpler now:
+
+```text
+eval result -> feedback issue draft
+```
+
 This should start as dry-run planning, not automatic issue spam.
 
 ## Why It Matters
@@ -28,6 +34,10 @@ Good failures become:
 
 The first trigger should be an `eval.result` ledger event with status `failed`
 or `blocked`.
+
+The lower-friction trigger is a direct `EvalResult` object from the current
+`delegation eval` run. That lets the CLI draft feedback without requiring
+`eval --write` first.
 
 Important fields:
 
@@ -147,6 +157,15 @@ The first code slice is now implemented through:
 python scripts/delegation.py feedback examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl --include-blocked
 ```
 
+The direct eval-result slice is now implemented through:
+
+```bash
+python scripts/delegation.py eval examples/ai-harness-control-plane.yaml \
+  --ledger .delegation/latest.jsonl \
+  --feedback \
+  --feedback-include-blocked
+```
+
 What it does:
 
 - reads `eval.result` events from the ledger
@@ -158,13 +177,11 @@ What it does:
   feedback events
 - uses the existing `github.issue` adapter to emit planned issue evidence
 - can append planned feedback issue events with `--write`
+- can now draft feedback directly from current `EvalResult` objects with
+  `eval --feedback`
+- can append planned feedback issue events directly with `eval --feedback-write`
 
-The next implementation slice should be:
-
-1. Add a function that converts `EvalResult` into a `github.issue` adapter
-   request for direct eval-result objects, not only ledger events.
-2. Link dry-run update drafts to live GitHub issue numbers after apply mode
-   exists.
-3. Keep live GitHub writes behind the existing apply mode.
+The next implementation slice should link dry-run update drafts to live GitHub
+issue numbers after apply mode exists.
 
 This keeps the project aligned with its own rule: evidence first, then action.
