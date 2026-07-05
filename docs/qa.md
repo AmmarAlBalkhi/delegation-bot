@@ -57,6 +57,7 @@ The QA command currently checks:
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning
 - playbook catalog CLI summary
+- playbook catalog tag and adapter filtering
 - playbook catalog validation through unit tests
 - JSON parsing for schema files
 

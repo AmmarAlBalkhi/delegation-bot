@@ -274,6 +274,35 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["version"], "delegation.ai/playbook-catalog/v1")
         self.assertGreaterEqual(len(data["playbooks"]), 3)
 
+    def test_catalog_command_filters_by_tag_and_adapter(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["catalog", "--tag", "release", "--adapter", "github.actions"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("Filters: tags=release; adapters=github.actions", output.getvalue())
+        self.assertIn("playbook-release-readiness", output.getvalue())
+        self.assertNotIn("playbook-code-review", output.getvalue())
+
+    def test_catalog_command_json_includes_filter_metadata(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["catalog", "--tag", "ci", "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["filters"]["tags"], ["ci"])
+        self.assertEqual(data["filtered_count"], 1)
+        self.assertEqual(data["playbooks"][0]["id"], "playbook-ci-repair")
+
+    def test_catalog_command_lists_tags_and_adapters(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["catalog", "--list-tags", "--list-adapters"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("Catalog tags", output.getvalue())
+        self.assertIn("release", output.getvalue())
+        self.assertIn("Catalog adapters", output.getvalue())
+        self.assertIn("github.issue", output.getvalue())
+
     def test_doctor_command_reports_readiness(self) -> None:
         with redirect_stdout(io.StringIO()) as output:
             status = main(["doctor", "--skip-github"])

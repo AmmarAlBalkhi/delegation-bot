@@ -213,11 +213,11 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Add hosted dashboard wireframe notes.
-2. Add contributor-license or DCO policy notes.
-3. Add playbook catalog filtering by tag and adapter.
-4. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
-5. Link dry-run feedback update drafts to live GitHub issue numbers.
+1. Add opt-in live model-backed `delegation suggest` after fixture QA exists.
+2. Link dry-run feedback update drafts to live GitHub issue numbers.
+3. Add public roadmap issues from the active queue.
+4. Add GitHub App installation design notes.
+5. Add issue labels and good-first-issue curation.
 
 The million-star path starts with one quiet miracle: a developer can understand
 what an AI system is about to do before it does it.

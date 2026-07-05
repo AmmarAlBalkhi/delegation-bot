@@ -62,3 +62,13 @@ Each pull request should include:
 Unless explicitly stated otherwise, contributions intentionally submitted to
 this repository are submitted under the Apache License 2.0. See
 `docs/license-strategy.md` for the project license decision.
+
+The project does not require a separate Contributor License Agreement today.
+DCO-style sign-offs are encouraged for outside contributions and may become
+required before broad public launch:
+
+```bash
+git commit -s -m "Describe the change"
+```
+
+See `docs/contributor-license-policy.md` for the current policy notes.

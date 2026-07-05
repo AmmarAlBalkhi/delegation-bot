@@ -35,7 +35,14 @@ from delegation_bot.model_suggest_fixtures import (
     load_model_suggestion_fixture,
 )
 from delegation_bot.otel_export import OtelExportError, build_otel_export, render_otel_export, write_otel_export
-from delegation_bot.playbook_catalog import PlaybookCatalogError, load_catalog, summarize_catalog, validate_catalog
+from delegation_bot.playbook_catalog import (
+    PlaybookCatalogError,
+    catalog_facets,
+    filter_catalog,
+    load_catalog,
+    summarize_catalog,
+    validate_catalog,
+)
 from delegation_bot.promotion import PromotionError, evaluate_promotions, load_ledger, render_promotion_report
 from delegation_bot.suggest import (
     SUGGESTION_TEMPLATE_IDS,
@@ -389,10 +396,35 @@ def cmd_catalog(args: argparse.Namespace) -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
 
+    filtered_catalog, catalog_filter = filter_catalog(
+        catalog,
+        tags=args.tag,
+        adapters=args.adapter,
+    )
+    if args.list_tags or args.list_adapters:
+        facets = catalog_facets(catalog)
+        if args.json:
+            output = {}
+            if args.list_tags:
+                output["tags"] = facets["tags"]
+            if args.list_adapters:
+                output["adapters"] = facets["adapters"]
+            print(json.dumps(output, indent=2, sort_keys=True))
+            return 0
+        lines: list[str] = []
+        if args.list_tags:
+            lines.extend(["Catalog tags", "", *[f"- {tag}" for tag in facets["tags"]]])
+        if args.list_adapters:
+            if lines:
+                lines.append("")
+            lines.extend(["Catalog adapters", "", *[f"- {adapter}" for adapter in facets["adapters"]]])
+        print("\n".join(lines))
+        return 0
+
     if args.json:
-        print(json.dumps(catalog, indent=2, sort_keys=True))
+        print(json.dumps(filtered_catalog, indent=2, sort_keys=True))
     else:
-        print(summarize_catalog(catalog))
+        print(summarize_catalog(filtered_catalog, catalog_filter=catalog_filter))
     return 0
 
 
@@ -534,6 +566,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to the playbook catalog.",
     )
     catalog.add_argument("--json", action="store_true", help="Print the catalog as JSON.")
+    catalog.add_argument("--tag", action="append", help="Only show playbooks with this tag. Repeatable.")
+    catalog.add_argument("--adapter", action="append", help="Only show playbooks requiring this adapter. Repeatable.")
+    catalog.add_argument("--list-tags", action="store_true", help="List known catalog tags.")
+    catalog.add_argument("--list-adapters", action="store_true", help="List known catalog adapters.")
     catalog.set_defaults(func=cmd_catalog)
 
     doctor = subparsers.add_parser("doctor", help="Check local Delegation Bot readiness.")

@@ -130,11 +130,13 @@ opt-in model-backed suggestion design and no-network fixtures,
 and failed examples, [docs/playbooks.md](docs/playbooks.md) for reusable
 Harnessfile missions, [docs/eval-to-issue-feedback.md](docs/eval-to-issue-feedback.md)
 for the improvement loop, [docs/opentelemetry-mapping.md](docs/opentelemetry-mapping.md)
-for observability mapping and the local exporter, and [ROADMAP.md](ROADMAP.md)
-for the million-star plan.
+for observability mapping and the local exporter,
+[docs/dashboard-wireframe.md](docs/dashboard-wireframe.md) for the future
+hosted cockpit, and [ROADMAP.md](ROADMAP.md) for the million-star plan.
 
 For public launch planning, see [CONTRIBUTING.md](CONTRIBUTING.md),
-[SECURITY.md](SECURITY.md), and [docs/domain-strategy.md](docs/domain-strategy.md).
+[SECURITY.md](SECURITY.md), [docs/contributor-license-policy.md](docs/contributor-license-policy.md),
+and [docs/domain-strategy.md](docs/domain-strategy.md).
 For business assumptions and the active work queue, see
 [docs/business-model.md](docs/business-model.md) and
 [docs/next-actions.md](docs/next-actions.md). For package release rehearsal,
@@ -396,6 +398,15 @@ Summarize the playbook catalog:
 
 ```bash
 python scripts/delegation.py catalog
+```
+
+Filter the playbook catalog:
+
+```bash
+python scripts/delegation.py catalog --tag release
+python scripts/delegation.py catalog --adapter github.actions
+python scripts/delegation.py catalog --tag ci --adapter github.actions
+python scripts/delegation.py catalog --list-tags --list-adapters
 ```
 
 Evaluate whether agents are ready for promotion:

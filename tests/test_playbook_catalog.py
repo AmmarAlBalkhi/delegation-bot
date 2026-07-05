@@ -6,7 +6,7 @@ from pathlib import Path
 from delegation_bot.evals import run_declared_evals
 from delegation_bot.harness_manifest import load_manifest
 from delegation_bot.harness_plan import build_dry_run_ledger, compile_plan
-from delegation_bot.playbook_catalog import load_catalog, summarize_catalog, validate_catalog
+from delegation_bot.playbook_catalog import catalog_facets, filter_catalog, load_catalog, summarize_catalog, validate_catalog
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +19,31 @@ class PlaybookCatalogTests(unittest.TestCase):
 
         self.assertEqual(validate_catalog(catalog, ROOT), [])
         self.assertIn("playbook-code-review", summarize_catalog(catalog))
+
+    def test_catalog_filters_by_tag_and_adapter(self) -> None:
+        catalog = load_catalog(CATALOG)
+
+        filtered, catalog_filter = filter_catalog(catalog, tags=["release"], adapters=["github.actions"])
+
+        self.assertEqual(catalog_filter.tags, ("release",))
+        self.assertEqual(catalog_filter.adapters, ("github.actions",))
+        self.assertEqual([entry["id"] for entry in filtered["playbooks"]], ["playbook-release-readiness"])
+        self.assertIn("Matches: 1", summarize_catalog(filtered, catalog_filter=catalog_filter))
+
+    def test_catalog_filters_can_return_no_matches(self) -> None:
+        catalog = load_catalog(CATALOG)
+
+        filtered, catalog_filter = filter_catalog(catalog, tags=["release"], adapters=["claude.code"])
+
+        self.assertEqual(filtered["playbooks"], [])
+        self.assertIn("- none", summarize_catalog(filtered, catalog_filter=catalog_filter))
+
+    def test_catalog_facets_list_available_tags_and_adapters(self) -> None:
+        catalog = load_catalog(CATALOG)
+        facets = catalog_facets(catalog)
+
+        self.assertIn("release", facets["tags"])
+        self.assertIn("github.issue", facets["adapters"])
 
     def test_catalog_expected_eval_states_match_dry_run_results(self) -> None:
         catalog = load_catalog(CATALOG)
