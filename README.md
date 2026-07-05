@@ -121,6 +121,8 @@ the first safe live-execution design, [docs/doctor.md](docs/doctor.md) for
 local readiness checks,
 [docs/github-issue-apply.md](docs/github-issue-apply.md) for the first live
 gated GitHub Issue path,
+[docs/github-app-installation.md](docs/github-app-installation.md) for the
+future scoped GitHub App path,
 [docs/harnessfile-suggest.md](docs/harnessfile-suggest.md) for the
 no-blank-page suggestion flow,
 [docs/model-backed-suggest.md](docs/model-backed-suggest.md) for the explicit
@@ -136,7 +138,9 @@ hosted cockpit, and [ROADMAP.md](ROADMAP.md) for the million-star plan.
 
 For public launch planning, see [CONTRIBUTING.md](CONTRIBUTING.md),
 [SECURITY.md](SECURITY.md), [docs/contributor-license-policy.md](docs/contributor-license-policy.md),
-and [docs/domain-strategy.md](docs/domain-strategy.md).
+and [docs/domain-strategy.md](docs/domain-strategy.md). For public contribution
+triage, see [docs/public-roadmap-issues.md](docs/public-roadmap-issues.md) and
+[docs/issue-labels.md](docs/issue-labels.md).
 For business assumptions and the active work queue, see
 [docs/business-model.md](docs/business-model.md) and
 [docs/next-actions.md](docs/next-actions.md). For package release rehearsal,

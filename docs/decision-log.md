@@ -708,3 +708,25 @@ Evidence:
 - `tests/test_playbook_catalog.py`
 - `tests/test_delegation_cli.py`
 - `scripts/qa.py`
+
+## 2026-07-05: Curate Public Roadmap And Contributor Triage
+
+Decision: Add public roadmap issue drafts, a label source of truth,
+good-first-issue curation rules, stronger issue templates, and GitHub App
+installation design notes.
+
+Why: The repository should look clean and intentional before more people arrive.
+Roadmap issues need to guide contributors toward useful work without reviving
+the old noisy task list. GitHub App planning also needs to happen before the
+project asks users for scoped repository access.
+
+Evidence:
+
+- `docs/public-roadmap-issues.md`
+- `docs/issue-labels.md`
+- `docs/github-app-installation.md`
+- `.github/labels.yml`
+- `.github/ISSUE_TEMPLATE/`
+- `CONTRIBUTING.md`
+- `README.md`
+- `docs/next-actions.md`

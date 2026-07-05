@@ -17,6 +17,11 @@ Useful early contributions:
 Avoid starting with live execution adapters unless the dry-run contract and
 ledger events are already clear.
 
+See `docs/public-roadmap-issues.md` for curated public issue drafts and
+`docs/issue-labels.md` for label rules. A good first issue should be small,
+clear, local, and should not require secrets, model credits, or live GitHub
+writes.
+
 ## Local Setup
 
 ```bash
