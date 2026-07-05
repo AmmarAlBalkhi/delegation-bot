@@ -120,6 +120,26 @@ def build_checks(python: str) -> list[Check]:
             [python, "scripts/delegation.py", "doctor", "--skip-github"],
         ),
         Check(
+            "first-run demo",
+            [python, "scripts/delegation.py", "demo", "--ledger", ".delegation/qa-demo.jsonl"],
+        ),
+        Check(
+            "starter Harnessfile init",
+            [
+                python,
+                "scripts/delegation.py",
+                "init",
+                "--goal",
+                "prepare this repository for safe AI delegation",
+                "--output",
+                ".delegation/qa-init.yaml",
+                "--force",
+                "--plan",
+                "--ledger",
+                ".delegation/qa-init.jsonl",
+            ],
+        ),
+        Check(
             "suggest release Harnessfile",
             [
                 python,
@@ -172,6 +192,10 @@ def build_checks(python: str) -> list[Check]:
         Check(
             "package module CLI",
             [python, "-m", "delegation_bot", "adapters", "codex.thread"],
+        ),
+        Check(
+            "installed package demo smoke",
+            [python, "scripts/package_smoke.py"],
         ),
         Check(
             "example Harnessfile plans",

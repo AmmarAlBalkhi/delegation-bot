@@ -43,8 +43,8 @@ The product should feel like:
 The public experience should move toward this:
 
 ```text
-delegation doctor
-delegation suggest "prepare this repo for release"
+delegation demo
+delegation init --goal "prepare this repo for safe AI delegation"
 delegation plan Harnessfile.yaml
 delegation mcp-gate Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write
@@ -52,6 +52,10 @@ delegation promote Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation apply-issues Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation apply-actions Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
+
+`delegation demo` should stay install-safe and useful without network access.
+`delegation init` should create a starter Harnessfile without making users write
+YAML from scratch.
 
 `delegation suggest` now exists as a no-network, template-backed first version.
 Plain suggest output should stay short; full YAML is available with `--yaml` or

@@ -17,7 +17,23 @@ Evals decide what earns trust.
 From the repository root:
 
 ```bash
-python scripts/delegation.py doctor --skip-github
+python scripts/delegation.py demo
+```
+
+Expected first signal:
+
+```text
+Status: ready
+```
+
+That one command writes `.delegation/demo.jsonl`, checks the MCP gate, previews
+GitHub Actions dispatch, and runs evals.
+
+## Run The Full Flagship Flow
+
+For the larger example Harnessfile:
+
+```bash
 python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 python scripts/delegation.py ledger .delegation/demo.jsonl --limit 6
 python scripts/delegation.py mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
@@ -27,15 +43,15 @@ python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledge
 
 ## The Moment To Show
 
-After `mcp-gate`, the important line is:
+In both demo paths, the important line is:
 
 ```text
 Status: ready
 ```
 
-That proves the Harnessfile did not only create a plan. It also declared which
-MCP server and tool are allowed, checked the ledger evidence, and confirmed the
-tool risk gate before anything live ran.
+That proves the mission did not only create a plan. It also declared which MCP
+server and tool are allowed, checked the ledger evidence, and confirmed the tool
+risk gate before anything live ran.
 
 After `apply-actions`, the important idea is preview-first execution:
 
@@ -75,3 +91,13 @@ python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
 ```
 
 These fixtures show the control plane without network calls.
+
+## Start A Real Repo
+
+```bash
+python scripts/delegation.py init --goal "prepare this repo for safe AI delegation"
+python scripts/delegation.py validate Harnessfile.yaml
+python scripts/delegation.py plan Harnessfile.yaml --ledger .delegation/latest.jsonl
+```
+
+`init` refuses to overwrite an existing Harnessfile unless you pass `--force`.

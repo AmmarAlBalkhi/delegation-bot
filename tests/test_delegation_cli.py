@@ -35,6 +35,72 @@ class DelegationCliTests(unittest.TestCase):
         self.assertGreater(len(lines), 2)
         self.assertEqual(json.loads(lines[0])["type"], "plan.compiled")
 
+    def test_demo_command_runs_built_in_mission_control_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "demo.jsonl"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["demo", "--ledger", str(ledger)])
+            lines = ledger.read_text(encoding="utf-8").splitlines()
+
+        self.assertEqual(status, 0)
+        self.assertIn("Delegation Bot Demo", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("mcp-gate", output.getvalue())
+        self.assertIn("actions-preview", output.getvalue())
+        self.assertEqual(json.loads(lines[0])["type"], "plan.compiled")
+
+    def test_demo_command_can_print_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "demo.jsonl"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["demo", "--ledger", str(ledger), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertEqual(data["mcp_gate"]["status"], "ready")
+        self.assertTrue(data["ledger_event_count"])
+
+    def test_init_command_writes_starter_harnessfile(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            harnessfile = Path(tmpdir) / "Harnessfile.yaml"
+            ledger = Path(tmpdir) / "init.jsonl"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "init",
+                        "--goal",
+                        "review this pull request",
+                        "--output",
+                        str(harnessfile),
+                        "--repository",
+                        "owner/example",
+                        "--owner",
+                        "owner",
+                        "--plan",
+                        "--ledger",
+                        str(ledger),
+                    ]
+                )
+            harness_text = harnessfile.read_text(encoding="utf-8")
+            ledger_lines = ledger.read_text(encoding="utf-8").splitlines()
+
+        self.assertEqual(status, 0)
+        self.assertIn("Starter Harnessfile Created", output.getvalue())
+        self.assertIn("Template: code-review", output.getvalue())
+        self.assertIn("owner/example", harness_text)
+        self.assertEqual(json.loads(ledger_lines[0])["type"], "plan.compiled")
+
+    def test_init_command_does_not_overwrite_without_force(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            harnessfile = Path(tmpdir) / "Harnessfile.yaml"
+            harnessfile.write_text("existing", encoding="utf-8")
+            with redirect_stderr(io.StringIO()) as error:
+                status = main(["init", "--output", str(harnessfile)])
+
+        self.assertEqual(status, 1)
+        self.assertIn("--force", error.getvalue())
+
     def test_suggest_writes_valid_harnessfile_and_plan_ledger(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             harnessfile = Path(tmpdir) / "suggested.yaml"

@@ -32,18 +32,19 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Add a packaged demo/install path: source install smoke, `.pyz` experiment,
-   and future Windows `.exe` build script.
-2. Add local-model provider design for `delegation suggest` and
+1. Add local-model provider design for `delegation suggest` and
    `local.classifier`.
-3. Use the new `github.actions` dispatch preview gate to design the future live
+2. Use the new `github.actions` dispatch preview gate to design the future live
    dispatch client without enabling it yet.
+3. Add a Windows `.exe` build script after the package smoke path stays green.
 4. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 5. Design live feedback issue comments or close actions behind explicit gates.
 
 ## Completed Recently
 
+- Added `delegation demo`, `delegation init`, and an installed-package smoke
+  check so first-run users can see the product and create a Harnessfile quickly.
 - Added `delegation mcp-gate`, explicit MCP server/tool allowlist policy,
   a 60-second demo path, and a Windows EXE packaging plan.
 - Added MCP tool permission scope, risk-level, prompt-injection risk evidence,

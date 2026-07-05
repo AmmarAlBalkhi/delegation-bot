@@ -21,6 +21,15 @@ from delegation_bot.eval_feedback import (
     feedback_drafts_to_events,
     render_feedback_report,
 )
+from delegation_bot.first_run import (
+    DEFAULT_DEMO_LEDGER,
+    DEFAULT_INIT_GOAL,
+    DEFAULT_INIT_OUTPUT,
+    build_demo_report,
+    render_demo_report,
+    render_init_report,
+    write_init_harnessfile,
+)
 from delegation_bot.github_actions_apply import build_actions_apply_report, render_actions_apply_report
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
@@ -110,6 +119,48 @@ def cmd_plan(args: argparse.Namespace) -> int:
         events = build_dry_run_ledger(plan)
         write_jsonl(events, Path(args.ledger))
         print(f"\nLedger written: {args.ledger}")
+    return 0
+
+
+def cmd_demo(args: argparse.Namespace) -> int:
+    try:
+        report = build_demo_report(
+            ledger_path=Path(args.ledger),
+            harnessfile=Path(args.harnessfile) if args.harnessfile else None,
+            repository=args.repository,
+            owner=args.owner,
+        )
+    except (OSError, json.JSONDecodeError, ManifestError, PlanError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_demo_report(report))
+    return 1 if report.blocked else 0
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    try:
+        report = write_init_harnessfile(
+            output_path=Path(args.output),
+            goal=args.goal,
+            repository=args.repository,
+            owner=args.owner,
+            template=args.template,
+            force=args.force,
+            plan=args.plan,
+            ledger_path=Path(args.ledger) if args.ledger else None,
+        )
+    except (OSError, RuntimeError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_init_report(report))
     return 0
 
 
@@ -673,6 +724,41 @@ def cmd_mcp_gate(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
+
+    demo = subparsers.add_parser("demo", help="Run a safe first-run mission-control demo.")
+    demo.add_argument(
+        "--ledger",
+        default=DEFAULT_DEMO_LEDGER,
+        help="Write the demo dry-run ledger to this JSONL path.",
+    )
+    demo.add_argument(
+        "--harnessfile",
+        help="Use a Harnessfile instead of the built-in install-safe demo mission.",
+    )
+    demo.add_argument(
+        "--repository",
+        default="AmmarAlBalkhi/delegation-bot",
+        help="Repository owner/name to use in the built-in demo.",
+    )
+    demo.add_argument("--owner", default="maintainer", help="Accountable owner/reviewer for the built-in demo.")
+    demo.add_argument("--json", action="store_true", help="Print the demo report as JSON.")
+    demo.set_defaults(func=cmd_demo)
+
+    init = subparsers.add_parser("init", help="Create a starter Harnessfile for this repository.")
+    init.add_argument("--goal", default=DEFAULT_INIT_GOAL, help="Plain-language mission goal for the starter Harnessfile.")
+    init.add_argument("--output", default=DEFAULT_INIT_OUTPUT, help="Harnessfile path to create.")
+    init.add_argument("--repository", help="Repository owner/name. Defaults to GitHub origin when detected.")
+    init.add_argument("--owner", help="Accountable owner/reviewer. Defaults to the repository owner.")
+    init.add_argument(
+        "--template",
+        choices=SUGGESTION_TEMPLATE_IDS,
+        help="Force a starter template instead of inferring one from the goal.",
+    )
+    init.add_argument("--force", action="store_true", help="Overwrite the output Harnessfile if it already exists.")
+    init.add_argument("--plan", action="store_true", help="Also compile the starter Harnessfile and write a ledger.")
+    init.add_argument("--ledger", help="Ledger path for --plan. Defaults to .delegation/init.jsonl.")
+    init.add_argument("--json", action="store_true", help="Print the init report as JSON.")
+    init.set_defaults(func=cmd_init)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

@@ -34,7 +34,8 @@ From the repository root:
 ```bash
 python -m pip install -e .
 delegation --help
-delegation plan examples/ai-harness-control-plane.yaml
+delegation demo
+delegation init --goal "prepare this repo for safe AI delegation" --output Harnessfile.yaml
 python -m delegation_bot adapters codex.thread
 ```
 
@@ -43,8 +44,10 @@ python -m delegation_bot adapters codex.thread
 Before a public package release:
 
 - run `python scripts/qa.py`
+- run `python scripts/package_smoke.py`
 - run a source install smoke test
 - confirm `delegation --help` works after install
+- confirm `delegation demo` works outside the source checkout
 - confirm README examples use the package command where appropriate
 - confirm `LICENSE`, `NOTICE`, and `pyproject.toml` agree
 - confirm GitHub Actions uploads ledgers, generated adapter fixtures, QA logs,

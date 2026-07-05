@@ -21,6 +21,12 @@ class HarnessSuggestionTests(unittest.TestCase):
         self.assertEqual(template, "release-readiness")
         self.assertIn("release", reason)
 
+    def test_infer_template_does_not_match_pr_inside_prepare(self) -> None:
+        template, reason = infer_template("prepare this repository for safe AI delegation")
+
+        self.assertEqual(template, "general-agentic-work")
+        self.assertIn("general", reason)
+
     def test_release_suggestion_is_valid_and_compiles_to_ledger(self) -> None:
         suggestion = build_suggestion("prepare this repo for release")
         errors = validate_manifest(suggestion.manifest)
