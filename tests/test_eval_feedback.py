@@ -9,14 +9,17 @@ from pathlib import Path
 from delegation_bot.eval_feedback import (
     build_feedback_issue_drafts,
     build_feedback_issue_drafts_from_results,
+    build_feedback_resolution_drafts,
     eval_result_to_event,
     feedback_drafts_to_events,
     render_feedback_report,
     sanitize_details,
 )
 from delegation_bot.evals import EvalResult, eval_ledger_is_valid
+from delegation_bot.ledger import load_ledger_events
 
 
+ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = {
     "id": "feedback-test",
     "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
@@ -181,6 +184,44 @@ class EvalFeedbackTests(unittest.TestCase):
         self.assertEqual(feedback_details["live_issue_number"], 17)
         self.assertEqual(feedback_details["live_issue_url"], "https://github.com/AmmarAlBalkhi/delegation-bot/issues/17")
         self.assertIn("live issue: `#17` https://github.com/AmmarAlBalkhi/delegation-bot/issues/17", report)
+
+    def test_passing_eval_with_live_feedback_issue_drafts_resolution_update(self) -> None:
+        events = load_ledger_events(ROOT / "examples" / "ledgers" / "feedback-recovery.jsonl")[:-1]
+        manifest = {
+            "id": "feedback-memory-fixture",
+            "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+        }
+
+        drafts = build_feedback_resolution_drafts(
+            manifest,
+            events,
+            repository="AmmarAlBalkhi/delegation-bot",
+            ledger_source="feedback-recovery.jsonl",
+        )
+        report = render_feedback_report(drafts)
+
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(drafts[0].operation, "resolve")
+        self.assertEqual(drafts[0].status, "passed")
+        self.assertEqual(drafts[0].live_issue_number, 321)
+        self.assertIn("The eval is passing again", drafts[0].body)
+        self.assertIn("Resolve eval passed: required_adapter_evidence", report)
+
+    def test_existing_resolution_event_suppresses_duplicate_recovery_draft(self) -> None:
+        events = load_ledger_events(ROOT / "examples" / "ledgers" / "feedback-recovery.jsonl")
+        manifest = {
+            "id": "feedback-memory-fixture",
+            "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+        }
+
+        drafts = build_feedback_resolution_drafts(
+            manifest,
+            events,
+            repository="AmmarAlBalkhi/delegation-bot",
+            ledger_source="feedback-recovery.jsonl",
+        )
+
+        self.assertEqual(drafts, [])
 
     def test_feedback_drafts_can_be_appended_as_valid_ledger_events(self) -> None:
         drafts = build_feedback_issue_drafts(MANIFEST, [BASE_EVENT], ledger_source="ledger.jsonl")

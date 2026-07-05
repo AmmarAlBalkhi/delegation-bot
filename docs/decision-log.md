@@ -783,3 +783,42 @@ Evidence:
 - `tests/test_eval_feedback.py`
 - `tests/test_evals.py`
 - `tests/test_ledger_fixtures.py`
+
+## 2026-07-05: Prioritize Adapters, Dashboard Data, And Feedback Recovery
+
+Decision: Add a researched adapter candidate matrix before adding more adapter
+surface area.
+
+Why: Delegation Bot should be a harness for AI harnesses, not a random pile of
+integrations. The matrix ranks candidates by user pull, evidence value,
+dry-run clarity, risk, and contributor fit so new adapters strengthen the core
+control-plane loop.
+
+Decision: Add `delegation dashboard` as a read-only data model before any
+dashboard UI design.
+
+Why: The user experience should become easier without making the project feel
+generic. A stable snapshot lets future UI work show mission, eval, adapter,
+feedback, and agent state without bypassing Harnessfiles, ledgers, or approval
+gates.
+
+Decision: Add `delegation recover-feedback` so passing evals can draft recovery
+updates for existing live feedback issues.
+
+Why: The feedback loop should close the learning cycle. Failed evals create or
+update issues; passing evals should help humans resolve those issues without
+automatic closure or hidden live writes.
+
+Evidence:
+
+- `docs/adapter-candidate-matrix.md`
+- `delegation_bot/dashboard.py`
+- `delegation_bot/eval_feedback.py`
+- `delegation_bot/cli.py`
+- `docs/dashboard-data-model.md`
+- `docs/eval-to-issue-feedback.md`
+- `examples/ledgers/feedback-recovery.jsonl`
+- `tests/test_dashboard.py`
+- `tests/test_eval_feedback.py`
+- `tests/test_delegation_cli.py`
+- `tests/test_ledger_fixtures.py`

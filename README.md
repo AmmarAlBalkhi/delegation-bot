@@ -83,7 +83,9 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation suggest "goal" --plan --ledger .delegation/run.jsonl` | Draft a Harnessfile from plain language and dry-run it. |
 | `delegation plan Harnessfile.yaml --ledger .delegation/run.jsonl` | Compile a Harnessfile into a dry-run ledger. |
 | `delegation ledger .delegation/run.jsonl` | Inspect run evidence. |
+| `delegation dashboard .delegation/run.jsonl` | Build a read-only mission snapshot for future UI/cockpit work. |
 | `delegation eval Harnessfile.yaml --ledger .delegation/run.jsonl --feedback` | Run evals and draft improvement issues. |
+| `delegation recover-feedback Harnessfile.yaml --ledger .delegation/run.jsonl` | Draft recovery updates when previously failing evals pass. |
 | `delegation promote Harnessfile.yaml --ledger .delegation/run.jsonl` | Check whether agents can earn more autonomy. |
 | `delegation apply-issues Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview live GitHub Issue writes. |
 
@@ -99,6 +101,7 @@ python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapte
 python scripts/delegation.py ledger examples/ledgers/adapter-blocked.jsonl --status blocked
 python scripts/delegation.py ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
 python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
+python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
 ```
 
 The last fixture shows the feedback loop remembering a live GitHub issue number
@@ -137,6 +140,7 @@ Build here:
 - [Adapter SDK](docs/adapter-sdk.md)
 - [Build an adapter](docs/build-an-adapter.md)
 - [Adapter compatibility](docs/adapter-compatibility.md)
+- [Adapter candidate matrix](docs/adapter-candidate-matrix.md)
 - [Playbooks](docs/playbooks.md)
 
 Trust and operations:
@@ -148,6 +152,7 @@ Trust and operations:
 - [Eval-to-issue feedback](docs/eval-to-issue-feedback.md)
 - [Ledger viewer](docs/ledger-viewer.md)
 - [Ledger fixtures](docs/ledger-fixtures.md)
+- [Dashboard data model](docs/dashboard-data-model.md)
 - [OpenTelemetry mapping](docs/opentelemetry-mapping.md)
 
 Launch readiness:

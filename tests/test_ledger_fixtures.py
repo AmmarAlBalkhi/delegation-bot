@@ -81,6 +81,17 @@ class LedgerFixtureTests(unittest.TestCase):
         self.assertIn("live_issue_number=321", text)
         self.assertIn("live issue: `#321` https://github.com/AmmarAlBalkhi/delegation-bot/issues/321", report)
 
+    def test_feedback_recovery_fixture_is_readable_and_not_duplicate(self) -> None:
+        events = load_ledger_events(FIXTURES / "feedback-recovery.jsonl")
+        view = build_ledger_view(events, ledger_filter=LedgerFilter(adapter="github.issue"))
+        text = render_ledger_view(view)
+
+        self.assertEqual(eval_ledger_is_valid(events).status, "passed")
+        self.assertEqual(eval_no_duplicate_issue_markers(events).status, "passed")
+        self.assertEqual(view.total_events, 8)
+        self.assertIn("feedback.resolve.required_adapter_evidence", text)
+        self.assertIn("live_issue_number=321", text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -90,3 +90,10 @@ The project is currently pre-release.
   intentional feedback update lifecycles.
 - Made read-only CLI commands avoid importing live network dependencies until
   a live apply or live model call needs them.
+- Added a researched adapter candidate matrix for prioritizing real-world
+  harness integrations.
+- Added `delegation dashboard` for read-only mission snapshots from ledger
+  evidence.
+- Added `delegation recover-feedback` for recovery drafts when previously
+  failing evals pass after a live feedback issue exists.
+- Added a feedback recovery ledger fixture.

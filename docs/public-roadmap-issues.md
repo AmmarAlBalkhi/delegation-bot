@@ -61,12 +61,12 @@ context to a hosted model.
 - Docs explain the trust boundary in simple language.
 ```
 
-## Draft 2: Resolve Feedback Issues When Evals Recover
+## Draft 2: Add Live Feedback Issue Comments Behind Approval
 
 Suggested title:
 
 ```text
-Update feedback issues when evals recover
+Add gated comments for feedback issue recovery
 ```
 
 Suggested labels:
@@ -80,27 +80,27 @@ Body:
 ```markdown
 ## Goal
 
-When an eval that previously failed starts passing, draft a clear update for
-the existing feedback issue so humans can close it or mark it resolved.
+When an eval that previously failed starts passing, allow Delegation Bot to add
+an approved recovery comment to the existing feedback issue.
 
 ## Why
 
-The feedback loop should not only notice problems. It should also recognize
-recovery, reduce stale issue noise, and show that trust is being earned.
+The preview recovery draft exists. The next step is a live path that is still
+explicit, approved, and auditable.
 
 ## Scope
 
-- Detect a passing eval with prior feedback issue memory.
-- Draft a GitHub Issue comment or update body in preview mode.
-- Keep live writes behind the existing apply gate.
-- Add a fixture showing failed -> issue -> later passed -> resolution draft.
+- Add a `github.issue.comment` or equivalent approved live action design.
+- Require explicit confirmation and repository policy checks.
+- Record issue comment URL or id in the ledger.
+- Keep issue closing separate from comment creation.
 
 ## Acceptance criteria
 
-- Passing evals can point at the existing feedback issue number.
-- Preview mode explains the proposed resolution without writing.
-- Live mode still requires explicit confirmation.
-- Tests cover the recovery path.
+- Preview shows the exact comment before writing.
+- Live mode requires explicit confirmation and token.
+- Ledger records the resulting comment id or URL.
+- Tests cover preview, blocked, and fake-client live paths.
 ```
 
 ## Draft 3: Design The GitHub App Installation Flow

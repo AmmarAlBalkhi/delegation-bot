@@ -330,6 +330,26 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "fixture feedback recovery ledger report",
+            [
+                python,
+                "scripts/delegation.py",
+                "ledger",
+                "examples/ledgers/feedback-recovery.jsonl",
+                "--adapter",
+                "github.issue",
+            ],
+        ),
+        Check(
+            "dashboard snapshot fixture",
+            [
+                python,
+                "scripts/delegation.py",
+                "dashboard",
+                "examples/ledgers/feedback-recovery.jsonl",
+            ],
+        ),
+        Check(
             "adapter fixture generator",
             [
                 python,
