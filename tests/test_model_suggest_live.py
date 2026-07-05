@@ -7,6 +7,7 @@ from delegation_bot.harness_manifest import validate_manifest
 from delegation_bot.model_suggest_fixtures import validate_model_suggestion_draft
 from delegation_bot.model_suggest_live import (
     ANTHROPIC_MESSAGES_URL,
+    OLLAMA_GENERATE_PATH,
     OPENAI_RESPONSES_URL,
     LiveModelConfig,
     LiveModelSuggestionError,
@@ -45,9 +46,13 @@ class LiveModelSuggestionTests(unittest.TestCase):
     def test_live_model_config_uses_current_defaults(self) -> None:
         openai_config = build_live_model_config("openai", environ={"OPENAI_API_KEY": "sk-test"})
         anthropic_config = build_live_model_config("anthropic", environ={"ANTHROPIC_API_KEY": "claude-test"})
+        ollama_config = build_live_model_config("ollama", environ={})
 
         self.assertEqual(openai_config.model, "gpt-5.5")
         self.assertEqual(anthropic_config.model, "claude-sonnet-5")
+        self.assertEqual(ollama_config.model, "llama3.2")
+        self.assertEqual(ollama_config.base_url, "http://localhost:11434")
+        self.assertEqual(ollama_config.api_key, "")
 
     def test_missing_api_key_raises_clear_error(self) -> None:
         with self.assertRaises(LiveModelSuggestionError) as context:
@@ -95,6 +100,37 @@ class LiveModelSuggestionTests(unittest.TestCase):
         self.assertEqual(calls[0][0], ANTHROPIC_MESSAGES_URL)
         self.assertIn("x-api-key", calls[0][1])
         self.assertEqual(calls[0][2]["model"], "claude-test")
+
+    def test_ollama_live_suggestion_uses_generate_endpoint_and_validates(self) -> None:
+        payload = _draft_payload(provider="ollama", model="llama-test")
+        calls: list[tuple[str, dict[str, str], dict[str, object], int]] = []
+
+        def sender(url: str, headers: dict[str, str], body: dict[str, object], timeout: int) -> dict[str, object]:
+            calls.append((url, headers, body, timeout))
+            return {"response": json.dumps(payload)}
+
+        draft = fetch_live_model_suggestion(
+            "prepare this repo for release",
+            config=LiveModelConfig(
+                provider="ollama",
+                model="llama-test",
+                base_url="http://127.0.0.1:11434",
+            ),
+            sender=sender,
+        )
+
+        self.assertEqual(draft.provider, "ollama")
+        self.assertEqual(validate_manifest(draft.manifest), [])
+        self.assertTrue(calls[0][0].endswith(OLLAMA_GENERATE_PATH))
+        self.assertEqual(calls[0][1], {"Content-Type": "application/json"})
+        self.assertEqual(calls[0][2]["model"], "llama-test")
+        self.assertEqual(calls[0][2]["stream"], False)
+        self.assertEqual(calls[0][2]["format"], "json")
+
+    def test_ollama_base_url_can_come_from_env(self) -> None:
+        config = build_live_model_config("ollama", environ={"OLLAMA_HOST": "127.0.0.1:11435"})
+
+        self.assertEqual(config.base_url, "http://127.0.0.1:11435")
 
     def test_invalid_model_json_is_rejected(self) -> None:
         def sender(url: str, headers: dict[str, str], body: dict[str, object], timeout: int) -> dict[str, object]:

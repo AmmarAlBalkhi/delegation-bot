@@ -70,6 +70,19 @@ delegation suggest "prepare this repo for release" \
   --ledger .delegation/model-openai-release.jsonl
 ```
 
+Run a local Ollama-backed suggestion:
+
+```bash
+delegation suggest "prepare this repo for safe AI delegation" \
+  --draft-source model \
+  --provider ollama \
+  --allow-live-model \
+  --model llama3.2 \
+  --output .delegation/model-ollama-safe-delegation.yaml \
+  --plan \
+  --ledger .delegation/model-ollama-safe-delegation.jsonl
+```
+
 Force a template:
 
 ```bash

@@ -52,6 +52,7 @@ The QA command currently checks:
 - adapter fixture generation
 - no-network model-backed suggestion fixtures
 - mocked live model-backed suggestion provider tests
+- mocked Ollama-backed local model suggestion tests
 - release artifact workflow checks for ledgers, fixtures, QA logs, `LICENSE`,
   and `NOTICE`
 - built-in eval generation from the generated QA ledger

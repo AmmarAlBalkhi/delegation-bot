@@ -49,14 +49,30 @@ delegation suggest "review this pull request" \
   --ledger .delegation/model-anthropic-review.jsonl
 ```
 
+or local Ollama:
+
+```bash
+delegation suggest "prepare this repo for safe AI delegation" \
+  --draft-source model \
+  --provider ollama \
+  --allow-live-model \
+  --model llama3.2 \
+  --output .delegation/model-ollama-safe-delegation.yaml \
+  --plan \
+  --ledger .delegation/model-ollama-safe-delegation.jsonl
+```
+
 No hidden model calls. No surprise cost. No surprise data sharing.
 
 Required environment variables:
 
 - OpenAI: `OPENAI_API_KEY`
 - Anthropic: `ANTHROPIC_API_KEY` or `CLAUDE_API_KEY`
+- Ollama: no API key; defaults to `http://localhost:11434`
 
-If the key is missing, the command fails before any provider call.
+If a hosted-provider key is missing, the command fails before any provider call.
+For Ollama, use `--base-url` or `OLLAMA_HOST` when the local server is not on
+the default host.
 
 ## Ease-Of-Use Rule
 
@@ -136,9 +152,11 @@ Anthropic path:
 
 Local model path:
 
-- should use the same draft envelope later
-- should be designed for privacy-sensitive drafting
-- must still use deterministic validation before the draft becomes a plan
+- uses Ollama's `/api/generate` endpoint
+- requests `stream: false` and JSON mode
+- uses the same draft envelope as hosted providers
+- is designed for privacy-sensitive drafting on local infrastructure
+- still uses deterministic validation before the draft becomes a plan
 
 ## Draft Envelope
 
@@ -210,7 +228,7 @@ Model-backed suggest is considered safe for early use because:
 
 1. It is off by default.
 2. Live calls require `--allow-live-model`.
-3. OpenAI and Anthropic use the same draft envelope.
+3. OpenAI, Anthropic, and Ollama use the same draft envelope.
 4. Fixture mode remains no-network for tests.
 5. Invalid model output cannot create a plan.
 6. Valid model output still goes through `validate`, `plan`, ledger, evals, and promotion.
@@ -224,3 +242,6 @@ Checked on 2026-07-05:
   <https://platform.openai.com/docs/api-reference/responses/create>
 - Anthropic Messages API is the request path used for Claude suggestions:
   <https://docs.anthropic.com/en/api/messages>
+- Ollama `/api/generate` is the local request path used for local suggestions,
+  with `stream: false` and JSON mode:
+  <https://github.com/ollama/ollama/blob/main/docs/api.md>

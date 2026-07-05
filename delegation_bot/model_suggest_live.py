@@ -16,16 +16,19 @@ from delegation_bot.model_suggest_fixtures import (
 from delegation_bot.suggest import DEFAULT_OWNER, DEFAULT_REPOSITORY, build_suggestion
 
 
-LIVE_PROVIDERS = ("openai", "anthropic")
+LIVE_PROVIDERS = ("openai", "anthropic", "ollama")
 DEFAULT_MODELS = {
     "openai": "gpt-5.5",
     "anthropic": "claude-sonnet-5",
+    "ollama": "llama3.2",
 }
 DEFAULT_TIMEOUT_SECONDS = 60
 DEFAULT_MAX_OUTPUT_TOKENS = 6000
 OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
 ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
+OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434"
+OLLAMA_GENERATE_PATH = "/api/generate"
 
 
 class LiveModelSuggestionError(ValueError):
@@ -36,9 +39,10 @@ class LiveModelSuggestionError(ValueError):
 class LiveModelConfig:
     provider: str
     model: str
-    api_key: str
+    api_key: str = ""
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS
     max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS
+    base_url: str = ""
 
 
 Sender = T.Callable[[str, dict[str, str], JsonMap, int], JsonMap]
@@ -46,6 +50,8 @@ Sender = T.Callable[[str, dict[str, str], JsonMap, int], JsonMap]
 
 def api_key_from_env(provider: str, environ: T.Mapping[str, str] | None = None) -> str:
     env = environ or os.environ
+    if provider == "ollama":
+        return ""
     key_names = {
         "openai": ("OPENAI_API_KEY",),
         "anthropic": ("ANTHROPIC_API_KEY", "CLAUDE_API_KEY"),
@@ -68,6 +74,7 @@ def build_live_model_config(
     model: str | None = None,
     timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
     max_output_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
+    base_url: str | None = None,
     environ: T.Mapping[str, str] | None = None,
 ) -> LiveModelConfig:
     provider_id = provider.strip().lower()
@@ -80,12 +87,16 @@ def build_live_model_config(
     selected_model = (model or DEFAULT_MODELS[provider_id]).strip()
     if not selected_model:
         raise LiveModelSuggestionError("--model must be a non-empty string")
+    resolved_base_url = ""
+    if provider_id == "ollama":
+        resolved_base_url = _normalize_ollama_base_url(base_url or (environ or os.environ).get("OLLAMA_HOST"))
     return LiveModelConfig(
         provider=provider_id,
         model=selected_model,
         api_key=api_key_from_env(provider_id, environ=environ),
         timeout_seconds=timeout_seconds,
         max_output_tokens=max_output_tokens,
+        base_url=resolved_base_url,
     )
 
 
@@ -109,6 +120,15 @@ def fetch_live_model_suggestion(
         )
     elif config.provider == "anthropic":
         data = _call_anthropic(
+            goal,
+            config=config,
+            repository=repository,
+            owner=owner,
+            template=template,
+            sender=sender or _post_json,
+        )
+    elif config.provider == "ollama":
+        data = _call_ollama(
             goal,
             config=config,
             repository=repository,
@@ -268,6 +288,39 @@ def _call_anthropic(
     return _json_from_model_text(text)
 
 
+def _call_ollama(
+    goal: str,
+    *,
+    config: LiveModelConfig,
+    repository: str,
+    owner: str,
+    template: str | None,
+    sender: Sender,
+) -> JsonMap:
+    system_prompt, user_prompt = build_prompt_parts(
+        goal,
+        provider=config.provider,
+        model=config.model,
+        repository=repository,
+        owner=owner,
+        template=template,
+    )
+    response = sender(
+        _ollama_generate_url(config),
+        {"Content-Type": "application/json"},
+        {
+            "model": config.model,
+            "system": system_prompt,
+            "prompt": user_prompt,
+            "stream": False,
+            "format": "json",
+            "options": {"temperature": 0},
+        },
+        config.timeout_seconds,
+    )
+    return _json_from_model_text(_extract_ollama_text(response))
+
+
 def _post_json(url: str, headers: dict[str, str], payload: JsonMap, timeout_seconds: int) -> JsonMap:
     requests = _requests_module()
     try:
@@ -332,6 +385,26 @@ def _extract_anthropic_tool_input(response: JsonMap) -> JsonMap | None:
         if isinstance(block, dict) and block.get("type") == "tool_use" and isinstance(block.get("input"), dict):
             return T.cast(JsonMap, block["input"])
     return None
+
+
+def _extract_ollama_text(response: JsonMap) -> str:
+    text = response.get("response")
+    if isinstance(text, str) and text.strip():
+        return text
+    raise LiveModelSuggestionError("Ollama response did not include response text.")
+
+
+def _normalize_ollama_base_url(value: str | None) -> str:
+    raw = (value or OLLAMA_DEFAULT_BASE_URL).strip().rstrip("/")
+    if not raw:
+        return OLLAMA_DEFAULT_BASE_URL
+    if "://" not in raw:
+        raw = "http://" + raw
+    return raw
+
+
+def _ollama_generate_url(config: LiveModelConfig) -> str:
+    return (config.base_url or OLLAMA_DEFAULT_BASE_URL).rstrip("/") + OLLAMA_GENERATE_PATH
 
 
 def _json_from_model_text(text: str) -> JsonMap:

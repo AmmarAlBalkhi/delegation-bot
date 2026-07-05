@@ -43,13 +43,14 @@ from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
 from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_policy_report
 from delegation_bot.model_suggest_fixtures import (
+    FIXTURE_PROVIDERS,
     ModelSuggestionFixtureError,
-    SUPPORTED_PROVIDERS,
     load_model_suggestion_fixture,
 )
 from delegation_bot.model_suggest_live import (
     DEFAULT_MAX_OUTPUT_TOKENS,
     DEFAULT_TIMEOUT_SECONDS,
+    LIVE_PROVIDERS,
     LiveModelSuggestionError,
     build_live_model_config,
     fetch_live_model_suggestion,
@@ -72,6 +73,9 @@ from delegation_bot.suggest import (
     manifest_to_yaml,
     render_suggestion,
 )
+
+
+PROVIDER_CHOICES = tuple(sorted(set(FIXTURE_PROVIDERS) | set(LIVE_PROVIDERS)))
 
 
 def _load_valid_manifest(path: Path) -> tuple[dict[str, T.Any] | None, int]:
@@ -170,6 +174,12 @@ def cmd_suggest(args: argparse.Namespace) -> int:
             if not args.provider:
                 print("ERROR: --provider is required when --draft-source fixture is used", file=sys.stderr)
                 return 1
+            if args.provider not in FIXTURE_PROVIDERS:
+                print(
+                    "ERROR: no-network fixtures are available only for: " + ", ".join(FIXTURE_PROVIDERS),
+                    file=sys.stderr,
+                )
+                return 1
             template_id = args.template or infer_template(args.goal)[0]
             draft = load_model_suggestion_fixture(args.provider, template_id)
             source_name = draft.source_path.name if draft.source_path else "fixture"
@@ -183,10 +193,13 @@ def cmd_suggest(args: argparse.Namespace) -> int:
             if not args.provider:
                 print("ERROR: --provider is required when --draft-source model is used", file=sys.stderr)
                 return 1
+            if args.provider not in LIVE_PROVIDERS:
+                print("ERROR: live model providers are: " + ", ".join(LIVE_PROVIDERS), file=sys.stderr)
+                return 1
             if not args.allow_live_model:
                 print(
                     "ERROR: live model suggestions are opt-in. Add --allow-live-model to confirm "
-                    "you want a provider API call and possible cost.",
+                    "you want a provider API call or local model server request.",
                     file=sys.stderr,
                 )
                 return 1
@@ -195,6 +208,7 @@ def cmd_suggest(args: argparse.Namespace) -> int:
                 model=args.model,
                 timeout_seconds=args.timeout_seconds,
                 max_output_tokens=args.max_output_tokens,
+                base_url=args.base_url,
             )
             draft = fetch_live_model_suggestion(
                 args.goal,
@@ -788,15 +802,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     suggest.add_argument(
         "--provider",
-        choices=SUPPORTED_PROVIDERS,
+        choices=PROVIDER_CHOICES,
         help="Provider to use when --draft-source fixture or --draft-source model is used.",
     )
     suggest.add_argument(
         "--allow-live-model",
         action="store_true",
-        help="Confirm that --draft-source model may call a provider API and incur cost.",
+        help="Confirm that --draft-source model may call a provider API or local model server.",
     )
     suggest.add_argument("--model", help="Override the default live model for --draft-source model.")
+    suggest.add_argument(
+        "--base-url",
+        help="Override the local model server URL for --draft-source model --provider ollama.",
+    )
     suggest.add_argument(
         "--timeout-seconds",
         type=int,

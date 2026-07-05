@@ -136,7 +136,8 @@ Delegation Bot is pre-release, but the foundation is working:
 - preview-first live GitHub Issue apply
 - preview-first GitHub Actions dispatch gate
 - MCP tool permission and prompt-injection risk evidence
-- no-network and opt-in live model-backed Harnessfile suggestions
+- no-network and opt-in live model-backed Harnessfile suggestions for OpenAI,
+  Anthropic, and Ollama
 - package metadata for the `delegation` console command
 
 Live agent execution is intentionally not the default yet. The current focus is

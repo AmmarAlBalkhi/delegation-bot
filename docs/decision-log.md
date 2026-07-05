@@ -941,3 +941,30 @@ Evidence:
 - `docs/release.md`
 - `docs/windows-exe.md`
 - `tests/test_delegation_cli.py`
+
+## 2026-07-05: Add Local Model Harnessfile Drafting
+
+Decision: Add `ollama` as an opt-in live model provider for `delegation
+suggest`.
+
+Why: Delegation Bot should enable AI without forcing every AI draft through a
+hosted provider. Ollama gives privacy-sensitive users a local model path while
+the control plane keeps the same trust boundary: the model proposes, then
+Delegation Bot validates, dry-runs, writes the ledger, and runs evals.
+
+Decision: Keep local model drafting behind `--allow-live-model`.
+
+Why: A local model call has no hosted API key, but it still reads prompt
+context, can be slow, and can return bad output. The explicit flag keeps the
+product honest: no hidden model calls, even local ones.
+
+Evidence:
+
+- `delegation_bot/model_suggest_live.py`
+- `delegation_bot/model_suggest_fixtures.py`
+- `delegation_bot/cli.py`
+- `schemas/harness-suggestion-draft.v1.schema.json`
+- `docs/model-backed-suggest.md`
+- `docs/harnessfile-suggest.md`
+- `tests/test_model_suggest_live.py`
+- `tests/test_delegation_cli.py`
