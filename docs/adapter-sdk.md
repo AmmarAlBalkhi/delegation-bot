@@ -92,8 +92,8 @@ execute only when policy allows it.
 
 - `github.issue`: dry-run issue creation/update planner with deterministic
   `issue_marker` evidence
-- `github.actions`: dry-run workflow planner with workflow run and conclusion
-  evidence
+- `github.actions`: dry-run workflow planner with workflow run id, run URL, and
+  conclusion evidence
 - `codex.thread`: dry-run Codex handoff planner with changed-file and QA
   evidence
 - `mcp.tool`: dry-run MCP tool-call planner with `tool_name` and
@@ -120,8 +120,8 @@ are still not live execution adapters.
 
 ## Next SDK Moves
 
-1. Add live-execution design notes for adapters that have stable dry-runs.
-2. Add adapter compatibility matrix docs.
+1. Strengthen `mcp.tool` permission and prompt-injection evidence.
+2. Use `github.actions` dispatch previews to design a future live client.
 3. Keep live execution behind policy, approval, and eval gates.
 
 See `docs/build-an-adapter.md` for the contributor path.

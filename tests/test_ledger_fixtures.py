@@ -56,6 +56,17 @@ class LedgerFixtureTests(unittest.TestCase):
         self.assertIn("github.issue.created", text)
         self.assertIn("issue_number=123", text)
 
+    def test_github_actions_preview_fixture_has_run_url_evidence(self) -> None:
+        events = load_ledger_events(FIXTURES / "github-actions-preview.jsonl")
+        view = build_ledger_view(events, ledger_filter=LedgerFilter(adapter="github.actions"))
+        text = render_ledger_view(view)
+
+        self.assertEqual(eval_ledger_is_valid(events).status, "passed")
+        self.assertEqual(eval_required_adapter_evidence(events).status, "passed")
+        self.assertEqual(view.total_events, 5)
+        self.assertIn("github.actions.planned", text)
+        self.assertIn("workflow_run_url=https://github.com/AmmarAlBalkhi/delegation-bot/actions/runs/dryrun-gha-fixture-preview", text)
+
     def test_feedback_issue_memory_fixture_reuses_live_issue_link(self) -> None:
         events = load_ledger_events(FIXTURES / "feedback-issue-memory.jsonl")
         manifest = {

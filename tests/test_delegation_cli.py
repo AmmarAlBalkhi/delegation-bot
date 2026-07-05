@@ -468,6 +468,40 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("GITHUB_TOKEN or GH_TOKEN is required", output.getvalue())
 
+    def test_apply_actions_previews_gated_workflow_dispatch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["apply-actions", str(EXAMPLE), "--ledger", str(ledger)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("GitHub Actions Apply Gate", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("actions/runs/dryrun-gha", output.getvalue())
+
+    def test_apply_actions_live_mode_stays_locked(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "apply-actions",
+                        str(EXAMPLE),
+                        "--ledger",
+                        str(ledger),
+                        "--apply",
+                        "--confirm",
+                        "LIVE_GITHUB_ACTIONS",
+                    ]
+                )
+
+        self.assertEqual(status, 1)
+        self.assertIn("Live GitHub Actions dispatch is not implemented yet", output.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

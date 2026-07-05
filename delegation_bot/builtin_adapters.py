@@ -216,33 +216,48 @@ class GitHubActionsDryRunAdapter(ContractBackedDryRunAdapter):
     def workflow_run_id(self, request: AdapterRequest) -> str:
         repository = _string_input(request, "repository", "unknown-repository")
         workflow_ref = _string_input(request, "workflow_ref", "unknown-workflow")
-        return f"dryrun-gha-{_json_digest(self.contract.id, request.action_id, repository, workflow_ref)}"
+        ref = _string_input(request, "ref", "main")
+        inputs = _input_value(request, "inputs", {})
+        return f"dryrun-gha-{_json_digest(self.contract.id, request.action_id, repository, workflow_ref, ref, inputs)}"
+
+    def workflow_run_url(self, request: AdapterRequest) -> str:
+        repository = _string_input(request, "repository", "unknown-repository")
+        return f"https://github.com/{repository}/actions/runs/{self.workflow_run_id(request)}"
 
     def build_outputs(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> JsonMap:
         repository = _string_input(request, "repository", "unknown-repository")
         workflow_ref = _string_input(request, "workflow_ref", "unknown-workflow")
+        ref = _string_input(request, "ref", "main")
+        inputs = _input_value(request, "inputs", {})
         workflow_run_id = self.workflow_run_id(request)
+        workflow_run_url = self.workflow_run_url(request)
         conclusion = "planned" if not missing_inputs else "blocked"
         return {
             "test_result": {
                 "conclusion": conclusion,
                 "repository": repository,
                 "workflow_ref": workflow_ref,
+                "ref": ref,
                 "dry_run": True,
                 "missing_inputs": list(missing_inputs),
             },
             "workflow_run": {
                 "workflow_run_id": workflow_run_id,
+                "workflow_run_url": workflow_run_url,
                 "repository": repository,
                 "workflow_ref": workflow_ref,
+                "ref": ref,
+                "inputs": inputs if isinstance(inputs, dict) else {},
                 "status": "planned",
                 "dry_run": True,
+                "dispatch_preview": True,
             },
         }
 
     def build_evidence(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> JsonMap:
         evidence: JsonMap = {
             "workflow_run_id": self.workflow_run_id(request),
+            "workflow_run_url": self.workflow_run_url(request),
             "conclusion": "planned" if not missing_inputs else "blocked",
         }
         if missing_inputs:

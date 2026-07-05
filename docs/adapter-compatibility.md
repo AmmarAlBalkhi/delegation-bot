@@ -10,6 +10,8 @@ without making the project depend on one agent framework.
 - `contract`: the adapter has a declared input, output, risk, approval, and
   evidence shape
 - `dry-run`: the adapter can produce local ledger evidence without live calls
+- `preview-gate`: the adapter has a command that checks policy and evidence
+  before any future live action
 - `live-gate`: live execution is designed, gated, and intentionally limited
 - `live`: live execution exists
 
@@ -17,8 +19,8 @@ without making the project depend on one agent framework.
 
 | Adapter | Family | Status | Current Use | Required Evidence |
 | --- | --- | --- | --- | --- |
-| `github.issue` | workflow | dry-run | Plan GitHub issue creation or updates | `issue_marker` |
-| `github.actions` | workflow | dry-run | Plan workflow verification and status collection | `workflow_run_id`, `conclusion` |
+| `github.issue` | workflow | dry-run, live-gate | Plan or gated-apply GitHub issue creation or updates | `issue_marker` |
+| `github.actions` | workflow | dry-run, preview-gate | Plan workflow verification and gated dispatch preview | `workflow_run_id`, `workflow_run_url`, `conclusion` |
 | `sample.echo` | tool | dry-run | No-network contributor example and fixture source | `echo_hash` |
 | `codex.thread` | AI harness | dry-run | Plan Codex coding-agent handoff | `changed_files`, `qa_result` |
 | `openai.agents` | AI harness | dry-run | Plan OpenAI Agents SDK workflow | `trace_id`, `final_output` |
@@ -31,7 +33,7 @@ without making the project depend on one agent framework.
 | `local.classifier` | ML model | dry-run | Plan local risk classification | `classification` |
 | `human.approval` | human | dry-run | Plan human approval checkpoint | `approver`, `approval_status` |
 
-No built-in adapter has live execution yet. That is intentional.
+No built-in adapter has unrestricted live execution. That is intentional.
 
 ## Why This Matters
 
@@ -110,8 +112,9 @@ not a side conversation.
 
 ## Next Compatibility Work
 
-1. Add a live-gate design for `github.issue`.
-2. Add README examples that show adapter filtering in the ledger viewer.
+1. Strengthen `mcp.tool` with permission and prompt-injection evidence.
+2. Use the `github.actions` preview gate as the design base for a future live
+   dispatch client.
 3. Add fixture generation examples for more adapter families.
 4. Add contribution labels for adapter requests.
 5. Add a compatibility badge once live-gated adapters exist.

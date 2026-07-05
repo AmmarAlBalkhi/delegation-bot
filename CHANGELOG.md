@@ -88,6 +88,8 @@ The project is currently pre-release.
   repeated failures reuse existing issues.
 - Added a feedback issue memory ledger fixture and duplicate-marker handling for
   intentional feedback update lifecycles.
+- Added `delegation apply-actions` as a preview-first GitHub Actions dispatch
+  gate with run URL evidence, fixture coverage, and docs.
 - Made read-only CLI commands avoid importing live network dependencies until
   a live apply or live model call needs them.
 - Added a researched adapter candidate matrix for prioritizing real-world

@@ -89,6 +89,10 @@ execution adapters:
 planner how to think about those classes of agents, and now have dry-run
 implementations. They are not live integrations yet.
 
+`github.actions` now includes `workflow_run_url` evidence and has a preview
+gate through `delegation apply-actions`. It still does not dispatch workflows
+live.
+
 ## Design Notes
 
 Good adapter contracts should be boring and precise.
@@ -122,7 +126,7 @@ judge it. Dry-run adapters now exist for every built-in contract.
 
 The next implementation step is to expand usage around those adapters:
 
-1. add playbook examples that use adapter requirements
-2. add an adapter compatibility matrix
-3. design the first live-execution gate
+1. strengthen `mcp.tool` permission and prompt-injection evidence
+2. use `github.actions` dispatch previews to design a future live client
+3. add playbook examples that use adapter requirements
 4. keep live execution behind policy, approval, and eval gates

@@ -49,6 +49,7 @@ delegation plan Harnessfile.yaml
 delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write
 delegation promote Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation apply-issues Harnessfile.yaml --ledger .delegation/latest.jsonl
+delegation apply-actions Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
 `delegation suggest` now exists as a no-network, template-backed first version.

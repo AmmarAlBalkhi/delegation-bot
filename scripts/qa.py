@@ -250,6 +250,17 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "github actions dispatch gate preview",
+            [
+                python,
+                "scripts/delegation.py",
+                "apply-actions",
+                "examples/ai-harness-control-plane.yaml",
+                "--ledger",
+                ".delegation/qa-latest.jsonl",
+            ],
+        ),
+        Check(
             "feedback issue drafts",
             [
                 python,
@@ -316,6 +327,17 @@ def build_checks(python: str) -> list[Check]:
                 "examples/ledgers/github-issue-applied.jsonl",
                 "--adapter",
                 "github.issue",
+            ],
+        ),
+        Check(
+            "fixture github actions preview ledger report",
+            [
+                python,
+                "scripts/delegation.py",
+                "ledger",
+                "examples/ledgers/github-actions-preview.jsonl",
+                "--adapter",
+                "github.actions",
             ],
         ),
         Check(

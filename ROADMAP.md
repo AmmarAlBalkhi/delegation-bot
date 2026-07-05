@@ -213,12 +213,12 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Strengthen the `github.actions` adapter toward gated workflow dispatch
-   preview and run URL evidence.
-2. Strengthen the `mcp.tool` adapter with server/tool permission evidence and
+1. Strengthen the `mcp.tool` adapter with server/tool permission evidence and
    prompt-injection risk notes.
-3. Add local-model provider design for `delegation suggest` and
+2. Add local-model provider design for `delegation suggest` and
    `local.classifier`.
+3. Use the `github.actions` dispatch preview gate as the base for a future live
+   dispatch client without enabling it yet.
 4. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 5. Design live feedback issue comments or close actions behind explicit gates.
