@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import typing as T
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from delegation_bot.harness_manifest import load_manifest, validate_manifest
@@ -17,6 +18,21 @@ JsonMap = dict[str, T.Any]
 
 class PlaybookCatalogError(ValueError):
     """Raised when a playbook catalog cannot be loaded."""
+
+
+@dataclass(frozen=True)
+class CatalogFilter:
+    tags: tuple[str, ...] = field(default_factory=tuple)
+    adapters: tuple[str, ...] = field(default_factory=tuple)
+
+    def is_active(self) -> bool:
+        return bool(self.tags or self.adapters)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "tags": list(self.tags),
+            "adapters": list(self.adapters),
+        }
 
 
 def load_catalog(path: Path) -> JsonMap:
@@ -53,6 +69,69 @@ def _declared_eval_ids(manifest: JsonMap) -> set[str]:
         if isinstance(eval_cfg, dict) and isinstance(eval_cfg.get("id"), str):
             ids.add(eval_cfg["id"])
     return ids
+
+
+def _normalize_filter_values(values: T.Iterable[str] | None) -> tuple[str, ...]:
+    if not values:
+        return ()
+    normalized: list[str] = []
+    for value in values:
+        clean = value.strip().lower()
+        if clean and clean not in normalized:
+            normalized.append(clean)
+    return tuple(normalized)
+
+
+def _entry_values(entry: JsonMap, field_name: str) -> set[str]:
+    return {
+        str(item).strip().lower()
+        for item in _as_list(entry.get(field_name))
+        if isinstance(item, str) and item.strip()
+    }
+
+
+def filter_catalog(
+    catalog: JsonMap,
+    *,
+    tags: T.Iterable[str] | None = None,
+    adapters: T.Iterable[str] | None = None,
+) -> tuple[JsonMap, CatalogFilter]:
+    catalog_filter = CatalogFilter(
+        tags=_normalize_filter_values(tags),
+        adapters=_normalize_filter_values(adapters),
+    )
+    if not catalog_filter.is_active():
+        return dict(catalog), catalog_filter
+
+    filtered = dict(catalog)
+    playbooks: list[JsonMap] = []
+    for entry in _as_list(catalog.get("playbooks")):
+        if not isinstance(entry, dict):
+            continue
+        entry_tags = _entry_values(entry, "tags")
+        entry_adapters = _entry_values(entry, "required_adapters")
+        if all(tag in entry_tags for tag in catalog_filter.tags) and all(
+            adapter in entry_adapters for adapter in catalog_filter.adapters
+        ):
+            playbooks.append(entry)
+    filtered["playbooks"] = playbooks
+    filtered["filters"] = catalog_filter.to_dict()
+    filtered["filtered_count"] = len(playbooks)
+    return filtered, catalog_filter
+
+
+def catalog_facets(catalog: JsonMap) -> JsonMap:
+    tags: set[str] = set()
+    adapters: set[str] = set()
+    for entry in _as_list(catalog.get("playbooks")):
+        if not isinstance(entry, dict):
+            continue
+        tags.update(_entry_values(entry, "tags"))
+        adapters.update(_entry_values(entry, "required_adapters"))
+    return {
+        "tags": sorted(tags),
+        "adapters": sorted(adapters),
+    }
 
 
 def validate_catalog(catalog: JsonMap, root: Path) -> list[str]:
@@ -129,11 +208,22 @@ def validate_catalog(catalog: JsonMap, root: Path) -> list[str]:
     return errors
 
 
-def summarize_catalog(catalog: JsonMap) -> str:
+def summarize_catalog(catalog: JsonMap, catalog_filter: CatalogFilter | None = None) -> str:
     lines = ["Playbook catalog", ""]
-    for entry in _as_list(catalog.get("playbooks")):
-        if not isinstance(entry, dict):
-            continue
+    playbooks = [entry for entry in _as_list(catalog.get("playbooks")) if isinstance(entry, dict)]
+    if catalog_filter and catalog_filter.is_active():
+        filter_parts: list[str] = []
+        if catalog_filter.tags:
+            filter_parts.append("tags=" + ", ".join(catalog_filter.tags))
+        if catalog_filter.adapters:
+            filter_parts.append("adapters=" + ", ".join(catalog_filter.adapters))
+        lines.append(f"Filters: {'; '.join(filter_parts)}")
+        lines.append(f"Matches: {len(playbooks)}")
+        lines.append("")
+    if not playbooks:
+        lines.append("- none")
+        return "\n".join(lines)
+    for entry in playbooks:
         tags = ", ".join(str(tag) for tag in _as_list(entry.get("tags")))
         adapters = ", ".join(str(adapter) for adapter in _as_list(entry.get("required_adapters")))
         lines.append(f"- {entry.get('id')} ({entry.get('status', 'unknown')})")

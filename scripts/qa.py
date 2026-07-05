@@ -335,6 +335,14 @@ def build_checks(python: str) -> list[Check]:
             [python, "scripts/delegation.py", "catalog"],
         ),
         Check(
+            "playbook catalog filter",
+            [python, "scripts/delegation.py", "catalog", "--tag", "release", "--adapter", "github.actions"],
+        ),
+        Check(
+            "playbook catalog facets",
+            [python, "scripts/delegation.py", "catalog", "--list-tags", "--list-adapters"],
+        ),
+        Check(
             "example promotion report",
             [
                 python,

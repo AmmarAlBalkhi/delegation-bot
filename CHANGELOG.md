@@ -71,3 +71,6 @@ The project is currently pre-release.
 - Added TestPyPI dry-run release notes.
 - Added direct `EvalResult` to feedback issue draft conversion through
   `delegation eval --feedback`.
+- Added playbook catalog filtering by tag and adapter.
+- Added hosted dashboard wireframe notes.
+- Added contributor license and DCO policy notes.

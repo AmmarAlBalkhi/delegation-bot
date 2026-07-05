@@ -684,3 +684,27 @@ Evidence:
 - `tests/test_eval_feedback.py`
 - `tests/test_delegation_cli.py`
 - `scripts/qa.py`
+
+## 2026-07-05: Improve Discovery And Contributor Readiness
+
+Decision: Add playbook catalog filtering by tag and adapter, document the first
+hosted dashboard wireframe, and write the contributor license and DCO policy
+notes.
+
+Why: The project already has powerful control-plane primitives, but new users
+need a clearer doorway. Catalog filtering helps people pick the right mission
+quickly, dashboard notes keep future UI tied to the CLI loop, and contributor
+policy notes make public collaboration understandable without adding early CLA
+friction.
+
+Evidence:
+
+- `delegation_bot/playbook_catalog.py`
+- `delegation_bot/cli.py`
+- `docs/playbooks.md`
+- `docs/dashboard-wireframe.md`
+- `docs/contributor-license-policy.md`
+- `CONTRIBUTING.md`
+- `tests/test_playbook_catalog.py`
+- `tests/test_delegation_cli.py`
+- `scripts/qa.py`

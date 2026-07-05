@@ -31,6 +31,23 @@ Inspect the catalog from the CLI:
 python scripts/delegation.py catalog
 ```
 
+Find a playbook by tag or adapter:
+
+```bash
+python scripts/delegation.py catalog --tag release
+python scripts/delegation.py catalog --adapter github.actions
+python scripts/delegation.py catalog --tag ci --adapter github.actions
+python scripts/delegation.py catalog --list-tags --list-adapters
+```
+
+Caveman version:
+
+```text
+Need release mission? Filter release.
+Need GitHub Actions mission? Filter github.actions.
+Pick playbook. Dry-run. Inspect proof.
+```
+
 ### `playbooks/code-review.yaml`
 
 Use this when a change needs an AI-assisted review plus human signoff.
