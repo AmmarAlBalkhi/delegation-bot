@@ -104,6 +104,9 @@ The project is currently pre-release.
   evidence.
 - Added gated live `delegation apply-actions` dispatch with exact confirmation,
   token checks, input-count gates, and dispatch ledger events.
+- Hardened live GitHub Actions dispatch with workflow metadata preflight,
+  duplicate active-run protection, dispatch-time rechecks, and cancellation
+  guidance in ledger evidence.
 - Added `delegation explain-policy` for deterministic and opt-in Ollama-backed
   explanations of classifier evidence without granting model authority.
 - Made read-only CLI commands avoid importing live network dependencies until

@@ -153,6 +153,7 @@ Live workflow dispatch appends:
 
 ```text
 github.actions.dispatch.started
+github.actions.dispatch.blocked
 github.actions.dispatched
 github.actions.dispatch.failed
 github.actions.dispatch.completed
@@ -167,6 +168,8 @@ Every event should include:
 - input keys, with sensitive values omitted
 - workflow run id and URL when GitHub returns them
 - source dry-run action id
+- live preflight gates for workflow metadata and duplicate active runs
+- cancellation API paths after dispatch
 
 ## Policy Behavior
 
@@ -214,6 +217,8 @@ The workflow dispatch preview is useful when:
 - repository policy is checked before future dispatch
 - approval policy can require `approval.granted` evidence for workflow actions
 - live dispatch requires `--apply --confirm LIVE_GITHUB_ACTIONS` and a token
+- live preflight confirms workflow metadata before dispatch
+- active duplicate `workflow_dispatch` runs on the same ref block dispatch
 
 ## Why This Is The Right First Live Step
 

@@ -137,7 +137,7 @@ Delegation Bot is pre-release, but the foundation is working:
 - playbooks and catalog filtering
 - evals, feedback drafts, and promotion reports
 - preview-first live GitHub Issue apply
-- preview-first, gated live GitHub Actions dispatch
+- preview-first, gated live GitHub Actions dispatch with workflow preflight
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
 - `explain-policy` for low-friction classifier explanations that do not grant authority

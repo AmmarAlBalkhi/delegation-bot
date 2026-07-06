@@ -19,6 +19,7 @@ JsonMap = dict[str, T.Any]
 ACTIONS_CONFIRMATION = "LIVE_GITHUB_ACTIONS"
 GITHUB_API_VERSION = "2026-03-10"
 _SENSITIVE_INPUT_RE = re.compile(r"(token|secret|password|credential|api[_-]?key)", re.IGNORECASE)
+_ACTIVE_RUN_STATUSES = ("queued", "in_progress", "requested", "waiting", "pending")
 
 
 class GitHubActionsApplyError(ValueError):
@@ -69,6 +70,46 @@ class GitHubActionsDraft:
             "workflow_run_url": self.workflow_run_url,
             "approved": self.approved,
             "requires_approval": self.requires_approval,
+        }
+
+
+@dataclass(frozen=True)
+class GitHubWorkflowMetadata:
+    id: int | str
+    name: str
+    path: str
+    state: str
+    html_url: str = ""
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "path": self.path,
+            "state": self.state,
+            "html_url": self.html_url,
+        }
+
+
+@dataclass(frozen=True)
+class GitHubWorkflowRunSummary:
+    id: int | str
+    status: str
+    conclusion: str | None = None
+    event: str = ""
+    head_branch: str = ""
+    html_url: str = ""
+    created_at: str = ""
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "id": self.id,
+            "status": self.status,
+            "conclusion": self.conclusion,
+            "event": self.event,
+            "head_branch": self.head_branch,
+            "html_url": self.html_url,
+            "created_at": self.created_at,
         }
 
 
@@ -124,6 +165,66 @@ class GitHubActionsClient:
         self.token = token
         self.api_url = api_url.rstrip("/")
 
+    def get_workflow(self, draft: GitHubActionsDraft) -> GitHubWorkflowMetadata:
+        requests = _requests_module()
+        owner, repo = _split_repository(draft.repository)
+        response = requests.get(
+            self._workflow_url(owner, repo, draft.workflow_ref),
+            headers=self._headers(),
+            timeout=20,
+        )
+        _raise_for_response(response)
+        data = response.json()
+        if not isinstance(data, dict):
+            raise GitHubActionsApplyError("GitHub workflow metadata response must be a JSON object")
+        return GitHubWorkflowMetadata(
+            id=data.get("id") or draft.workflow_ref,
+            name=str(data.get("name") or draft.workflow_ref),
+            path=str(data.get("path") or ""),
+            state=str(data.get("state") or ""),
+            html_url=str(data.get("html_url") or ""),
+        )
+
+    def list_workflow_runs(
+        self,
+        draft: GitHubActionsDraft,
+        *,
+        status: str,
+        per_page: int = 10,
+    ) -> tuple[GitHubWorkflowRunSummary, ...]:
+        requests = _requests_module()
+        owner, repo = _split_repository(draft.repository)
+        response = requests.get(
+            self._workflow_url(owner, repo, draft.workflow_ref) + "/runs",
+            headers=self._headers(),
+            params={
+                "branch": draft.ref,
+                "event": "workflow_dispatch",
+                "status": status,
+                "per_page": per_page,
+            },
+            timeout=20,
+        )
+        _raise_for_response(response)
+        data = response.json()
+        runs = data.get("workflow_runs") if isinstance(data, dict) else []
+        if not isinstance(runs, list):
+            return ()
+        return tuple(_workflow_run_summary(run) for run in runs if isinstance(run, dict))
+
+    def active_duplicate_runs(self, draft: GitHubActionsDraft) -> tuple[GitHubWorkflowRunSummary, ...]:
+        seen: set[str] = set()
+        active_runs: list[GitHubWorkflowRunSummary] = []
+        for status in _ACTIVE_RUN_STATUSES:
+            for run in self.list_workflow_runs(draft, status=status):
+                run_key = str(run.id)
+                if run_key in seen:
+                    continue
+                seen.add(run_key)
+                if _is_active_duplicate_run(run, draft):
+                    active_runs.append(run)
+        return tuple(active_runs)
+
     def dispatch_workflow(self, draft: GitHubActionsDraft) -> GitHubActionsDispatchResult:
         if len(draft.inputs) > 25:
             raise GitHubActionsApplyError("GitHub workflow_dispatch inputs are limited to 25 keys")
@@ -159,6 +260,10 @@ class GitHubActionsClient:
             "X-GitHub-Api-Version": GITHUB_API_VERSION,
         }
 
+    def _workflow_url(self, owner: str, repo: str, workflow_ref: str) -> str:
+        workflow_id = quote(workflow_ref, safe="")
+        return f"{self.api_url}/repos/{owner}/{repo}/actions/workflows/{workflow_id}"
+
 
 def build_actions_apply_report(
     manifest: Manifest,
@@ -169,6 +274,7 @@ def build_actions_apply_report(
     apply: bool = False,
     confirmation: str | None = None,
     token: str | None = None,
+    preflight_client: GitHubActionsClient | None = None,
 ) -> GitHubActionsApplyReport:
     """Build a gated report for GitHub Actions dispatch."""
 
@@ -183,6 +289,7 @@ def build_actions_apply_report(
             *_approval_gates(manifest, ledger_events, drafts),
             _apply_intent_gate(apply, confirmation),
             _token_gate(apply, token),
+            *(_live_preflight_gates(drafts, preflight_client) if apply and preflight_client else ()),
         ]
     )
     blocked = any(gate.status == "blocked" for gate in gates)
@@ -283,6 +390,20 @@ def apply_github_actions_drafts(
             "input_keys": list(draft.input_keys),
         }
         try:
+            preflight_gates = _live_preflight_gates((draft,), client)
+            blocked_preflight = [gate for gate in preflight_gates if gate.status == "blocked"]
+            if blocked_preflight:
+                append_event(
+                    "github.actions.dispatch.blocked",
+                    "blocked",
+                    "GitHub Actions workflow dispatch blocked by live preflight.",
+                    action_id=draft.action_id,
+                    details={
+                        **base_details,
+                        "preflight_gates": [gate.to_dict() for gate in preflight_gates],
+                    },
+                )
+                continue
             result = client.dispatch_workflow(draft)
             succeeded += 1
             append_event(
@@ -296,6 +417,7 @@ def apply_github_actions_drafts(
                     "workflow_run_url": result.html_url or draft.workflow_run_url,
                     "run_url": result.run_url,
                     "status_code": result.status_code,
+                    "cancellation": _cancellation_guidance(draft.repository, result),
                     "dry_run": False,
                 },
             )
@@ -431,6 +553,72 @@ def _workflow_shape_gates(drafts: T.Sequence[GitHubActionsDraft]) -> list[GitHub
             )
         )
     return gates
+
+
+def _live_preflight_gates(
+    drafts: T.Sequence[GitHubActionsDraft],
+    client: GitHubActionsClient,
+) -> tuple[GitHubActionsGate, ...]:
+    gates: list[GitHubActionsGate] = []
+    for draft in drafts:
+        try:
+            workflow = client.get_workflow(draft)
+            gates.append(_workflow_metadata_gate(draft, workflow))
+            if gates[-1].status == "blocked":
+                continue
+            duplicate_runs = client.active_duplicate_runs(draft)
+            gates.append(_duplicate_run_gate(draft, duplicate_runs))
+        except Exception as exc:
+            gates.append(
+                GitHubActionsGate(
+                    f"preflight.github_api.{draft.action_id}",
+                    "blocked",
+                    f"GitHub preflight failed for `{draft.action_id}`: {exc}",
+                    next_action="Check token permissions, repository access, workflow_ref, and network connectivity.",
+                )
+            )
+    return tuple(gates)
+
+
+def _workflow_metadata_gate(draft: GitHubActionsDraft, workflow: GitHubWorkflowMetadata) -> GitHubActionsGate:
+    if workflow.state != "active":
+        return GitHubActionsGate(
+            f"preflight.workflow_metadata.{draft.action_id}",
+            "blocked",
+            f"Workflow `{draft.workflow_ref}` exists but is `{workflow.state}`.",
+            next_action="Enable the workflow or choose an active workflow before dispatch.",
+        )
+    if not workflow.path.startswith(".github/workflows/"):
+        return GitHubActionsGate(
+            f"preflight.workflow_metadata.{draft.action_id}",
+            "blocked",
+            f"Workflow `{draft.workflow_ref}` resolved to unexpected path `{workflow.path}`.",
+            next_action="Use a workflow file under `.github/workflows/`.",
+        )
+    return GitHubActionsGate(
+        f"preflight.workflow_metadata.{draft.action_id}",
+        "passed",
+        f"GitHub confirmed active workflow `{workflow.path}`.",
+    )
+
+
+def _duplicate_run_gate(
+    draft: GitHubActionsDraft,
+    duplicate_runs: T.Sequence[GitHubWorkflowRunSummary],
+) -> GitHubActionsGate:
+    if duplicate_runs:
+        run_ids = ", ".join(str(run.id) for run in duplicate_runs[:5])
+        return GitHubActionsGate(
+            f"preflight.duplicate_run.{draft.action_id}",
+            "blocked",
+            f"Active workflow_dispatch run(s) already exist for `{draft.workflow_ref}` on `{draft.ref}`: {run_ids}.",
+            next_action="Wait for the active run to finish, inspect it, or cancel it before dispatching another.",
+        )
+    return GitHubActionsGate(
+        f"preflight.duplicate_run.{draft.action_id}",
+        "passed",
+        f"No active workflow_dispatch run exists for `{draft.workflow_ref}` on `{draft.ref}`.",
+    )
 
 
 def _ledger_gates(ledger_events: T.Sequence[JsonMap]) -> list[GitHubActionsGate]:
@@ -641,6 +829,42 @@ def _format_inputs(inputs: JsonMap) -> str:
     if not redacted:
         return "none"
     return ", ".join(f"{key}={redacted[key]!r}" for key in sorted(redacted))
+
+
+def _workflow_run_summary(run: JsonMap) -> GitHubWorkflowRunSummary:
+    return GitHubWorkflowRunSummary(
+        id=run.get("id") or "unknown",
+        status=str(run.get("status") or ""),
+        conclusion=str(run.get("conclusion")) if run.get("conclusion") is not None else None,
+        event=str(run.get("event") or ""),
+        head_branch=str(run.get("head_branch") or ""),
+        html_url=str(run.get("html_url") or ""),
+        created_at=str(run.get("created_at") or ""),
+    )
+
+
+def _is_active_duplicate_run(run: GitHubWorkflowRunSummary, draft: GitHubActionsDraft) -> bool:
+    if run.event and run.event != "workflow_dispatch":
+        return False
+    if run.head_branch and run.head_branch != draft.ref:
+        return False
+    return run.status in _ACTIVE_RUN_STATUSES
+
+
+def _cancellation_guidance(repository: str, result: GitHubActionsDispatchResult) -> JsonMap:
+    run_id = result.workflow_run_id
+    if not run_id:
+        return {
+            "actions_url": f"https://github.com/{repository}/actions",
+            "note": "GitHub did not return a workflow_run_id; inspect the repository Actions page.",
+        }
+    owner, repo = _split_repository(repository)
+    return {
+        "actions_url": result.html_url or f"https://github.com/{repository}/actions/runs/{run_id}",
+        "cancel_api_path": f"/repos/{owner}/{repo}/actions/runs/{run_id}/cancel",
+        "force_cancel_api_path": f"/repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel",
+        "note": "Use force-cancel only if normal cancel does not stop the run.",
+    }
 
 
 def _split_repository(repository: str) -> tuple[str, str]:

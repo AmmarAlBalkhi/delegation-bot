@@ -1018,8 +1018,29 @@ Guardrails:
 - workflow inputs are capped at GitHub's 25-key limit
 - dispatch results append `github.actions.*` ledger events
 
-Follow-up: Add default-branch workflow-file checks, duplicate-run protection,
-token-scope diagnostics, and cancellation guidance.
+Follow-up: Add token-scope diagnostics and a dedicated cancel command after the
+preflight hardening lands.
+
+## 2026-07-06: Harden GitHub Actions Live Dispatch
+
+Decision: Add live dispatch preflight checks before `github.actions` workflow
+dispatch.
+
+Why: Once a workflow can be dispatched, the next risk is pressing the wrong
+button or pressing the same button twice. The bot should verify the workflow is
+real, active, under `.github/workflows/`, and not already running for the same
+workflow/ref before it sends another dispatch request.
+
+What changed:
+
+- live mode fetches workflow metadata before dispatch
+- disabled or unexpected workflow paths block dispatch
+- active `workflow_dispatch` runs for the same workflow/ref block dispatch
+- dispatch rechecks preflight immediately before pressing run
+- dispatched ledger events include cancel and force-cancel API paths
+
+Follow-up: Add token-scope diagnostics and a dedicated cancel command behind its
+own explicit confirmation token.
 
 ## 2026-07-06: Explain Classifier Evidence Without Granting Authority
 

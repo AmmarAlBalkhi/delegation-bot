@@ -71,7 +71,14 @@ github.actions.dispatch.completed
 ```
 
 Those events include repository, workflow file, ref, input keys, status code,
-and workflow run URL when GitHub returns one.
+workflow run URL when GitHub returns one, and cancellation guidance.
+
+Before dispatch, live mode also performs a GitHub API preflight:
+
+- fetch workflow metadata and confirm the workflow is active
+- confirm the workflow resolves under `.github/workflows/`
+- list active `workflow_dispatch` runs for the same workflow and ref
+- block dispatch when a queued or in-progress duplicate already exists
 
 ## Gates
 
@@ -89,6 +96,8 @@ The preview checks:
 - live dispatch is not being silently attempted
 - live dispatch has exact confirmation and token when `--apply` is used
 - workflow input count stays within GitHub's 25-key `workflow_dispatch` limit
+- live preflight confirms the workflow is active before dispatch
+- live preflight blocks duplicate active `workflow_dispatch` runs on the same ref
 
 ## Fixture
 
@@ -117,12 +126,11 @@ Sources checked on 2026-07-06:
 
 ## Still Future
 
-The current client is intentionally small. Future hardening should add:
+The current client is still intentionally small. Future hardening should add:
 
 - token scope checks
-- default-branch workflow-file check
-- idempotency or duplicate-run protection
-- cancellation guidance for failed or accidental runs
+- stronger idempotency keys that survive across machines
+- a dedicated cancel command behind explicit confirmation
 
 The correct behavior remains boring and safe: preview first, prove gates, then
 dispatch only when the operator asks for it.
