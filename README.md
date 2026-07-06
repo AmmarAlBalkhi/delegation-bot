@@ -41,6 +41,7 @@ Want the larger flagship Harnessfile?
 python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 python scripts/delegation.py mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 python scripts/delegation.py apply-actions examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+python scripts/delegation.py explain-policy --ledger .delegation/demo.jsonl
 ```
 
 For a guided version with what to look for, see
@@ -96,16 +97,18 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation suggest "goal" --plan --ledger .delegation/run.jsonl` | Draft a Harnessfile from plain language and dry-run it. |
 | `delegation plan Harnessfile.yaml --ledger .delegation/run.jsonl` | Compile a Harnessfile into a dry-run ledger. |
 | `delegation ledger .delegation/run.jsonl` | Inspect run evidence. |
+| `delegation explain-policy --ledger .delegation/run.jsonl` | Explain classifier policy evidence in plain language. |
 | `delegation dashboard .delegation/run.jsonl` | Build a read-only mission snapshot for future UI/cockpit work. |
 | `delegation mcp-gate Harnessfile.yaml --ledger .delegation/run.jsonl` | Check MCP tool allowlists and risk evidence. |
 | `delegation eval Harnessfile.yaml --ledger .delegation/run.jsonl --feedback` | Run evals and draft improvement issues. |
 | `delegation recover-feedback Harnessfile.yaml --ledger .delegation/run.jsonl` | Draft recovery updates when previously failing evals pass. |
 | `delegation promote Harnessfile.yaml --ledger .delegation/run.jsonl` | Check whether agents can earn more autonomy. |
 | `delegation apply-issues Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview live GitHub Issue writes. |
-| `delegation apply-actions Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview gated GitHub Actions dispatch. |
+| `delegation apply-actions Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview or live-dispatch gated GitHub Actions workflows. |
 
-Live writes stay behind explicit gates. For GitHub Issues, live mode requires
-`--apply --confirm LIVE_GITHUB_ISSUES` plus `GITHUB_TOKEN` or `GH_TOKEN`.
+Live actions stay behind explicit gates. GitHub Issues require
+`--apply --confirm LIVE_GITHUB_ISSUES`; GitHub Actions require
+`--apply --confirm LIVE_GITHUB_ACTIONS`. Both need `GITHUB_TOKEN` or `GH_TOKEN`.
 
 ## Try Fixtures
 
@@ -134,9 +137,10 @@ Delegation Bot is pre-release, but the foundation is working:
 - playbooks and catalog filtering
 - evals, feedback drafts, and promotion reports
 - preview-first live GitHub Issue apply
-- preview-first GitHub Actions dispatch gate
+- preview-first, gated live GitHub Actions dispatch
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
+- `explain-policy` for low-friction classifier explanations that do not grant authority
 - no-network and opt-in live model-backed Harnessfile suggestions for OpenAI,
   Anthropic, and Ollama
 - package metadata for the `delegation` console command

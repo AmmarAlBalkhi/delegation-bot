@@ -89,9 +89,10 @@ execution adapters:
 planner how to think about those classes of agents, and now have dry-run
 implementations. They are not live integrations yet.
 
-`github.actions` now includes `workflow_run_url` evidence and has a preview
-gate through `delegation apply-actions`. It still does not dispatch workflows
-live.
+`github.actions` now includes `workflow_run_url` evidence and has a preview-first
+live gate through `delegation apply-actions`. Dispatch requires explicit
+confirmation, token evidence, repository policy, ledger evidence, and approval
+evidence when policy requires it.
 
 `mcp.tool` now includes `permission_scope`, `risk_level`, and
 `prompt_injection_risk` evidence so tool calls can be reviewed before any live

@@ -38,6 +38,7 @@ python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledge
 python scripts/delegation.py ledger .delegation/demo.jsonl --limit 6
 python scripts/delegation.py mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 python scripts/delegation.py apply-actions examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+python scripts/delegation.py explain-policy --ledger .delegation/demo.jsonl
 python scripts/delegation.py eval examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 ```
 
@@ -56,7 +57,7 @@ risk gate before anything live ran.
 After `apply-actions`, the important idea is preview-first execution:
 
 ```text
-Live dispatch stays locked until the operator explicitly confirms it.
+Live dispatch exists, but only after gates pass and the operator explicitly confirms it.
 ```
 
 That is the product: powerful AI work with visible control before power is used.
@@ -67,7 +68,8 @@ That is the product: powerful AI work with visible control before power is used.
 - The plan shows agents, models, workflows, tools, policies, outputs, and evals.
 - The ledger records evidence without running live agents or tools.
 - `mcp-gate` checks MCP server/tool allowlists and tool risk evidence.
-- `apply-actions` previews workflow dispatch but keeps live dispatch locked.
+- `apply-actions` previews workflow dispatch by default and can dispatch only with explicit live gates.
+- `explain-policy` turns classifier evidence into plain language without giving the model authority.
 - Evals explain what passed and what still needs real execution evidence.
 
 ## The Product Promise

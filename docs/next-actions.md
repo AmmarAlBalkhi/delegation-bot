@@ -32,18 +32,24 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Use the new `github.actions` dispatch preview gate to design the future live
-   dispatch client without enabling it yet.
+1. Harden `github.actions` live dispatch with default-branch workflow checks,
+   duplicate-run protection, and cancellation guidance.
 2. Run the Windows `.exe` build script on a clean Windows release host and
    record the executable smoke evidence.
 3. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 4. Design live feedback issue comments or close actions behind explicit gates.
-5. Add a local-model explanation path for classifier recommendations without
-   making the model authoritative.
+5. Sketch the GitHub App installation flow that can provide scoped tokens
+   without forcing users to paste personal tokens.
 
 ## Completed Recently
 
+- Added gated live `github.actions` dispatch through `delegation apply-actions`
+  with explicit confirmation, token gate, workflow input limits, dispatch ledger
+  events, fake-client tests, and updated docs.
+- Added `delegation explain-policy` so classifier evidence can be explained in
+  plain language, with opt-in Ollama explanations that do not change gate
+  authority.
 - Added `delegation demo`, `delegation init`, and an installed-package smoke
   check so first-run users can see the product and create a Harnessfile quickly.
 - Added opt-in Ollama-backed `delegation suggest` for local Harnessfile drafts

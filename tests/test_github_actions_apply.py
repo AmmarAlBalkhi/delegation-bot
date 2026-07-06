@@ -6,6 +6,8 @@ from pathlib import Path
 
 from delegation_bot.github_actions_apply import (
     ACTIONS_CONFIRMATION,
+    GitHubActionsDispatchResult,
+    apply_github_actions_drafts,
     build_actions_apply_report,
     render_actions_apply_report,
 )
@@ -48,9 +50,9 @@ class GitHubActionsApplyTests(unittest.TestCase):
         self.assertEqual(len(report.drafts), 1)
         self.assertIn("actions/runs/dryrun-gha", report.drafts[0].workflow_run_url)
         self.assertIn("GitHub Actions Apply Gate", text)
-        self.assertIn("live workflow dispatch is locked", text)
+        self.assertIn("Rerun with `--apply --confirm LIVE_GITHUB_ACTIONS`", text)
 
-    def test_live_dispatch_is_locked_even_with_confirmation_and_token(self) -> None:
+    def test_live_dispatch_is_ready_with_confirmation_and_token(self) -> None:
         manifest, plan, ledger_events = example_manifest_and_ledger()
 
         report = build_actions_apply_report(
@@ -63,8 +65,47 @@ class GitHubActionsApplyTests(unittest.TestCase):
             token="fake-token",
         )
 
-        self.assertTrue(report.blocked)
-        self.assertIn("dispatch.live_supported", {gate.id for gate in report.gates if gate.status == "blocked"})
+        self.assertFalse(report.blocked)
+        self.assertEqual(report.status, "ready_to_dispatch")
+        self.assertTrue(report.live_dispatch_supported)
+
+    def test_live_dispatch_writes_ledger_events(self) -> None:
+        class FakeClient:
+            def dispatch_workflow(self, draft):
+                return GitHubActionsDispatchResult(
+                    workflow_run_id="123",
+                    run_url="https://api.github.com/repos/AmmarAlBalkhi/delegation-bot/actions/runs/123",
+                    html_url="https://github.com/AmmarAlBalkhi/delegation-bot/actions/runs/123",
+                    status_code=200,
+                )
+
+        manifest, plan, ledger_events = example_manifest_and_ledger()
+        report = build_actions_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=".delegation/latest.jsonl",
+            apply=True,
+            confirmation=ACTIONS_CONFIRMATION,
+            token="fake-token",
+        )
+
+        events = apply_github_actions_drafts(
+            report.drafts,
+            client=FakeClient(),
+            run_id="dryrun-ai-harness-control-plane",
+            start_sequence=len(ledger_events) + 1,
+            timestamp="2026-07-06T00:00:00+00:00",
+        )
+
+        self.assertEqual([event.type for event in events], [
+            "github.actions.dispatch.started",
+            "github.actions.dispatched",
+            "github.actions.dispatch.completed",
+        ])
+        self.assertEqual(events[1].status, "executed")
+        self.assertEqual(events[1].details["workflow_run_id"], "123")
+        self.assertEqual(events[-1].status, "passed")
 
     def test_policy_can_require_approval_before_workflow_dispatch(self) -> None:
         manifest, _, ledger_events = example_manifest_and_ledger()

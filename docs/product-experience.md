@@ -47,6 +47,7 @@ delegation demo
 delegation init --goal "prepare this repo for safe AI delegation"
 delegation plan Harnessfile.yaml
 delegation mcp-gate Harnessfile.yaml --ledger .delegation/latest.jsonl
+delegation explain-policy --ledger .delegation/latest.jsonl
 delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write
 delegation promote Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation apply-issues Harnessfile.yaml --ledger .delegation/latest.jsonl

@@ -30,7 +30,12 @@ from delegation_bot.first_run import (
     render_init_report,
     write_init_harnessfile,
 )
-from delegation_bot.github_actions_apply import build_actions_apply_report, render_actions_apply_report
+from delegation_bot.github_actions_apply import (
+    GitHubActionsClient,
+    apply_github_actions_drafts,
+    build_actions_apply_report,
+    render_actions_apply_report,
+)
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
     apply_github_issue_drafts,
@@ -56,6 +61,11 @@ from delegation_bot.model_suggest_live import (
     fetch_live_model_suggestion,
 )
 from delegation_bot.otel_export import OtelExportError, build_otel_export, render_otel_export, write_otel_export
+from delegation_bot.policy_explain import (
+    PolicyExplainError,
+    build_policy_explanation_report,
+    render_policy_explanation_report,
+)
 from delegation_bot.playbook_catalog import (
     PlaybookCatalogError,
     catalog_facets,
@@ -506,6 +516,40 @@ def cmd_ledger(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_explain_policy(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        events = load_ledger_events(ledger_path)
+        config = None
+        if args.draft_source == "model":
+            if args.provider != "ollama":
+                print("ERROR: policy explanations currently support the local `ollama` provider only", file=sys.stderr)
+                return 1
+            config = build_live_model_config(
+                args.provider,
+                model=args.model,
+                timeout_seconds=args.timeout_seconds,
+                max_output_tokens=args.max_output_tokens,
+                base_url=args.base_url,
+            )
+        report = build_policy_explanation_report(
+            events,
+            ledger_source=str(ledger_path),
+            use_model=args.draft_source == "model",
+            allow_live_model=args.allow_live_model,
+            config=config,
+        )
+    except (LedgerError, LiveModelSuggestionError, PolicyExplainError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_policy_explanation_report(report))
+    return 1 if report.blocked else 0
+
+
 def cmd_dashboard(args: argparse.Namespace) -> int:
     ledger_path = Path(args.ledger)
     try:
@@ -700,7 +744,29 @@ def cmd_apply_actions(args: argparse.Namespace) -> int:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_actions_apply_report(report))
-    return 1 if report.blocked else 0
+
+    if report.blocked:
+        return 1
+
+    if not args.apply:
+        return 0
+
+    run_id = str(ledger_events[0].get("run_id")) if ledger_events else f"apply-{plan.id}"
+    events = apply_github_actions_drafts(
+        report.drafts,
+        client=GitHubActionsClient(token or ""),
+        run_id=run_id,
+        start_sequence=len(ledger_events) + 1,
+    )
+    try:
+        append_jsonl(events, ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if not args.json:
+        print(f"\nDispatch events appended: {ledger_path}")
+    return 1 if any(event.status == "failed" for event in events) else 0
 
 
 def cmd_mcp_gate(args: argparse.Namespace) -> int:
@@ -848,6 +914,45 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--limit", type=int, default=12, help="Number of recent matching events to show; 0 shows all.")
     ledger.set_defaults(func=cmd_ledger)
 
+    explain_policy = subparsers.add_parser(
+        "explain-policy",
+        help="Explain local.classifier policy evidence from a run ledger.",
+    )
+    explain_policy.add_argument("--ledger", required=True, help="Path to a run ledger JSONL file.")
+    explain_policy.add_argument(
+        "--draft-source",
+        choices=("deterministic", "model"),
+        default="deterministic",
+        help="Use built-in explanations or an opt-in local model explanation.",
+    )
+    explain_policy.add_argument(
+        "--provider",
+        choices=("ollama",),
+        default="ollama",
+        help="Local model provider for --draft-source model.",
+    )
+    explain_policy.add_argument(
+        "--allow-live-model",
+        action="store_true",
+        help="Confirm that --draft-source model may call the local Ollama server.",
+    )
+    explain_policy.add_argument("--model", help="Override the default local model.")
+    explain_policy.add_argument("--base-url", help="Override the local Ollama server URL.")
+    explain_policy.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help="Local model request timeout in seconds.",
+    )
+    explain_policy.add_argument(
+        "--max-output-tokens",
+        type=int,
+        default=DEFAULT_MAX_OUTPUT_TOKENS,
+        help="Maximum local model output tokens.",
+    )
+    explain_policy.add_argument("--json", action="store_true", help="Print explanations as JSON.")
+    explain_policy.set_defaults(func=cmd_explain_policy)
+
     dashboard = subparsers.add_parser("dashboard", help="Build a read-only dashboard snapshot from a run ledger.")
     dashboard.add_argument("ledger", help="Path to a run ledger JSONL file.")
     dashboard.add_argument("--harnessfile", help="Optional Harnessfile for agents, owners, and repository context.")
@@ -900,18 +1005,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     apply_actions = subparsers.add_parser(
         "apply-actions",
-        help="Preview gated GitHub Actions workflow dispatch from a dry-run ledger.",
+        help="Preview or live-dispatch gated GitHub Actions workflows from a dry-run ledger.",
     )
     apply_actions.add_argument("harnessfile")
     apply_actions.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
     apply_actions.add_argument(
         "--apply",
         action="store_true",
-        help="Request live workflow dispatch. Currently blocked until the dispatch client is implemented.",
+        help="Perform live GitHub Actions workflow dispatch after all gates pass.",
     )
     apply_actions.add_argument(
         "--confirm",
-        help="Future confirmation token for live dispatch: LIVE_GITHUB_ACTIONS.",
+        help="Required confirmation token for live dispatch: LIVE_GITHUB_ACTIONS.",
     )
     apply_actions.add_argument("--json", action="store_true", help="Print the apply gate report as JSON.")
     apply_actions.set_defaults(func=cmd_apply_actions)

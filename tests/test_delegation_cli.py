@@ -457,6 +457,18 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(data["adapter_evidence"])
         self.assertEqual(data["shown_event_count"], 2)
 
+    def test_explain_policy_command_summarizes_classifier_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["explain-policy", "--ledger", str(ledger)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("Policy Explanation", output.getvalue())
+        self.assertIn("Deterministic gates still decide", output.getvalue())
+
     def test_otel_command_exports_trace_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"
@@ -602,7 +614,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Status: ready", output.getvalue())
         self.assertIn("actions/runs/dryrun-gha", output.getvalue())
 
-    def test_apply_actions_live_mode_stays_locked(self) -> None:
+    def test_apply_actions_live_mode_blocks_without_token(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"
             with redirect_stdout(io.StringIO()):
@@ -621,7 +633,7 @@ class DelegationCliTests(unittest.TestCase):
                 )
 
         self.assertEqual(status, 1)
-        self.assertIn("Live GitHub Actions dispatch is not implemented yet", output.getvalue())
+        self.assertIn("GITHUB_TOKEN or GH_TOKEN is required", output.getvalue())
 
     def test_mcp_gate_reports_ready_policy_for_example(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
