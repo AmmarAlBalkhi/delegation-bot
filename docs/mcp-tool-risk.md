@@ -14,7 +14,7 @@ Bot writes the risk down.
 ## Why This Exists
 
 MCP is becoming a common way for AI apps to reach tools, data, and workflows.
-That is exactly why Delegation Bot should support it carefully.
+That is exactly why DelegationHQ should support it carefully.
 
 A tool call can look small but still be powerful:
 
@@ -25,7 +25,7 @@ A tool call can look small but still be powerful:
 - writing issues or code
 - passing untrusted text back into an AI model
 
-Delegation Bot should enable those tools, not suppress them, but it should make
+DelegationHQ should enable those tools, not suppress them, but it should make
 their risk visible before execution.
 
 ## Evidence

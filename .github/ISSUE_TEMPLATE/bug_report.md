@@ -35,7 +35,7 @@ Which part is affected?
 
 - OS:
 - Python:
-- Delegation Bot version or commit:
+- DelegationHQ version or commit:
 
 ## Evidence
 

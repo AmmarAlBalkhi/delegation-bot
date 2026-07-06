@@ -4,7 +4,7 @@ This is the active work queue. Keep it short so the project does not drift.
 
 ## Core Idea
 
-Delegation Bot is a harness for AI harnesses:
+DelegationHQ is a harness for AI harnesses:
 
 ```text
 Harnessfile -> dry-run plan -> policy gates -> adapter actions -> run ledger -> evals -> promotion
@@ -16,7 +16,7 @@ The trust model is hybrid:
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.
@@ -32,8 +32,8 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Run the Windows `.exe` build script on a clean Windows release host and
-   record the executable smoke evidence.
+1. Run the Windows `.exe` build and user-local install scripts on a clean
+   Windows release host and record the executable smoke evidence.
 2. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 3. Design live feedback issue comments or close actions behind explicit gates.
@@ -47,6 +47,10 @@ Deep only when the user asks for depth.
 - Hardened `github.actions` live dispatch with workflow metadata preflight,
   active duplicate-run protection, dispatch-time rechecks, cancellation guidance
   in ledger evidence, and focused fake-client tests.
+- Moved the public/package identity to DelegationHQ while preserving the
+  `delegation` CLI and `delegation_bot` Python namespace.
+- Added a user-local Windows installer for `delegation.exe` under
+  `%LOCALAPPDATA%\DelegationHQ\bin`.
 - Added gated live `github.actions` dispatch through `delegation apply-actions`
   with explicit confirmation, token gate, workflow input limits, dispatch ledger
   events, fake-client tests, and updated docs.

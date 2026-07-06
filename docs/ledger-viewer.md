@@ -1,6 +1,6 @@
 # Ledger Viewer
 
-The run ledger is Delegation Bot's black-box recorder.
+The run ledger is DelegationHQ's black-box recorder.
 
 Simple version: every plan, adapter action, eval result, approval, and future
 live execution should leave an event in a JSONL ledger. The ledger viewer turns

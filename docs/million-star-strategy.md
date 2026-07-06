@@ -6,7 +6,7 @@ adoption can compound over time.
 
 ## Positioning
 
-Delegation Bot should own a category, not just a feature.
+DelegationHQ should own a category, not just a feature.
 
 Category name:
 
@@ -29,7 +29,7 @@ The project should become the thing people put above their agent frameworks:
 - GitHub Actions for automation
 - MCP for tools
 - Codex for software work
-- Delegation Bot for planning, policy, evidence, ledgers, evals, and governance
+- DelegationHQ for planning, policy, evidence, ledgers, evals, and governance
 
 Keep the deeper category and uniqueness framing in `docs/positioning.md`.
 
@@ -60,7 +60,7 @@ The pain is:
 
 ## Product Promise
 
-Delegation Bot should promise:
+DelegationHQ should promise:
 
 ```text
 Plan it once. Dry-run it. Approve it. Execute anywhere. Learn from every run.
@@ -106,7 +106,7 @@ python -m delegation_bot adapters codex.thread
 The GitHub Action should be the default adoption path:
 
 ```yaml
-- uses: AmmarAlBalkhi/delegation-bot@v1
+- uses: AmmarAlBalkhi/delegationhq@v1
   with:
     harnessfile: Harnessfile.yaml
     apply: false

@@ -1,6 +1,6 @@
 # License Strategy
 
-Delegation Bot uses the Apache License 2.0.
+DelegationHQ uses the Apache License 2.0.
 
 This document is not legal advice. It records the product and engineering
 reasoning behind the license choice before the project grows a larger external
@@ -27,12 +27,12 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 ```
 
-Simple meaning: Delegation Bot stays permissive and easy to adopt, but gets a
+Simple meaning: DelegationHQ stays permissive and easy to adopt, but gets a
 clearer patent story, clearer contribution treatment, and an attribution notice.
 
 ## Why This Fits
 
-Delegation Bot is becoming infrastructure for agentic AI. Serious users may
+DelegationHQ is becoming infrastructure for agentic AI. Serious users may
 care about:
 
 - patent grants
@@ -88,7 +88,7 @@ the core engineering loop.
 Keep these files aligned:
 
 - `LICENSE` contains Apache License 2.0
-- `NOTICE` identifies Delegation Bot and the copyright holder
+- `NOTICE` identifies DelegationHQ and the copyright holder
 - `pyproject.toml` declares `Apache-2.0`
 - README and release docs say Apache-2.0
 - contributor docs say submitted contributions use Apache-2.0 unless explicitly
@@ -105,4 +105,4 @@ Before a larger public contribution push, decide whether to add:
 - privacy policy for any hosted dashboard
 
 The current decision is enough for the open-source repository, but those future
-items matter if Delegation Bot becomes a hosted product or company.
+items matter if DelegationHQ becomes a hosted product or company.

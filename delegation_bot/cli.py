@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Delegation Bot command line interface."""
+"""DelegationHQ command line interface."""
 
 from __future__ import annotations
 
@@ -982,7 +982,7 @@ def build_parser() -> argparse.ArgumentParser:
     catalog.add_argument("--list-adapters", action="store_true", help="List known catalog adapters.")
     catalog.set_defaults(func=cmd_catalog)
 
-    doctor = subparsers.add_parser("doctor", help="Check local Delegation Bot readiness.")
+    doctor = subparsers.add_parser("doctor", help="Check local DelegationHQ readiness.")
     doctor.add_argument("--json", action="store_true", help="Print doctor results as JSON.")
     doctor.add_argument(
         "--skip-github",

@@ -1,1 +1,1 @@
-"""Delegation Bot scripts package."""
+"""DelegationHQ scripts package."""

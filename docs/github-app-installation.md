@@ -1,6 +1,6 @@
 # GitHub App Installation Design
 
-Delegation Bot can start with local tokens, but a public product should
+DelegationHQ can start with local tokens, but a public product should
 eventually use a GitHub App for scoped repository access.
 
 Simple version:
@@ -8,14 +8,14 @@ Simple version:
 ```text
 User installs app.
 App gets narrow permissions.
-Delegation Bot dry-runs first.
+DelegationHQ dry-runs first.
 Live writes need explicit approval.
 Ledger records proof.
 ```
 
 ## Why A GitHub App
 
-A GitHub App fits Delegation Bot better than asking users for broad personal
+A GitHub App fits DelegationHQ better than asking users for broad personal
 tokens:
 
 - installations can be limited to selected repositories

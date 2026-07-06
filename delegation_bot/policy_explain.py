@@ -250,7 +250,7 @@ def _format_matched_terms(matched_terms: JsonMap) -> str:
 def _policy_explanation_system_prompt() -> str:
     return "\n".join(
         [
-            "You explain Delegation Bot policy evidence to a developer.",
+            "You explain DelegationHQ policy evidence to a developer.",
             "Return only JSON: {\"explanation\": \"short plain-language explanation\"}.",
             "Do not change the classification or recommended gate.",
             "Do not approve actions.",

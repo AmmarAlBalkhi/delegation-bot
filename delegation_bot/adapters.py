@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adapter contracts for Delegation Bot executor runtimes."""
+"""Adapter contracts for DelegationHQ executor runtimes."""
 
 from __future__ import annotations
 

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Delegation Bot will be documented here.
+All notable changes to DelegationHQ will be documented here.
 
 The project is currently pre-release.
 
@@ -118,3 +118,6 @@ The project is currently pre-release.
 - Added `delegation recover-feedback` for recovery drafts when previously
   failing evals pass after a live feedback issue exists.
 - Added a feedback recovery ledger fixture.
+- Moved the public package identity from `delegation-bot` to `delegationhq`
+  while preserving the `delegation` CLI and `delegation_bot` Python namespace.
+- Added a user-local Windows installer for `delegation.exe`.

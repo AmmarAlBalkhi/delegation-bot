@@ -2,7 +2,7 @@
 
 Trust should reduce anxiety, not create chores.
 
-Delegation Bot can be serious infrastructure and still feel light to use. The
+DelegationHQ can be serious infrastructure and still feel light to use. The
 experience goal is:
 
 ```text

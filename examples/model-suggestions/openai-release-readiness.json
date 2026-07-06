@@ -146,7 +146,7 @@
       "suggested_by": "delegation.suggest.model_fixture",
       "suggestion_template": "release-readiness",
       "provider_fixture": "openai",
-      "trust_boundary": "Model proposes; Delegation Bot validates, plans, writes ledger evidence, and requires approval."
+      "trust_boundary": "Model proposes; DelegationHQ validates, plans, writes ledger evidence, and requires approval."
     }
   },
   "safety_notes": [
@@ -157,6 +157,6 @@
   "validation_expectations": [
     "The manifest validates with the deterministic Harnessfile validator.",
     "The manifest compiles into a dry-run plan.",
-    "The ledger is written only by Delegation Bot planning code."
+    "The ledger is written only by DelegationHQ planning code."
   ]
 }

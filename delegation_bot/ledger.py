@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read and render Delegation Bot JSONL run ledgers."""
+"""Read and render DelegationHQ JSONL run ledgers."""
 
 from __future__ import annotations
 

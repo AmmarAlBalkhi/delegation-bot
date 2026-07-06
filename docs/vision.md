@@ -2,7 +2,7 @@
 
 ## Thesis
 
-Delegation Bot should evolve from a task-to-issue bot into a control plane for
+DelegationHQ should evolve from a task-to-issue bot into a control plane for
 delegated intelligence.
 
 The world is moving from single AI calls to long-running work systems: agents,
@@ -21,7 +21,7 @@ That is the layer this project can own.
 
 ## Product Idea
 
-Delegation Bot becomes the repo-native operating layer above AI harnesses.
+DelegationHQ becomes the repo-native operating layer above AI harnesses.
 
 It does not need to replace OpenAI Agents SDK, Anthropic Claude, Claude Code,
 LangGraph, GitHub Actions, MCP, or custom scripts. It should coordinate them
@@ -40,7 +40,7 @@ The operating principle is hybrid:
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.

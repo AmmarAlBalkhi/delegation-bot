@@ -12,7 +12,7 @@ Bot give next step.
 
 ## Why It Exists
 
-Delegation Bot should feel powerful, not confusing. Before live GitHub writes,
+DelegationHQ should feel powerful, not confusing. Before live GitHub writes,
 model-backed suggestions, hosted dashboards, or release packaging, users need a
 simple way to answer:
 

@@ -1,6 +1,6 @@
 # Demo: Mission Control In 60 Seconds
 
-Delegation Bot is mission control for agentic AI work.
+DelegationHQ is mission control for agentic AI work.
 
 Simple version:
 
@@ -74,7 +74,7 @@ That is the product: powerful AI work with visible control before power is used.
 
 ## The Product Promise
 
-Delegation Bot should make powerful AI work feel inspectable:
+DelegationHQ should make powerful AI work feel inspectable:
 
 ```text
 Before the AI does the thing, you can see the thing.

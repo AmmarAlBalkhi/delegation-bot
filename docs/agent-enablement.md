@@ -78,7 +78,7 @@ the agent has.
 
 ## Where Other Agents Fit
 
-Delegation Bot should not replace agent runtimes. It should manage them.
+DelegationHQ should not replace agent runtimes. It should manage them.
 
 - OpenClaw can be a personal assistant runtime.
 - Hermes-style agents can be skill-learning executors.
@@ -90,7 +90,7 @@ Delegation Bot should not replace agent runtimes. It should manage them.
 - LangGraph can run durable workflows.
 - MCP tools can expose external actions.
 
-Delegation Bot sits above them and answers:
+DelegationHQ sits above them and answers:
 
 - which agent is assigned
 - what powers it has

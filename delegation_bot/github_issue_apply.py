@@ -356,7 +356,7 @@ def _github_issue_drafts(
         issue = dry_run_result.outputs.get("github.issue", {})
         marker = str(dry_run_result.evidence.get("issue_marker") or issue.get("issue_marker") or "")
         repository = str(inputs.get("repository") or "")
-        title = str(inputs.get("issue_title") or "Delegation Bot Issue")
+        title = str(inputs.get("issue_title") or "DelegationHQ Issue")
         body = str(inputs.get("issue_body") or "")
         body = _body_with_marker_and_ledger(body, marker, ledger_source)
         yield GitHubIssueDraft(
@@ -382,13 +382,13 @@ def _body_with_marker_and_ledger(body: str, marker: str, ledger_source: str) -> 
     lines: list[str] = []
     if marker and marker not in body:
         lines.extend([f"<!-- {marker} -->", ""])
-    lines.append(body.strip() or "Delegation Bot planned this GitHub Issue.")
+    lines.append(body.strip() or "DelegationHQ planned this GitHub Issue.")
     lines.extend(
         [
             "",
             "---",
             "",
-            "Delegation Bot live apply evidence:",
+            "DelegationHQ live apply evidence:",
             f"- source ledger: `{ledger_source}`",
             "- adapter: `github.issue`",
         ]

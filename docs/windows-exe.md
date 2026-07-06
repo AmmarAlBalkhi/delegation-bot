@@ -1,4 +1,4 @@
-# Windows EXE Packaging Plan
+# Windows EXE Packaging And Install
 
 Goal:
 
@@ -10,7 +10,7 @@ Try the demo without learning Python packaging.
 
 ## Current State
 
-Delegation Bot is a Python CLI package today:
+DelegationHQ is a Python CLI package today:
 
 ```bash
 python -m pip install -e .
@@ -54,6 +54,36 @@ The executable build bundles `examples/`, `playbooks/`, `schemas/`, `LICENSE`,
 `NOTICE`, and `README.md` so the demo, catalog, fixture, and doctor paths do
 not depend on a full source checkout.
 
+## User-Local Install
+
+After building `dist\delegation.exe`, install it into the current user's
+profile:
+
+```powershell
+.\scripts\install-windows-exe.ps1 -AddToPath
+```
+
+One-command local build plus install:
+
+```powershell
+.\scripts\install-windows-exe.ps1 -Build -InstallDependencies -AddToPath
+```
+
+The installer copies the executable to:
+
+```text
+%LOCALAPPDATA%\DelegationHQ\bin\delegation.exe
+```
+
+It runs this smoke check unless `-NoSmoke` is passed:
+
+```powershell
+delegation.exe doctor --skip-github
+```
+
+`-AddToPath` updates the user PATH only, not the machine PATH. Open a new
+terminal before running `delegation` from PATH.
+
 ## Local Verification
 
 Local build verification on 2026-07-05:
@@ -89,6 +119,7 @@ Do not publish an `.exe` until:
 - `python scripts/qa.py` passes
 - `python scripts/package_smoke.py` passes
 - `.\scripts\build-windows-exe.ps1 -InstallDependencies` passes on Windows
+- `.\scripts\install-windows-exe.ps1 -AddToPath` passes on Windows
 - the artifact is built from a tagged commit
 - docs explain that live writes remain gated
 - the executable version matches `pyproject.toml`

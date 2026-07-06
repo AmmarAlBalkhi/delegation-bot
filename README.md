@@ -1,6 +1,6 @@
-# Delegation Bot
+# DelegationHQ
 
-Delegation Bot is **mission control for agentic AI work**.
+DelegationHQ is **mission control for agentic AI work**.
 
 It lets you dry-run AI missions, route them to any harness, enforce approvals,
 keep evidence, run evals, and promote agents only when trust is earned.
@@ -11,17 +11,29 @@ Actions, local scripts, and human review.
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.
 ```
 
-## Quick Start
+The command stays intentionally short:
 
 ```bash
-python -m pip install -r requirements.txt
-python scripts/delegation.py demo
+delegation demo
+delegation plan Harnessfile.yaml --ledger .delegation/latest.jsonl
+```
+
+Package/public identity is moving to `delegationhq`. The Python import
+namespace remains `delegation_bot` during the compatibility window.
+
+## Quick Start
+
+From a source checkout:
+
+```bash
+python -m pip install -e .
+delegation demo
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
@@ -31,21 +43,40 @@ run an agent.
 Want to start your own repo?
 
 ```bash
-python scripts/delegation.py init --goal "prepare this repo for safe AI delegation"
-python scripts/delegation.py plan Harnessfile.yaml --ledger .delegation/latest.jsonl
+delegation init --goal "prepare this repo for safe AI delegation"
+delegation plan Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
 Want the larger flagship Harnessfile?
 
 ```bash
-python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
-python scripts/delegation.py mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
-python scripts/delegation.py apply-actions examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
-python scripts/delegation.py explain-policy --ledger .delegation/demo.jsonl
+delegation plan examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+delegation mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+delegation apply-actions examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
+delegation explain-policy --ledger .delegation/demo.jsonl
 ```
 
 For a guided version with what to look for, see
 [`docs/demo.md`](docs/demo.md).
+
+## Windows EXE
+
+On Windows, build and install a user-local executable:
+
+```powershell
+.\scripts\install-windows-exe.ps1 -Build -InstallDependencies -AddToPath
+```
+
+This installs `delegation.exe` under `%LOCALAPPDATA%\DelegationHQ\bin`, runs a
+safe `doctor --skip-github` smoke check, and optionally adds that directory to
+your user PATH. Open a new terminal, then run:
+
+```powershell
+delegation demo
+```
+
+See [`docs/windows-exe.md`](docs/windows-exe.md) before publishing any public
+`.exe` artifact.
 
 ## What It Does
 
@@ -81,7 +112,7 @@ the task?" It is:
 - Did evals pass?
 - Should this agent get more autonomy next time?
 
-Delegation Bot is built to answer those questions before AI work becomes a
+DelegationHQ is built to answer those questions before AI work becomes a
 black box.
 
 ## Core Commands
@@ -115,13 +146,13 @@ Live actions stay behind explicit gates. GitHub Issues require
 Fixtures are tiny ledgers that make the system easier to understand.
 
 ```bash
-python scripts/delegation.py ledger examples/ledgers/adapter-good.jsonl --adapter sample.echo
-python scripts/delegation.py ledger examples/ledgers/adapter-blocked.jsonl --status blocked
-python scripts/delegation.py ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
-python scripts/delegation.py ledger examples/ledgers/github-actions-preview.jsonl --adapter github.actions
-python scripts/delegation.py ledger examples/ledgers/mcp-tool-risk.jsonl --adapter mcp.tool
-python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
-python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
+delegation ledger examples/ledgers/adapter-good.jsonl --adapter sample.echo
+delegation ledger examples/ledgers/adapter-blocked.jsonl --status blocked
+delegation ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
+delegation ledger examples/ledgers/github-actions-preview.jsonl --adapter github.actions
+delegation ledger examples/ledgers/mcp-tool-risk.jsonl --adapter mcp.tool
+delegation ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
+delegation dashboard examples/ledgers/feedback-recovery.jsonl
 ```
 
 The last fixture shows the feedback loop remembering a live GitHub issue number
@@ -129,7 +160,7 @@ so a repeated eval failure updates the existing issue instead of creating noise.
 
 ## Current Status
 
-Delegation Bot is pre-release, but the foundation is working:
+DelegationHQ is pre-release, but the foundation is working:
 
 - Harnessfile validation and dry-run planning
 - run ledger generation and inspection
@@ -143,8 +174,10 @@ Delegation Bot is pre-release, but the foundation is working:
 - `explain-policy` for low-friction classifier explanations that do not grant authority
 - no-network and opt-in live model-backed Harnessfile suggestions for OpenAI,
   Anthropic, and Ollama
-- package metadata for the `delegation` console command
-- a Windows `.exe` build script for local packaging smoke tests
+- package metadata for the `delegationhq` distribution and `delegation` console
+  command
+- Windows `.exe` build and user-local install scripts for local packaging smoke
+  tests
 
 Live agent execution is intentionally not the default yet. The current focus is
 trustworthy plans, evidence, adapter portability, feedback loops, and a first
@@ -189,7 +222,8 @@ Launch readiness:
 
 - [QA and backup discipline](docs/qa.md)
 - [Release checklist](docs/release.md)
-- [Windows EXE plan](docs/windows-exe.md)
+- [Windows EXE install](docs/windows-exe.md)
+- [Brand transition](docs/brand-transition.md)
 - [TestPyPI dry run](docs/testpypi-dry-run.md)
 - [Business model notes](docs/business-model.md)
 - [Domain strategy](docs/domain-strategy.md)

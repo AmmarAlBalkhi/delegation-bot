@@ -136,7 +136,7 @@ def render_suggestion(suggestion: HarnessSuggestion, *, output_path: str | None 
         "",
         "Trust boundary:",
         "- AI or templates may propose this Harnessfile.",
-        "- Delegation Bot must validate and dry-run it before execution.",
+        "- DelegationHQ must validate and dry-run it before execution.",
         "- Humans still approve risky actions.",
         "- Ledgers and evals decide whether trust increases.",
     ]
@@ -290,7 +290,7 @@ def _base_manifest(goal: str, repository: str, owner: str, template_id: str) -> 
         "metadata": {
             "suggested_by": "delegation.suggest",
             "suggestion_template": template_id,
-            "trust_boundary": "AI proposes; Delegation Bot verifies; humans approve risky actions.",
+            "trust_boundary": "AI proposes; DelegationHQ verifies; humans approve risky actions.",
         },
     }
 

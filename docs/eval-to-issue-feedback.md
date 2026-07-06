@@ -18,7 +18,7 @@ This should start as dry-run planning, not automatic issue spam.
 
 ## Why It Matters
 
-Delegation Bot should improve through use. When a run fails, the system should
+DelegationHQ should improve through use. When a run fails, the system should
 not only say "failed." It should preserve enough evidence for a human or agent
 to create a focused improvement issue.
 
@@ -202,7 +202,7 @@ python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl
 
 ## Recovery Drafts
 
-When an eval passes after a prior live feedback issue exists, Delegation Bot can
+When an eval passes after a prior live feedback issue exists, DelegationHQ can
 draft a recovery update:
 
 ```bash

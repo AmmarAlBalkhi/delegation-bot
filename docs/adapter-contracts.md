@@ -2,7 +2,7 @@
 
 Adapter contracts are the socket shape for external execution systems.
 
-Simple version: before Delegation Bot talks to Codex, Claude/Anthropic, GitHub
+Simple version: before DelegationHQ talks to Codex, Claude/Anthropic, GitHub
 Actions, MCP, OpenAI Agents SDK, LangGraph, OpenClaw, Hermes-style agents, or a
 human approver, it should know what that adapter expects, what it can return,
 what risk level it carries, and what evidence must appear in the run ledger.
@@ -124,7 +124,7 @@ This matches how modern agentic systems are evolving:
 - GitHub Actions exposes reusable workflows as automation units.
 - LangGraph emphasizes persistent state and checkpoints for durable agent runs.
 
-Delegation Bot sits above these systems. It should not replace them. It should
+DelegationHQ sits above these systems. It should not replace them. It should
 make their work plannable, reviewable, comparable, and learnable.
 
 ## Next Step

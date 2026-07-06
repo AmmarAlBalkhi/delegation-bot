@@ -3,9 +3,9 @@ requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "delegation-bot"
+name = "delegationhq"
 version = "0.1.0a0"
-description = "Mission control for agentic work: plan, dry-run, route, evaluate, and promote AI delegation."
+description = "DelegationHQ: mission control for agentic work."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -45,9 +45,10 @@ exe = [
 delegation = "delegation_bot.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/AmmarAlBalkhi/delegation-bot"
-Repository = "https://github.com/AmmarAlBalkhi/delegation-bot"
-Issues = "https://github.com/AmmarAlBalkhi/delegation-bot/issues"
+Homepage = "https://delegationhq.ai"
+Documentation = "https://delegationhq.dev"
+Repository = "https://github.com/AmmarAlBalkhi/delegationhq"
+Issues = "https://github.com/AmmarAlBalkhi/delegationhq/issues"
 
 [tool.setuptools.packages.find]
 include = ["delegation_bot*"]

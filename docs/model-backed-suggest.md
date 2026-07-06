@@ -203,7 +203,7 @@ If the Harnessfile validates:
 The system prompt is intentionally strict:
 
 ```text
-You draft Delegation Bot Harnessfiles.
+You draft DelegationHQ Harnessfiles.
 Return only one JSON object.
 Prefer dry-run adapters.
 Require human approval for risky actions.

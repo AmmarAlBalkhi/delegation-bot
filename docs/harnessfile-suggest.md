@@ -28,7 +28,7 @@ That keeps the first run calm and predictable.
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.

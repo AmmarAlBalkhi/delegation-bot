@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small SDK surface for Delegation Bot adapters."""
+"""Small SDK surface for DelegationHQ adapters."""
 
 from __future__ import annotations
 

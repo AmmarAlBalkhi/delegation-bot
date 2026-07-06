@@ -6,7 +6,7 @@ the implementation grows.
 ## Core Sentence
 
 ```text
-Delegation Bot is mission control for agentic work: dry-run AI missions, route
+DelegationHQ is mission control for agentic work: dry-run AI missions, route
 them to any harness, enforce approvals, keep evidence, run evals, and promote
 agents only when trust is earned.
 ```
@@ -27,7 +27,7 @@ AI delegation control plane
 
 Most tools help agents do work.
 
-Delegation Bot helps humans trust, control, compare, and improve that work
+DelegationHQ helps humans trust, control, compare, and improve that work
 across many agent tools.
 
 Most agent tools start at execution:
@@ -36,7 +36,7 @@ Most agent tools start at execution:
 Run the agent.
 ```
 
-Delegation Bot starts one level above:
+DelegationHQ starts one level above:
 
 ```text
 Should this work happen, who or what can do it, what proof is required, and
@@ -55,11 +55,11 @@ Everything we build should strengthen that loop.
 
 ## Hybrid Trust Model
 
-Delegation Bot should be AI-enabled, not AI-governed:
+DelegationHQ should be AI-enabled, not AI-governed:
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.
@@ -118,9 +118,9 @@ These tools prove the space is real:
 
 The ingredients exist. The full recipe is still unusual.
 
-## Why Delegation Bot Can Be Unique
+## Why DelegationHQ Can Be Unique
 
-Delegation Bot is not trying to be the best agent runtime, tracing dashboard,
+DelegationHQ is not trying to be the best agent runtime, tracing dashboard,
 or prompt platform.
 
 It should be the neutral mission-control layer above those tools:
@@ -135,7 +135,7 @@ It should be the neutral mission-control layer above those tools:
 - promotion ladder for agent autonomy
 
 The closest threat is a user combining an agent framework with an observability
-platform. Our answer is that Delegation Bot owns the planning, approval,
+platform. Our answer is that DelegationHQ owns the planning, approval,
 evidence, and promotion layer before and around execution.
 
 ## What We Are Not

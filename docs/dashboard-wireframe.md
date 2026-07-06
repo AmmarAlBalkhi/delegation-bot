@@ -25,7 +25,7 @@ The hosted dashboard should answer five questions fast:
 ## First Screen
 
 ```text
-Delegation Bot
+DelegationHQ
 
 [Mission] [Plan] [Ledger] [Evals] [Agents] [Playbooks]
 

@@ -3,7 +3,7 @@
 """
 Legacy compatibility script for the original recurring GitHub Issue bot.
 
-The main Delegation Bot product is now the Harnessfile control plane exposed by
+The main DelegationHQ product is now the Harnessfile control plane exposed by
 `scripts/delegation.py` and the installable `delegation` command. Keep this
 script stable for old task-bot users, but prefer Harnessfiles, playbooks,
 adapters, ledgers, evals, and promotion for new work.
