@@ -7,6 +7,8 @@ from pathlib import Path
 from delegation_bot.github_actions_apply import (
     ACTIONS_CONFIRMATION,
     GitHubActionsDispatchResult,
+    GitHubWorkflowMetadata,
+    GitHubWorkflowRunSummary,
     apply_github_actions_drafts,
     build_actions_apply_report,
     render_actions_apply_report,
@@ -69,8 +71,120 @@ class GitHubActionsApplyTests(unittest.TestCase):
         self.assertEqual(report.status, "ready_to_dispatch")
         self.assertTrue(report.live_dispatch_supported)
 
+    def test_live_report_runs_preflight_with_fake_client(self) -> None:
+        class FakeClient:
+            def get_workflow(self, draft):
+                return GitHubWorkflowMetadata(
+                    id=123,
+                    name="Tests",
+                    path=".github/workflows/tests.yml",
+                    state="active",
+                )
+
+            def active_duplicate_runs(self, draft):
+                return ()
+
+        manifest, plan, ledger_events = example_manifest_and_ledger()
+
+        report = build_actions_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=".delegation/latest.jsonl",
+            apply=True,
+            confirmation=ACTIONS_CONFIRMATION,
+            token="fake-token",
+            preflight_client=FakeClient(),
+        )
+
+        gate_ids = {gate.id for gate in report.gates}
+        self.assertFalse(report.blocked)
+        self.assertIn("preflight.workflow_metadata.executor.verification_runner", gate_ids)
+        self.assertIn("preflight.duplicate_run.executor.verification_runner", gate_ids)
+
+    def test_live_report_blocks_disabled_workflow_preflight(self) -> None:
+        class FakeClient:
+            def get_workflow(self, draft):
+                return GitHubWorkflowMetadata(
+                    id=123,
+                    name="Tests",
+                    path=".github/workflows/tests.yml",
+                    state="disabled_manually",
+                )
+
+            def active_duplicate_runs(self, draft):
+                return ()
+
+        manifest, plan, ledger_events = example_manifest_and_ledger()
+
+        report = build_actions_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=".delegation/latest.jsonl",
+            apply=True,
+            confirmation=ACTIONS_CONFIRMATION,
+            token="fake-token",
+            preflight_client=FakeClient(),
+        )
+
+        self.assertTrue(report.blocked)
+        self.assertIn("preflight.workflow_metadata.executor.verification_runner", {
+            gate.id for gate in report.gates if gate.status == "blocked"
+        })
+
+    def test_live_report_blocks_duplicate_active_workflow_run(self) -> None:
+        class FakeClient:
+            def get_workflow(self, draft):
+                return GitHubWorkflowMetadata(
+                    id=123,
+                    name="Tests",
+                    path=".github/workflows/tests.yml",
+                    state="active",
+                )
+
+            def active_duplicate_runs(self, draft):
+                return (
+                    GitHubWorkflowRunSummary(
+                        id=456,
+                        status="in_progress",
+                        event="workflow_dispatch",
+                        head_branch="main",
+                        html_url="https://github.com/AmmarAlBalkhi/delegation-bot/actions/runs/456",
+                    ),
+                )
+
+        manifest, plan, ledger_events = example_manifest_and_ledger()
+
+        report = build_actions_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=".delegation/latest.jsonl",
+            apply=True,
+            confirmation=ACTIONS_CONFIRMATION,
+            token="fake-token",
+            preflight_client=FakeClient(),
+        )
+
+        self.assertTrue(report.blocked)
+        self.assertIn("preflight.duplicate_run.executor.verification_runner", {
+            gate.id for gate in report.gates if gate.status == "blocked"
+        })
+
     def test_live_dispatch_writes_ledger_events(self) -> None:
         class FakeClient:
+            def get_workflow(self, draft):
+                return GitHubWorkflowMetadata(
+                    id=123,
+                    name="Tests",
+                    path=".github/workflows/tests.yml",
+                    state="active",
+                )
+
+            def active_duplicate_runs(self, draft):
+                return ()
+
             def dispatch_workflow(self, draft):
                 return GitHubActionsDispatchResult(
                     workflow_run_id="123",
@@ -105,7 +219,57 @@ class GitHubActionsApplyTests(unittest.TestCase):
         ])
         self.assertEqual(events[1].status, "executed")
         self.assertEqual(events[1].details["workflow_run_id"], "123")
+        self.assertEqual(
+            events[1].details["cancellation"]["cancel_api_path"],
+            "/repos/AmmarAlBalkhi/delegation-bot/actions/runs/123/cancel",
+        )
         self.assertEqual(events[-1].status, "passed")
+
+    def test_live_dispatch_blocks_when_preflight_changes_after_report(self) -> None:
+        class FakeClient:
+            def get_workflow(self, draft):
+                return GitHubWorkflowMetadata(
+                    id=123,
+                    name="Tests",
+                    path=".github/workflows/tests.yml",
+                    state="active",
+                )
+
+            def active_duplicate_runs(self, draft):
+                return (
+                    GitHubWorkflowRunSummary(
+                        id=456,
+                        status="queued",
+                        event="workflow_dispatch",
+                        head_branch="main",
+                    ),
+                )
+
+            def dispatch_workflow(self, draft):  # pragma: no cover - should not be called
+                raise AssertionError("dispatch should not run after duplicate preflight")
+
+        manifest, plan, ledger_events = example_manifest_and_ledger()
+        report = build_actions_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=".delegation/latest.jsonl",
+            apply=True,
+            confirmation=ACTIONS_CONFIRMATION,
+            token="fake-token",
+        )
+
+        events = apply_github_actions_drafts(
+            report.drafts,
+            client=FakeClient(),
+            run_id="dryrun-ai-harness-control-plane",
+            start_sequence=len(ledger_events) + 1,
+            timestamp="2026-07-06T00:00:00+00:00",
+        )
+
+        self.assertEqual(events[1].type, "github.actions.dispatch.blocked")
+        self.assertEqual(events[1].status, "blocked")
+        self.assertEqual(events[-1].status, "failed")
 
     def test_policy_can_require_approval_before_workflow_dispatch(self) -> None:
         manifest, _, ledger_events = example_manifest_and_ledger()

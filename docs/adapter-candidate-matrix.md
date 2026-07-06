@@ -81,10 +81,10 @@ value, high dry-run clarity, and medium-or-lower contributor difficulty.
 
 ## Next Implementation Picks
 
-1. Harden `github.actions` live dispatch with workflow-file checks,
-   duplicate-run protection, and cancellation guidance.
-2. Add a dry-run `shell.command` adapter contract before allowing any command
+1. Add a dry-run `shell.command` adapter contract before allowing any command
    execution.
-3. Run the packaged demo/install path on a clean Windows release host.
+2. Run the packaged demo/install path on a clean Windows release host.
+3. Add token-scope diagnostics and a dedicated cancel command for
+   `github.actions` live dispatch.
 4. Add a small `crewai.crew` or Microsoft Agent Framework planning contract
    only after the current adapter docs are easy to follow.

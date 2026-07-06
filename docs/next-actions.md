@@ -32,18 +32,21 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Harden `github.actions` live dispatch with default-branch workflow checks,
-   duplicate-run protection, and cancellation guidance.
-2. Run the Windows `.exe` build script on a clean Windows release host and
+1. Run the Windows `.exe` build script on a clean Windows release host and
    record the executable smoke evidence.
-3. Open the first small public roadmap issue set from
+2. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
-4. Design live feedback issue comments or close actions behind explicit gates.
-5. Sketch the GitHub App installation flow that can provide scoped tokens
+3. Design live feedback issue comments or close actions behind explicit gates.
+4. Sketch the GitHub App installation flow that can provide scoped tokens
    without forcing users to paste personal tokens.
+5. Add token-scope diagnostics and a dedicated cancel command for
+   `github.actions` live dispatch.
 
 ## Completed Recently
 
+- Hardened `github.actions` live dispatch with workflow metadata preflight,
+  active duplicate-run protection, dispatch-time rechecks, cancellation guidance
+  in ledger evidence, and focused fake-client tests.
 - Added gated live `github.actions` dispatch through `delegation apply-actions`
   with explicit confirmation, token gate, workflow input limits, dispatch ledger
   events, fake-client tests, and updated docs.

@@ -731,6 +731,7 @@ def cmd_apply_actions(args: argparse.Namespace) -> int:
         return 1
 
     token = github_token_from_env()
+    actions_client = GitHubActionsClient(token) if args.apply and token else None
     report = build_actions_apply_report(
         manifest,
         plan,
@@ -739,6 +740,7 @@ def cmd_apply_actions(args: argparse.Namespace) -> int:
         apply=args.apply,
         confirmation=args.confirm,
         token=token,
+        preflight_client=actions_client,
     )
     if args.json:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
@@ -754,7 +756,7 @@ def cmd_apply_actions(args: argparse.Namespace) -> int:
     run_id = str(ledger_events[0].get("run_id")) if ledger_events else f"apply-{plan.id}"
     events = apply_github_actions_drafts(
         report.drafts,
-        client=GitHubActionsClient(token or ""),
+        client=actions_client or GitHubActionsClient(token or ""),
         run_id=run_id,
         start_sequence=len(ledger_events) + 1,
     )
