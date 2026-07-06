@@ -1,6 +1,7 @@
 # GitHub Actions Apply Gate
 
-`delegation apply-actions` previews a gated GitHub Actions workflow dispatch.
+`delegation apply-actions` previews or live-dispatches a gated GitHub Actions
+workflow.
 
 Caveman version:
 
@@ -9,7 +10,7 @@ Bot show workflow.
 Bot show branch.
 Bot show inputs.
 Bot check ledger and policy.
-Bot does not press run yet.
+Bot presses run only when you explicitly allow it.
 ```
 
 ## Why This Exists
@@ -18,7 +19,9 @@ GitHub Actions is where many repositories already run tests, release jobs, and
 automation. That makes it powerful and risky. A bad workflow dispatch can burn
 minutes, publish artifacts, deploy code, or trigger other automation.
 
-So the first useful slice is a dispatch preview, not live dispatch.
+So the default path is a dispatch preview. Live dispatch exists, but it is gated
+behind explicit confirmation, repository policy, ledger evidence, approval
+evidence when required, and a GitHub token.
 
 ## Preview
 
@@ -44,11 +47,9 @@ Preview mode does not call GitHub and does not need a token. It shows:
 - dry-run workflow run URL shape
 - policy, approval, ledger, and intent gates
 
-## Live Dispatch Status
+## Live Dispatch
 
-Live GitHub Actions dispatch is intentionally locked for now.
-
-Even this command blocks:
+After the preview is clean, live dispatch requires exact intent:
 
 ```bash
 delegation apply-actions Harnessfile.yaml \
@@ -57,8 +58,20 @@ delegation apply-actions Harnessfile.yaml \
   --confirm LIVE_GITHUB_ACTIONS
 ```
 
-That is deliberate. The preview gate should prove the workflow draft and
-evidence shape before a live dispatch client exists.
+It also requires `GITHUB_TOKEN` or `GH_TOKEN`. The token needs GitHub Actions
+write permission for the target repository.
+
+If the gates pass, Delegation Bot calls GitHub's workflow dispatch endpoint and
+appends ledger events such as:
+
+```text
+github.actions.dispatch.started
+github.actions.dispatched
+github.actions.dispatch.completed
+```
+
+Those events include repository, workflow file, ref, input keys, status code,
+and workflow run URL when GitHub returns one.
 
 ## Gates
 
@@ -74,6 +87,8 @@ The preview checks:
 - workflow approval evidence exists when policy requires `workflow`,
   `github.actions`, `github_actions`, `workflow_dispatch`, or `actions`
 - live dispatch is not being silently attempted
+- live dispatch has exact confirmation and token when `--apply` is used
+- workflow input count stays within GitHub's 25-key `workflow_dispatch` limit
 
 ## Fixture
 
@@ -93,22 +108,21 @@ configured with `workflow_dispatch`. A dispatch request needs a workflow id or
 file name, a `ref`, optional inputs, and appropriate repository access. Workflow
 run APIs then expose run status, logs, reruns, and cancellation.
 
-Sources checked on 2026-07-05:
+Sources checked on 2026-07-06:
 
 - [GitHub REST workflow dispatch docs](https://docs.github.com/en/rest/actions/workflows)
 - [GitHub REST workflow runs docs](https://docs.github.com/en/rest/actions/workflow-runs)
 - [GitHub workflow_dispatch syntax docs](https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions)
 - [GitHub manual workflow run docs](https://docs.github.com/actions/managing-workflow-runs/manually-running-a-workflow)
 
-## Future Live Client
+## Still Future
 
-The future live dispatch step should use the same gates, then add:
+The current client is intentionally small. Future hardening should add:
 
 - token scope checks
 - default-branch workflow-file check
 - idempotency or duplicate-run protection
-- run URL returned by GitHub when available
-- appended `github.actions.dispatched` and status events
 - cancellation guidance for failed or accidental runs
 
-Until then, the correct behavior is boring and safe: preview, prove, stop.
+The correct behavior remains boring and safe: preview first, prove gates, then
+dispatch only when the operator asks for it.

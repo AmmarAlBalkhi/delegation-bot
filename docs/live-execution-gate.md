@@ -3,9 +3,9 @@
 This document designs the first safe step from dry-run planning toward live
 execution.
 
-Simple version: start with live GitHub Issue creation or update only. Do not
-start with live model calls, live coding agents, external messages, workflow
-runs, or deployments.
+Simple version: live actions must be earned by evidence. GitHub Issues proved
+the first low-risk live gate; GitHub Actions now follows the same preview-first
+pattern.
 
 ## Principle
 
@@ -19,9 +19,9 @@ validate -> plan -> ledger -> eval -> approval -> apply
 
 No live action should bypass that loop.
 
-## First Live Adapter
+## First Live Adapters
 
-First candidate:
+First candidate, now implemented:
 
 ```text
 github.issue
@@ -35,23 +35,34 @@ Why:
 - easy for users to inspect in GitHub
 - fits the existing legacy task bot behavior
 
+Second controlled live surface:
+
+```text
+github.actions
+```
+
+Why:
+
+- repository-native verification and release automation already lives there
+- the dispatch request has a small explicit shape: repository, workflow, ref,
+  and inputs
+- GitHub returns run identifiers and URLs that fit the ledger model
+- risky workflow dispatch can be forced through approval policy first
+
 ## Explicit Non-Goals
 
-Do not enable these in the first live gate:
+Do not enable these until their gates are as clear as GitHub Issues and GitHub
+Actions:
 
 - live coding-agent execution
 - live model calls
 - live MCP tool calls
-- live GitHub Actions dispatch
 - pull request creation
 - external messages
 - deployments
 
-Those can come later after the live-gate pattern is proven.
-
-`github.actions` now has a preview gate through `delegation apply-actions`.
-That command checks the dry-run ledger, repository policy, approval policy, and
-workflow run URL evidence, but it still blocks live dispatch.
+Those can come later after their preview evidence, approval rules, failure
+handling, and ledger events are boring enough to trust.
 
 ## Required Gates
 
@@ -104,7 +115,16 @@ GitHub Actions dispatch preview:
 delegation apply-actions Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
-This does not call GitHub. See `docs/github-actions-apply.md`.
+Live dispatch:
+
+```bash
+delegation apply-actions Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_GITHUB_ACTIONS
+```
+
+This requires `GITHUB_TOKEN` or `GH_TOKEN`. See `docs/github-actions-apply.md`.
 
 ## Ledger Events
 
@@ -128,6 +148,25 @@ Every event should include:
 - source dry-run action id
 - approval or apply mode evidence
 - sanitized body preview
+
+Live workflow dispatch appends:
+
+```text
+github.actions.dispatch.started
+github.actions.dispatched
+github.actions.dispatch.failed
+github.actions.dispatch.completed
+```
+
+Every event should include:
+
+- adapter id
+- repository
+- workflow file or id
+- ref
+- input keys, with sensitive values omitted
+- workflow run id and URL when GitHub returns them
+- source dry-run action id
 
 ## Policy Behavior
 
@@ -174,7 +213,7 @@ The workflow dispatch preview is useful when:
 - the command shows repository, workflow file, ref, and input keys
 - repository policy is checked before future dispatch
 - approval policy can require `approval.granted` evidence for workflow actions
-- live dispatch remains blocked until a dedicated dispatch client exists
+- live dispatch requires `--apply --confirm LIVE_GITHUB_ACTIONS` and a token
 
 ## Why This Is The Right First Live Step
 

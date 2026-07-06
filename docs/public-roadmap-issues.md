@@ -20,18 +20,17 @@ Every issue should strengthen the control-plane loop.
   model credits, or live GitHub writes.
 - Close stale roadmap issues when the plan changes.
 
-## Draft 1: Local Model Provider For Harnessfile Suggestions
+## Draft 1: Policy Explanation Fixtures
 
 Suggested title:
 
 ```text
-Add local model provider path for delegation suggest
+Add policy explanation fixtures for explain-policy
 ```
 
 Suggested labels:
 
-```text
-enhancement, trust-layer, roadmap
+docs, eval, trust-layer, roadmap
 ```
 
 Body:
@@ -39,26 +38,25 @@ Body:
 ```markdown
 ## Goal
 
-Allow `delegation suggest` to draft Harnessfiles through a local model provider
-using the same suggestion draft envelope.
+Add compact ledger fixtures and docs examples for `delegation explain-policy`.
 
 ## Why
 
-Some users will want privacy-sensitive drafting without sending repository
-context to a hosted model.
+The classifier explanation path is easier to understand when users can inspect
+small low, medium, high, and blocked examples without running a full mission.
 
 ## Scope
 
-- Add local provider design and command shape.
-- Validate model output against `schemas/harness-suggestion-draft.v1.schema.json`.
-- Keep deterministic validation, planning, ledger, eval, and approval gates.
-- Keep fixture tests no-network.
+- Add one or more local-classifier ledger fixtures.
+- Show deterministic explanation output.
+- Include an opt-in Ollama example without requiring it for tests.
+- Keep model explanations non-authoritative.
 
 ## Acceptance criteria
 
-- Local provider path uses the same draft envelope as OpenAI and Anthropic.
-- Bad local model output fails with a clear validation error.
-- Docs explain the trust boundary in simple language.
+- Fixtures cover at least low and high classifier outcomes.
+- `delegation explain-policy --ledger <fixture>` works without network.
+- Docs explain "model explains, gates decide" in simple language.
 ```
 
 ## Draft 2: Add Live Feedback Issue Comments Behind Approval
@@ -186,12 +184,12 @@ quests, not a maze.
 - Labels match `docs/issue-labels.md`.
 ```
 
-## Draft 5: Add A Real-World Adapter Candidate Matrix
+## Draft 5: Add A Shell Dry-Run Adapter Contract
 
 Suggested title:
 
 ```text
-Add real-world adapter candidate matrix
+Add shell.command dry-run adapter contract
 ```
 
 Suggested labels:
@@ -205,27 +203,28 @@ Body:
 ```markdown
 ## Goal
 
-Prioritize the next adapter contracts by user value, implementation risk, and
-trust evidence.
+Add a dry-run `shell.command` adapter contract for local command plans without
+executing them.
 
 ## Why
 
-Delegation Bot should become a harness for AI harnesses, but not by adding
-random integrations. The next adapters should prove real workflows.
+A lot of agent work eventually reaches shell commands. Delegation Bot should
+make command intent, working directory, environment needs, and risk visible
+before anything executes.
 
-## Candidate areas
+## Scope
 
-- Slack or Discord notifications
-- Linear or Jira issues
-- shell command dry-run adapter
-- CrewAI or AutoGen harness adapter
-- local model provider adapter
+- Add adapter contract metadata.
+- Add SDK-backed dry-run adapter output and evidence.
+- Detect write, network, secret, and destructive-looking command risk.
+- Add one fixture and focused tests.
 
 ## Acceptance criteria
 
-- Matrix includes user value, risk, required evidence, approvals, and first eval.
-- At least one candidate is marked suitable for a no-network first implementation.
-- Docs explain why each candidate matters.
+- Dry-run never executes a command.
+- Evidence includes command preview, working directory, risk level, and
+  recommended gate.
+- Docs show how this strengthens the control-plane loop.
 ```
 
 ## Draft 6: Read-Only Hosted Dashboard Prototype

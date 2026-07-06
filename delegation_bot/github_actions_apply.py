@@ -5,16 +5,19 @@ from __future__ import annotations
 import re
 import typing as T
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from urllib.parse import quote
 
 from delegation_bot.adapter_sdk import AdapterRequest
 from delegation_bot.builtin_adapters import get_builtin_adapter
 from delegation_bot.evals import eval_ledger_is_valid, eval_required_adapter_evidence
 from delegation_bot.harness_manifest import Manifest
-from delegation_bot.harness_plan import ExecutionPlan, PlanAction
+from delegation_bot.harness_plan import ExecutionPlan, LedgerEvent, PlanAction
 
 
 JsonMap = dict[str, T.Any]
 ACTIONS_CONFIRMATION = "LIVE_GITHUB_ACTIONS"
+GITHUB_API_VERSION = "2026-03-10"
 _SENSITIVE_INPUT_RE = re.compile(r"(token|secret|password|credential|api[_-]?key)", re.IGNORECASE)
 
 
@@ -70,6 +73,24 @@ class GitHubActionsDraft:
 
 
 @dataclass(frozen=True)
+class GitHubActionsDispatchResult:
+    workflow_run_id: str = ""
+    run_url: str = ""
+    html_url: str = ""
+    status_code: int = 0
+    raw: JsonMap = field(default_factory=dict)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "workflow_run_id": self.workflow_run_id,
+            "run_url": self.run_url,
+            "html_url": self.html_url,
+            "status_code": self.status_code,
+            "raw": self.raw,
+        }
+
+
+@dataclass(frozen=True)
 class GitHubActionsApplyReport:
     status: str
     apply: bool
@@ -94,6 +115,51 @@ class GitHubActionsApplyReport:
         }
 
 
+class GitHubActionsClient:
+    """Tiny GitHub REST client for gated workflow dispatch."""
+
+    def __init__(self, token: str, *, api_url: str = "https://api.github.com") -> None:
+        if not token.strip():
+            raise GitHubActionsApplyError("GITHUB_TOKEN is required for live GitHub Actions dispatch")
+        self.token = token
+        self.api_url = api_url.rstrip("/")
+
+    def dispatch_workflow(self, draft: GitHubActionsDraft) -> GitHubActionsDispatchResult:
+        if len(draft.inputs) > 25:
+            raise GitHubActionsApplyError("GitHub workflow_dispatch inputs are limited to 25 keys")
+        requests = _requests_module()
+        owner, repo = _split_repository(draft.repository)
+        workflow_id = quote(draft.workflow_ref, safe="")
+        payload: JsonMap = {"ref": draft.ref}
+        if draft.inputs:
+            payload["inputs"] = draft.inputs
+        response = requests.post(
+            f"{self.api_url}/repos/{owner}/{repo}/actions/workflows/{workflow_id}/dispatches",
+            headers=self._headers(),
+            json=payload,
+            timeout=20,
+        )
+        _raise_for_response(response)
+        data: JsonMap = {}
+        if getattr(response, "text", ""):
+            parsed = response.json()
+            data = parsed if isinstance(parsed, dict) else {}
+        return GitHubActionsDispatchResult(
+            workflow_run_id=str(data.get("workflow_run_id") or ""),
+            run_url=str(data.get("run_url") or ""),
+            html_url=str(data.get("html_url") or ""),
+            status_code=int(getattr(response, "status_code", 0) or 0),
+            raw=data,
+        )
+
+    def _headers(self) -> dict[str, str]:
+        return {
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {self.token}",
+            "X-GitHub-Api-Version": GITHUB_API_VERSION,
+        }
+
+
 def build_actions_apply_report(
     manifest: Manifest,
     plan: ExecutionPlan,
@@ -104,34 +170,30 @@ def build_actions_apply_report(
     confirmation: str | None = None,
     token: str | None = None,
 ) -> GitHubActionsApplyReport:
-    """Build a preview report for GitHub Actions dispatch.
-
-    Live dispatch is intentionally not implemented yet. This report is the
-    product step before that: it shows the workflow draft and the gates that
-    must pass before a future dispatch client can be trusted.
-    """
+    """Build a gated report for GitHub Actions dispatch."""
 
     drafts = tuple(_github_actions_drafts(manifest, plan, ledger_events))
     gates = tuple(
         [
             _draft_gate(drafts),
+            *_workflow_shape_gates(drafts),
             *_ledger_gates(ledger_events),
             _ledger_action_gate(drafts, ledger_events),
             *_policy_gates(manifest, drafts),
             *_approval_gates(manifest, ledger_events, drafts),
-            _dispatch_support_gate(apply),
             _apply_intent_gate(apply, confirmation),
             _token_gate(apply, token),
         ]
     )
     blocked = any(gate.status == "blocked" for gate in gates)
-    status = "blocked" if blocked else "ready"
+    status = "blocked" if blocked else "ready_to_dispatch" if apply else "ready"
     return GitHubActionsApplyReport(
         status=status,
         apply=apply,
         ledger_source=ledger_source,
         drafts=drafts,
         gates=gates,
+        live_dispatch_supported=True,
     )
 
 
@@ -167,11 +229,93 @@ def render_actions_apply_report(report: GitHubActionsApplyReport) -> str:
     lines.extend(["", "Next:"])
     if report.blocked:
         lines.append("Fix blocked gates, then rerun the preview.")
+    elif report.apply:
+        lines.append("Live workflow dispatch is ready to execute.")
     else:
-        lines.append(
-            "Use this preview as dispatch evidence. Live GitHub Actions dispatch remains locked until the future live client is implemented."
-        )
+        lines.append(f"Rerun with `--apply --confirm {ACTIONS_CONFIRMATION}` to dispatch the workflow.")
     return "\n".join(lines)
+
+
+def apply_github_actions_drafts(
+    drafts: T.Sequence[GitHubActionsDraft],
+    *,
+    client: GitHubActionsClient,
+    run_id: str,
+    start_sequence: int,
+    timestamp: str | None = None,
+) -> list[LedgerEvent]:
+    event_time = timestamp or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    events: list[LedgerEvent] = []
+
+    def append_event(
+        event_type: str,
+        status: str,
+        message: str,
+        action_id: str | None = None,
+        details: JsonMap | None = None,
+    ) -> None:
+        events.append(
+            LedgerEvent(
+                run_id=run_id,
+                sequence=start_sequence + len(events),
+                timestamp=event_time,
+                type=event_type,
+                status=status,
+                message=message,
+                action_id=action_id,
+                details=details or {},
+            )
+        )
+
+    append_event(
+        "github.actions.dispatch.started",
+        "executed",
+        "Started live GitHub Actions workflow dispatch.",
+        details={"draft_count": len(drafts), "adapter": "github.actions"},
+    )
+    succeeded = 0
+    for draft in drafts:
+        base_details = {
+            "adapter": "github.actions",
+            "repository": draft.repository,
+            "workflow_ref": draft.workflow_ref,
+            "ref": draft.ref,
+            "input_keys": list(draft.input_keys),
+        }
+        try:
+            result = client.dispatch_workflow(draft)
+            succeeded += 1
+            append_event(
+                "github.actions.dispatched",
+                "executed",
+                "GitHub Actions workflow dispatched.",
+                action_id=draft.action_id,
+                details={
+                    **base_details,
+                    "workflow_run_id": result.workflow_run_id,
+                    "workflow_run_url": result.html_url or draft.workflow_run_url,
+                    "run_url": result.run_url,
+                    "status_code": result.status_code,
+                    "dry_run": False,
+                },
+            )
+        except Exception as exc:  # pragma: no cover - network failures are environment-specific
+            append_event(
+                "github.actions.dispatch.failed",
+                "failed",
+                "GitHub Actions workflow dispatch failed.",
+                action_id=draft.action_id,
+                details={**base_details, "error": str(exc)},
+            )
+
+    final_status = "passed" if succeeded == len(drafts) else "failed"
+    append_event(
+        "github.actions.dispatch.completed",
+        final_status,
+        f"GitHub Actions workflow dispatch completed: {succeeded}/{len(drafts)} succeeded.",
+        details={"succeeded": succeeded, "total": len(drafts), "adapter": "github.actions"},
+    )
+    return events
 
 
 def _github_actions_drafts(
@@ -224,6 +368,69 @@ def _draft_gate(drafts: T.Sequence[GitHubActionsDraft]) -> GitHubActionsGate:
         "No github.actions executor actions were found.",
         next_action="Add a github.actions executor or choose a Harnessfile with workflow verification.",
     )
+
+
+def _workflow_shape_gates(drafts: T.Sequence[GitHubActionsDraft]) -> list[GitHubActionsGate]:
+    if not drafts:
+        return [
+            GitHubActionsGate("drafts.workflow_shape", "passed", "No workflow draft shape to check."),
+            GitHubActionsGate("drafts.workflow_inputs", "passed", "No workflow inputs to check."),
+        ]
+
+    missing: list[str] = []
+    too_many_inputs: list[str] = []
+    for draft in drafts:
+        missing_fields = [
+            field_name
+            for field_name, value in {
+                "repository": draft.repository,
+                "workflow_ref": draft.workflow_ref,
+                "ref": draft.ref,
+            }.items()
+            if not value.strip()
+        ]
+        if missing_fields:
+            missing.append(f"{draft.action_id} missing {', '.join(missing_fields)}")
+        if len(draft.inputs) > 25:
+            too_many_inputs.append(f"{draft.action_id} has {len(draft.inputs)} inputs")
+
+    gates: list[GitHubActionsGate] = []
+    if missing:
+        gates.append(
+            GitHubActionsGate(
+                "drafts.workflow_shape",
+                "blocked",
+                "; ".join(missing) + ".",
+                next_action="Set repository, workflow_ref, and ref in the github.actions executor inputs.",
+            )
+        )
+    else:
+        gates.append(
+            GitHubActionsGate(
+                "drafts.workflow_shape",
+                "passed",
+                "Every workflow draft has repository, workflow_ref, and ref.",
+            )
+        )
+
+    if too_many_inputs:
+        gates.append(
+            GitHubActionsGate(
+                "drafts.workflow_inputs",
+                "blocked",
+                "; ".join(too_many_inputs) + ".",
+                next_action="Keep workflow_dispatch inputs at or below GitHub's 25-key limit.",
+            )
+        )
+    else:
+        gates.append(
+            GitHubActionsGate(
+                "drafts.workflow_inputs",
+                "passed",
+                "Workflow input counts are within GitHub's workflow_dispatch limit.",
+            )
+        )
+    return gates
 
 
 def _ledger_gates(ledger_events: T.Sequence[JsonMap]) -> list[GitHubActionsGate]:
@@ -336,21 +543,6 @@ def _approval_gates(
     return [GitHubActionsGate("approval.github_actions", "passed", "Approval evidence exists for GitHub Actions dispatch.")]
 
 
-def _dispatch_support_gate(apply: bool) -> GitHubActionsGate:
-    if not apply:
-        return GitHubActionsGate(
-            "dispatch.live_supported",
-            "passed",
-            "Preview mode only; live workflow dispatch is locked.",
-        )
-    return GitHubActionsGate(
-        "dispatch.live_supported",
-        "blocked",
-        "Live GitHub Actions dispatch is not implemented yet.",
-        next_action="Use this preview as evidence, then implement the live dispatch client behind the same gates.",
-    )
-
-
 def _apply_intent_gate(apply: bool, confirmation: str | None) -> GitHubActionsGate:
     if not apply:
         return GitHubActionsGate("intent.apply", "passed", "Preview mode only; no GitHub workflow dispatch will run.")
@@ -360,7 +552,7 @@ def _apply_intent_gate(apply: bool, confirmation: str | None) -> GitHubActionsGa
         "intent.apply",
         "blocked",
         "Live dispatch requires explicit confirmation.",
-        next_action=f"Use `--confirm {ACTIONS_CONFIRMATION}` with `--apply` after live dispatch exists.",
+        next_action=f"Use `--confirm {ACTIONS_CONFIRMATION}` with `--apply`.",
     )
 
 
@@ -373,7 +565,7 @@ def _token_gate(apply: bool, token: str | None) -> GitHubActionsGate:
         "github.token",
         "blocked",
         "GITHUB_TOKEN or GH_TOKEN is required for live dispatch.",
-        next_action="Set GITHUB_TOKEN before a future live dispatch run.",
+        next_action="Set GITHUB_TOKEN before running live dispatch.",
     )
 
 
@@ -449,3 +641,31 @@ def _format_inputs(inputs: JsonMap) -> str:
     if not redacted:
         return "none"
     return ", ".join(f"{key}={redacted[key]!r}" for key in sorted(redacted))
+
+
+def _split_repository(repository: str) -> tuple[str, str]:
+    parts = repository.split("/", 1)
+    if len(parts) != 2 or not all(part.strip() for part in parts):
+        raise GitHubActionsApplyError(f"repository must be in owner/name form: {repository!r}")
+    return parts[0], parts[1]
+
+
+def _requests_module() -> T.Any:
+    try:
+        import requests
+    except ImportError as exc:
+        raise GitHubActionsApplyError(
+            "The `requests` package is required for live GitHub Actions dispatch. "
+            "Install dependencies with `python -m pip install -r requirements.txt`."
+        ) from exc
+    return requests
+
+
+def _raise_for_response(response: T.Any) -> None:
+    if response.status_code < 400:
+        return
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = response.text
+    raise GitHubActionsApplyError(f"GitHub API error {response.status_code}: {payload}")

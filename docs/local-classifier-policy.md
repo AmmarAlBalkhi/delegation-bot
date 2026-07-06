@@ -56,5 +56,33 @@ This feature is deliberately hybrid:
 - Approval gates and evals remain deterministic.
 - Humans still approve risky live actions.
 
-Future local models can add richer explanations, but they should not become the
-authority that grants their own autonomy.
+## Plain-Language Explanations
+
+`delegation explain-policy` reads classifier evidence from a ledger and turns it
+into a short explanation:
+
+```bash
+delegation explain-policy --ledger .delegation/latest.jsonl
+```
+
+Simple version:
+
+```text
+Rules decide.
+Explanation helps.
+Model does not approve.
+```
+
+For users running Ollama locally, the explanation can be model-assisted:
+
+```bash
+delegation explain-policy \
+  --ledger .delegation/latest.jsonl \
+  --draft-source model \
+  --provider ollama \
+  --allow-live-model
+```
+
+That local model path is intentionally opt-in. The model receives classifier
+evidence and may explain it, but it cannot change `classification`,
+`recommended_gate`, approvals, eval results, or promotion decisions.

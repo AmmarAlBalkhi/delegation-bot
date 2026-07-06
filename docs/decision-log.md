@@ -997,3 +997,45 @@ Evidence: `local.classifier` now emits `policy_profile`, `recommended_gate`,
 matched terms, and reasons. Release-readiness paths use a stricter
 `release-readiness` profile, while general first-run paths use
 `delegation.default`.
+
+## 2026-07-06: Enable Gated GitHub Actions Live Dispatch
+
+Decision: Move `delegation apply-actions` from preview-only to preview-first
+live dispatch.
+
+Why: GitHub Actions is the first higher-power execution surface that still has a
+small, inspectable request shape: repository, workflow file, ref, and inputs.
+GitHub's current workflow dispatch API returns run identifiers and URLs, which
+fit the run-ledger evidence model.
+
+Guardrails:
+
+- preview remains the default
+- live mode requires `--apply --confirm LIVE_GITHUB_ACTIONS`
+- live mode requires `GITHUB_TOKEN` or `GH_TOKEN`
+- repository policy, ledger validity, adapter evidence, and approval gates still
+  run before dispatch
+- workflow inputs are capped at GitHub's 25-key limit
+- dispatch results append `github.actions.*` ledger events
+
+Follow-up: Add default-branch workflow-file checks, duplicate-run protection,
+token-scope diagnostics, and cancellation guidance.
+
+## 2026-07-06: Explain Classifier Evidence Without Granting Authority
+
+Decision: Add `delegation explain-policy` for plain-language explanations of
+`local.classifier` ledger evidence, including an opt-in Ollama explanation path.
+
+Why: Users should not need to read raw JSON to understand why a gate was
+recommended. Better explanation improves experience without weakening the trust
+boundary.
+
+Trust boundary:
+
+- deterministic classifier evidence remains the authority for gates
+- model explanations are opt-in
+- model explanations cannot change `classification`, `recommended_gate`,
+  approval evidence, eval results, or promotion decisions
+
+Follow-up: Consider showing these explanations in the future dashboard after
+the user approves the visual/interface direction.

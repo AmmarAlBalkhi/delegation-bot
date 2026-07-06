@@ -102,6 +102,10 @@ The project is currently pre-release.
   demo/init/validate smoke checks.
 - Added deterministic local-classifier policy profiles with recommended gate
   evidence.
+- Added gated live `delegation apply-actions` dispatch with exact confirmation,
+  token checks, input-count gates, and dispatch ledger events.
+- Added `delegation explain-policy` for deterministic and opt-in Ollama-backed
+  explanations of classifier evidence without granting model authority.
 - Made read-only CLI commands avoid importing live network dependencies until
   a live apply or live model call needs them.
 - Added a researched adapter candidate matrix for prioritizing real-world

@@ -39,7 +39,7 @@ Good adapter candidates have:
 | 3 | `claude.code` / `anthropic.messages` | Claude Code is a major coding-agent workflow, and Anthropic exposes agent/tool patterns. | Plan coding-agent handoff, capture permission mode, evidence path, and model context. | high | [Claude Code repo](https://github.com/anthropics/claude-code), [Anthropic MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) |
 | 4 | `openai.agents` | OpenAI Agents SDK has first-party agent, handoff, tool, guardrail, and tracing concepts. | Map agents, tools, guardrails, handoffs, and trace ids into ledger evidence. | medium | [OpenAI Agents guide](https://developers.openai.com/api/docs/guides/agents), [Agents SDK docs](https://openai.github.io/openai-agents-python/) |
 | 5 | `langgraph.graph` | LangGraph is strong where durability, human-in-the-loop, and stateful workflows matter. | Capture graph id, checkpoint id, interrupted state, and resume policy. | medium | [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview) |
-| 6 | `local.classifier` / `ollama.model` | Local models support privacy-preserving policy checks and low-cost suggestions. | Add local model provider design for risk classification and Harnessfile suggestion. | medium | [Ollama API](https://docs.ollama.com/api/introduction), [Ollama tool calling](https://docs.ollama.com/capabilities/tool-calling) |
+| 6 | `local.classifier` / `ollama.model` | Local models support privacy-preserving policy checks and low-cost suggestions. | Keep local model suggestions and classifier explanations opt-in and non-authoritative. | medium | [Ollama API](https://docs.ollama.com/api/introduction), [Ollama tool calling](https://docs.ollama.com/capabilities/tool-calling) |
 | 7 | `crewai.crew` | CrewAI has a popular multi-agent mental model: crews, agents, tasks, flows. | Dry-run crew/task map and expected artifacts. | medium | [CrewAI docs](https://docs.crewai.com/) |
 | 8 | `microsoft.agent_framework` | Microsoft is moving AutoGen and Semantic Kernel concepts into a newer Agent Framework. | Track as a successor path for `autogen`-style multi-agent orchestration. | medium | [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/overview/), [AutoGen research](https://www.microsoft.com/en-us/research/project/autogen/) |
 | 9 | `linear.issue` / `jira.issue` | Teams live in issue trackers; GitHub Issues will not be enough for companies. | Preview-first issue draft and update evidence. | low | Future enterprise research |
@@ -81,10 +81,10 @@ value, high dry-run clarity, and medium-or-lower contributor difficulty.
 
 ## Next Implementation Picks
 
-1. Add local model provider design for `delegation suggest` and
-   `local.classifier`.
-2. Use the new `github.actions` preview gate to design a future live dispatch
-   client without enabling live workflow runs yet.
-3. Add a packaged demo/install path before adding more adapter names.
+1. Harden `github.actions` live dispatch with workflow-file checks,
+   duplicate-run protection, and cancellation guidance.
+2. Add a dry-run `shell.command` adapter contract before allowing any command
+   execution.
+3. Run the packaged demo/install path on a clean Windows release host.
 4. Add a small `crewai.crew` or Microsoft Agent Framework planning contract
    only after the current adapter docs are easy to follow.

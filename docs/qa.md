@@ -61,10 +61,11 @@ The QA command currently checks:
 - feedback issue memory fixture coverage
 - feedback recovery fixture coverage
 - dashboard snapshot generation from fixture ledgers
-- GitHub Actions dispatch preview gate and fixture coverage
+- GitHub Actions dispatch preview, gated fake-client live path, and fixture coverage
 - MCP tool risk evidence eval and fixture coverage
 - MCP tool policy gate coverage
 - local-classifier policy profile evidence
+- deterministic and mocked Ollama policy explanation coverage
 - optional Windows EXE packaging dependency metadata
 - Windows EXE build script structure and generated artifact ignores
 - read-only CLI behavior without eager live-network imports
