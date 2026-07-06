@@ -15,7 +15,7 @@ Ledger keeps proof.
 
 ## Why This Exists
 
-Delegation Bot should become powerful carefully. A live GitHub Issue is useful
+DelegationHQ should become powerful carefully. A live GitHub Issue is useful
 coordination, but it is still a real write. So the command is preview-first and
 gated.
 

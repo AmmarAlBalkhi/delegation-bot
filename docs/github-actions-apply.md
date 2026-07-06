@@ -61,7 +61,7 @@ delegation apply-actions Harnessfile.yaml \
 It also requires `GITHUB_TOKEN` or `GH_TOKEN`. The token needs GitHub Actions
 write permission for the target repository.
 
-If the gates pass, Delegation Bot calls GitHub's workflow dispatch endpoint and
+If the gates pass, DelegationHQ calls GitHub's workflow dispatch endpoint and
 appends ledger events such as:
 
 ```text

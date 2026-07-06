@@ -78,7 +78,7 @@ Body:
 ```markdown
 ## Goal
 
-When an eval that previously failed starts passing, allow Delegation Bot to add
+When an eval that previously failed starts passing, allow DelegationHQ to add
 an approved recovery comment to the existing feedback issue.
 
 ## Why
@@ -106,7 +106,7 @@ explicit, approved, and auditable.
 Suggested title:
 
 ```text
-Design GitHub App installation flow for Delegation Bot
+Design GitHub App installation flow for DelegationHQ
 ```
 
 Suggested labels:
@@ -163,7 +163,7 @@ Body:
 ## Goal
 
 Create a small clean set of beginner-friendly issues that help contributors
-improve Delegation Bot without touching live execution.
+improve DelegationHQ without touching live execution.
 
 ## Why
 
@@ -208,7 +208,7 @@ executing them.
 
 ## Why
 
-A lot of agent work eventually reaches shell commands. Delegation Bot should
+A lot of agent work eventually reaches shell commands. DelegationHQ should
 make command intent, working directory, environment needs, and risk visible
 before anything executes.
 

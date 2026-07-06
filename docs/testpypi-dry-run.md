@@ -36,7 +36,7 @@ python -m twine check dist/*
 Inspect what would ship:
 
 ```bash
-python -m tarfile -l dist/delegation_bot-*.tar.gz
+python -m tarfile -l dist/delegationhq-*.tar.gz
 ```
 
 ## Upload To TestPyPI
@@ -52,7 +52,7 @@ python -m twine upload --repository testpypi dist/*
 In a clean environment:
 
 ```bash
-python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ delegation-bot
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ delegationhq
 delegation --help
 delegation doctor --skip-github
 ```

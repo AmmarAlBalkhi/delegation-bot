@@ -1,3 +1,3 @@
-"""Delegation Bot package."""
+"""DelegationHQ package."""
 
 __version__ = "0.1.0a0"

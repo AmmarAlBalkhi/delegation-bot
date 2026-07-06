@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run built-in evals against Delegation Bot ledgers."""
+"""Run built-in evals against DelegationHQ ledgers."""
 
 from __future__ import annotations
 

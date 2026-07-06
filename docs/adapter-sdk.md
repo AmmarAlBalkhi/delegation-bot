@@ -1,9 +1,9 @@
 # Adapter SDK
 
-The adapter SDK is the plug-in standard for Delegation Bot.
+The adapter SDK is the plug-in standard for DelegationHQ.
 
 Simple version: an adapter accepts one planned action, returns one result, and
-leaves ledger-ready events plus evidence. That is how Delegation Bot can sit
+leaves ledger-ready events plus evidence. That is how DelegationHQ can sit
 above Codex, Claude Code, OpenAI Agents SDK, LangGraph, MCP tools, GitHub
 Actions, local models, and human approval steps without hard-coding each one
 into the planner.

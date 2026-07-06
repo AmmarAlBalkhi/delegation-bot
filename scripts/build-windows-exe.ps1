@@ -61,7 +61,7 @@ $PyInstallerArgs = @(
     "--distpath", $ResolvedDistPath,
     "--workpath", $ResolvedWorkPath,
     "--specpath", $SpecPath,
-    "--copy-metadata", "delegation-bot"
+    "--copy-metadata", "delegationhq"
 )
 
 foreach ($Item in $DataFolders) {

@@ -7,7 +7,7 @@ labels: ["adapter", "trust-layer"]
 
 ## Adapter target
 
-What system should Delegation Bot plan or run?
+What system should DelegationHQ plan or run?
 
 Examples: `crew.ai`, `autogen.agent`, `linear.issue`, `jira.issue`,
 `slack.message`, `shell.command`, a private internal harness, or a new model

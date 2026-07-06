@@ -43,7 +43,7 @@ class DelegationCliTests(unittest.TestCase):
             lines = ledger.read_text(encoding="utf-8").splitlines()
 
         self.assertEqual(status, 0)
-        self.assertIn("Delegation Bot Demo", output.getvalue())
+        self.assertIn("DelegationHQ Demo", output.getvalue())
         self.assertIn("Status: ready", output.getvalue())
         self.assertIn("mcp-gate", output.getvalue())
         self.assertIn("actions-preview", output.getvalue())

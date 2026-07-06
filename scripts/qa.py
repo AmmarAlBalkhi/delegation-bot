@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the local QA checks for Delegation Bot."""
+"""Run the local QA checks for DelegationHQ."""
 
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def validate_pyproject() -> int:
 
     project = data.get("project")
     scripts = project.get("scripts") if isinstance(project, dict) else None
-    if not isinstance(project, dict) or project.get("name") != "delegation-bot":
+    if not isinstance(project, dict) or project.get("name") != "delegationhq":
         print("FAIL: package metadata parses (missing project name)", flush=True)
         return 1
     if project.get("license") != "Apache-2.0":
@@ -77,7 +77,7 @@ def validate_pyproject() -> int:
     if "Apache License" not in license_text or "Version 2.0" not in license_text:
         print("FAIL: package metadata parses (LICENSE must be Apache-2.0)", flush=True)
         return 1
-    if "Delegation Bot" not in notice_text or "Ammar Al Balkhi" not in notice_text:
+    if "DelegationHQ" not in notice_text or "Ammar Al Balkhi" not in notice_text:
         print("FAIL: package metadata parses (NOTICE must identify the project)", flush=True)
         return 1
     classifiers = project.get("classifiers", [])

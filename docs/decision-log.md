@@ -1060,3 +1060,30 @@ Trust boundary:
 
 Follow-up: Consider showing these explanations in the future dashboard after
 the user approves the visual/interface direction.
+
+## 2026-07-06: Move Public Identity To DelegationHQ
+
+Decision: Move the public package and product identity from Delegation Bot /
+`delegation-bot` to DelegationHQ / `delegationhq`.
+
+Why: The project is becoming more than a bot. DelegationHQ keeps the core
+delegation idea while making the product feel like a control room for agentic
+work, future docs, and possible hosted subscriptions.
+
+Compatibility:
+
+- keep the CLI command as `delegation`
+- keep the Python import namespace as `delegation_bot`
+- keep existing ledger markers and fixtures compatible
+- use `delegationhq` for package metadata, release docs, and future public
+  distribution
+
+Decision: Add a user-local Windows installer for `delegation.exe`.
+
+Why: The first-run experience should become easy without forcing users to learn
+Python packaging. The installer keeps the path non-admin by copying the built
+executable under `%LOCALAPPDATA%\DelegationHQ\bin`, optionally adding the user
+PATH, and running `doctor --skip-github` as a smoke check.
+
+Follow-up: Run the build and install scripts on a clean Windows release host
+before publishing a public `.exe`.

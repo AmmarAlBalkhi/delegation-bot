@@ -9,8 +9,8 @@ Simple version:
 
 ```text
 Many agent tools exist.
-Delegation Bot should not become all of them.
-Delegation Bot should control, verify, and remember work across them.
+DelegationHQ should not become all of them.
+DelegationHQ should control, verify, and remember work across them.
 ```
 
 ## Selection Rule
@@ -73,8 +73,8 @@ value, high dry-run clarity, and medium-or-lower contributor difficulty.
 
 ## Important Boundaries
 
-- Delegation Bot should not replace agent frameworks.
-- Delegation Bot should not hide tool risk behind friendly wording.
+- DelegationHQ should not replace agent frameworks.
+- DelegationHQ should not hide tool risk behind friendly wording.
 - Live execution must stay behind policy gates and human approval.
 - A new adapter is not done until it has a contract, dry-run output, ledger
   evidence, tests, docs, and a fixture.

@@ -28,7 +28,7 @@ class PlanAction:
     type: str
     title: str
     description: str
-    actor: str = "delegation-bot"
+    actor: str = "delegationhq"
     adapter: str | None = None
     risk: str = "low"
     requires_approval: bool = False

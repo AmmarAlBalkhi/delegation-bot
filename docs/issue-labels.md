@@ -1,6 +1,6 @@
 # Issue Labels
 
-Delegation Bot should keep GitHub Issues useful instead of noisy. Labels should
+DelegationHQ should keep GitHub Issues useful instead of noisy. Labels should
 help people answer one question fast:
 
 ```text

@@ -2,12 +2,25 @@
 
 A domain should make the project feel like a category, not only a repository.
 
+Current brand direction:
+
+```text
+DelegationHQ
+```
+
+Preferred public domains:
+
+- `delegationhq.ai` for the public/product site
+- `delegationhq.dev` for developer docs or redirects
+
+The CLI should stay `delegation`.
+
 ## What The Domain Should Do
 
 The first domain does not need a full SaaS product on day one. It should point
 people to a clear story:
 
-- what Delegation Bot is
+- what DelegationHQ is
 - why agentic work needs mission control
 - how to run the CLI
 - how to inspect a Harnessfile

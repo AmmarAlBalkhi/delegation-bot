@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compatibility wrapper for the Delegation Bot CLI."""
+"""Compatibility wrapper for the DelegationHQ CLI."""
 
 import sys
 from pathlib import Path

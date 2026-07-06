@@ -1,6 +1,6 @@
 # Local Classifier Policy Profiles
 
-The `local.classifier` adapter gives Delegation Bot a lightweight local risk
+The `local.classifier` adapter gives DelegationHQ a lightweight local risk
 review step without letting a model approve itself.
 
 Simple version:

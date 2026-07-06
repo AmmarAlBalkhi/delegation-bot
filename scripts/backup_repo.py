@@ -30,7 +30,7 @@ def iter_backup_files(root: Path) -> T.Iterator[Path]:
 
 def create_backup(destination_dir: Path, dry_run: bool = False) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    backup_path = destination_dir / f"delegation-bot-{timestamp}.zip"
+    backup_path = destination_dir / f"delegationhq-{timestamp}.zip"
     if dry_run:
         return backup_path
 

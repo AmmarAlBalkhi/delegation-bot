@@ -1,6 +1,6 @@
 # OpenTelemetry Mapping
 
-This document maps Delegation Bot run ledgers to OpenTelemetry concepts.
+This document maps DelegationHQ run ledgers to OpenTelemetry concepts.
 
 Simple version: the JSONL ledger stays the product-native source of truth.
 OpenTelemetry becomes an export shape for teams that want traces, logs,
@@ -16,7 +16,7 @@ read those conventions directly when we implement it.
 
 ## Mapping Rule
 
-One Delegation Bot run should map to one trace.
+One DelegationHQ run should map to one trace.
 
 ```text
 run_id -> trace
@@ -35,7 +35,7 @@ to search, correlate, and alert on in external systems.
 Every exported item should include:
 
 ```text
-service.name = delegation-bot
+service.name = delegationhq
 service.version = <package version>
 deployment.environment = local | ci | hosted
 delegation.harness.id = <Harnessfile id>
@@ -101,7 +101,7 @@ Keep the original ledger event type as:
 delegation.ledger.event_type
 ```
 
-That lets us preserve Delegation Bot semantics while still following
+That lets us preserve DelegationHQ semantics while still following
 OpenTelemetry naming discipline.
 
 ## Logs

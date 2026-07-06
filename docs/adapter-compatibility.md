@@ -1,6 +1,6 @@
 # Adapter Compatibility Matrix
 
-Delegation Bot is a neutral layer above many AI and automation harnesses.
+DelegationHQ is a neutral layer above many AI and automation harnesses.
 
 Simple version: adapters let one Harnessfile plan work across different tools
 without making the project depend on one agent framework.

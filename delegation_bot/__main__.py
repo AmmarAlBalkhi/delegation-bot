@@ -1,4 +1,4 @@
-"""Run Delegation Bot with `python -m delegation_bot`."""
+"""Run DelegationHQ with `python -m delegation_bot`."""
 
 from delegation_bot.cli import main
 

@@ -1,12 +1,12 @@
 # Hybrid Trust Model
 
-Delegation Bot should be AI-enabled, not AI-governed.
+DelegationHQ should be AI-enabled, not AI-governed.
 
 The core rule:
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.
@@ -21,7 +21,7 @@ If the same AI that does the work also decides whether the work is safe, the
 system loses trust. The model can be wrong, inconsistent, overconfident, or
 fooled by prompt injection.
 
-Delegation Bot should solve that by separating two jobs:
+DelegationHQ should solve that by separating two jobs:
 
 - AI helps create plans, explanations, suggestions, drafts, and work products.
 - Deterministic code decides policy gates, required evidence, ledger shape,

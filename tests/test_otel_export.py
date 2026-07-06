@@ -71,7 +71,7 @@ class OtelExportTests(unittest.TestCase):
         trace = data["traces"][0]
 
         self.assertEqual(data["format"], "delegation.otel.trace.v1")
-        self.assertEqual(data["resource"]["service.name"], "delegation-bot")
+        self.assertEqual(data["resource"]["service.name"], "delegationhq")
         self.assertEqual(len(trace["spans"]), 2)
         self.assertEqual(trace["spans"][0]["name"], "delegation.run")
         self.assertEqual(trace["spans"][1]["attributes"]["delegation.adapter.id"], "github.issue")

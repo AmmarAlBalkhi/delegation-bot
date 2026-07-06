@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export Delegation Bot ledgers to a local OpenTelemetry-like JSON shape."""
+"""Export DelegationHQ ledgers to a local OpenTelemetry-like JSON shape."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def build_otel_export(
         "format": "delegation.otel.trace.v1",
         "source": source,
         "resource": {
-            "service.name": "delegation-bot",
+            "service.name": "delegationhq",
             "service.version": service_version or _package_version(),
             "deployment.environment": environment,
             "delegation.ledger.schema": "ledger.v1",
@@ -356,6 +356,6 @@ def _hex_id(value: str, length: int) -> str:
 
 def _package_version() -> str:
     try:
-        return metadata.version("delegation-bot")
+        return metadata.version("delegationhq")
     except metadata.PackageNotFoundError:
         return "0.1.0a0"

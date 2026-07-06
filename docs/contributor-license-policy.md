@@ -1,6 +1,6 @@
 # Contributor License Policy
 
-Delegation Bot uses Apache-2.0. Contributions intentionally submitted to the
+DelegationHQ uses Apache-2.0. Contributions intentionally submitted to the
 project should be contributed under the same license unless the project states
 otherwise.
 
@@ -63,7 +63,7 @@ Use DCO when community grows.
 A CLA can make sense for some projects, especially when rights management,
 corporate contribution workflows, or future relicensing are central concerns.
 
-For Delegation Bot right now, the bigger risk is making early contribution feel
+For DelegationHQ right now, the bigger risk is making early contribution feel
 too heavy. A DCO-style sign-off is easier to explain and fits the low-friction
 open-source path better.
 

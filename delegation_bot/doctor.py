@@ -1,4 +1,4 @@
-"""Local readiness checks for Delegation Bot."""
+"""Local readiness checks for DelegationHQ."""
 
 from __future__ import annotations
 
@@ -222,8 +222,8 @@ def _check_package_metadata(root: Path) -> DoctorCheck:
     project = data.get("project") if isinstance(data.get("project"), dict) else {}
     scripts = project.get("scripts") if isinstance(project.get("scripts"), dict) else {}
     problems: list[str] = []
-    if project.get("name") != "delegation-bot":
-        problems.append("project.name must be delegation-bot")
+    if project.get("name") != "delegationhq":
+        problems.append("project.name must be delegationhq")
     if project.get("version") != __version__:
         problems.append(f"project.version must match package version {__version__}")
     if project.get("license") != "Apache-2.0":
@@ -254,8 +254,8 @@ def _check_license_notice(root: Path) -> DoctorCheck:
     problems: list[str] = []
     if "Apache License" not in license_text or "Version 2.0" not in license_text:
         problems.append("LICENSE must contain Apache License Version 2.0 text")
-    if "Delegation Bot" not in notice_text or "Ammar Al Balkhi" not in notice_text:
-        problems.append("NOTICE must identify Delegation Bot and Ammar Al Balkhi")
+    if "DelegationHQ" not in notice_text or "Ammar Al Balkhi" not in notice_text:
+        problems.append("NOTICE must identify DelegationHQ and Ammar Al Balkhi")
     if problems:
         return _failed("license_notice", "License And Notice", "License files need attention.", details=problems)
     return _ready("license_notice", "License And Notice", "Apache-2.0 license files are present.")

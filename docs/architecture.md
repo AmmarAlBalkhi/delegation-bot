@@ -2,7 +2,7 @@
 
 ## System Shape
 
-Delegation Bot should become a layered control plane:
+DelegationHQ should become a layered control plane:
 
 ```mermaid
 flowchart TD
@@ -29,11 +29,11 @@ flowchart TD
 
 ### Hybrid Trust Boundary
 
-Delegation Bot should make AI more capable without letting AI approve itself.
+DelegationHQ should make AI more capable without letting AI approve itself.
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.
@@ -139,7 +139,7 @@ Minimum event shape:
   "run_id": "run_2026_07_03_001",
   "timestamp": "2026-07-03T20:30:00Z",
   "type": "adapter.github.issue.created",
-  "actor": "delegation-bot",
+  "actor": "delegationhq",
   "target": "AmmarAlBalkhi/delegation-bot#123",
   "evidence": {
     "url": "https://github.com/AmmarAlBalkhi/delegation-bot/issues/123"

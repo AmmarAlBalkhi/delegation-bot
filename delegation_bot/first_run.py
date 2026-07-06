@@ -164,7 +164,7 @@ def build_demo_manifest(*, repository: str = DEFAULT_REPOSITORY, owner: str = "m
                 "purpose": "Preview the tracking issue that would hold the approved mission plan.",
                 "inputs": {
                     "repository": repository,
-                    "issue_title": "Delegation Bot demo: approved AI mission",
+                    "issue_title": "DelegationHQ demo: approved AI mission",
                     "issue_body": "Track the dry-run plan, policy gates, ledger evidence, and evals before live execution.",
                 },
             },
@@ -269,7 +269,7 @@ def build_demo_manifest(*, repository: str = DEFAULT_REPOSITORY, owner: str = "m
         ],
         "metadata": {
             "demo": True,
-            "trust_boundary": "AI proposes; Delegation Bot verifies; humans approve risky actions.",
+            "trust_boundary": "AI proposes; DelegationHQ verifies; humans approve risky actions.",
         },
     }
 
@@ -343,7 +343,7 @@ def build_demo_report(
 
 def render_demo_report(report: DemoReport) -> str:
     lines = [
-        "Delegation Bot Demo",
+        "DelegationHQ Demo",
         "",
         f"Status: {report.status}",
         f"Harnessfile: {report.harness_source}",

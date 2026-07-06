@@ -166,7 +166,7 @@ def build_prompt_parts(
     }
     system_prompt = "\n".join(
         [
-            "You draft Delegation Bot Harnessfiles.",
+            "You draft DelegationHQ Harnessfiles.",
             "Return only one JSON object. Do not wrap it in Markdown.",
             "The JSON object must match the harness suggestion draft envelope.",
             "Prefer dry-run adapters and explicit human approval for risky actions.",
@@ -179,7 +179,7 @@ def build_prompt_parts(
     user_prompt = json.dumps(
         {
             "version": FIXTURE_VERSION,
-            "task": "Draft a Delegation Bot Harnessfile suggestion envelope.",
+            "task": "Draft a DelegationHQ Harnessfile suggestion envelope.",
             "goal": goal,
             "provider": provider,
             "model": model,
@@ -193,14 +193,14 @@ def build_prompt_parts(
                 "provider": provider,
                 "model": model,
                 "rationale": "short reason for the proposed Harnessfile",
-                "manifest": "valid Delegation Bot Harnessfile object",
+                "manifest": "valid DelegationHQ Harnessfile object",
                 "safety_notes": ["one or more short strings"],
                 "validation_expectations": ["one or more short strings"],
             },
             "manifest_rules": [
                 "manifest.version must be delegation.ai/v1",
                 "manifest.metadata.suggested_by must be delegation.suggest.model",
-                "manifest.metadata.trust_boundary must mention AI proposes and Delegation Bot verifies",
+                "manifest.metadata.trust_boundary must mention AI proposes and DelegationHQ verifies",
                 "live writes, workflows, pull requests, agent execution, and deployments need human approval",
                 "the manifest must validate before any plan is compiled",
             ],
