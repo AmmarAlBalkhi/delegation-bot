@@ -9,6 +9,7 @@ import sys
 import typing as T
 from pathlib import Path
 
+from delegation_bot import __version__
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
 from delegation_bot.dashboard import build_dashboard_snapshot, render_dashboard_snapshot
 from delegation_bot.doctor import render_doctor_report, run_doctor
@@ -805,6 +806,7 @@ def cmd_mcp_gate(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--version", action="version", version=f"DelegationHQ {__version__}")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     demo = subparsers.add_parser("demo", help="Run a safe first-run mission-control demo.")

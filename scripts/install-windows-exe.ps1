@@ -60,7 +60,13 @@ $Target = Join-Path $ResolvedInstallDir "delegation.exe"
 Copy-Item -LiteralPath $ResolvedSource -Destination $Target -Force
 
 if (-not $NoSmoke) {
-    # Smoke command: delegation.exe doctor --skip-github
+    # Smoke commands: delegation.exe --version; delegation.exe doctor --skip-github
+    & $Target --version
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Installed executable version check failed: $Target --version"
+        exit $LASTEXITCODE
+    }
+
     & $Target doctor --skip-github
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Installed executable smoke check failed: $Target doctor --skip-github"

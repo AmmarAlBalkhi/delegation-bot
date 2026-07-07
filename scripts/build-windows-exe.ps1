@@ -91,6 +91,11 @@ if (-not $SkipSmoke) {
     $SmokeDir = Join-Path $RepoRoot ".delegation"
     New-Item -ItemType Directory -Force -Path $SmokeDir | Out-Null
 
+    & $ExecutablePath --version
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath demo --ledger (Join-Path $SmokeDir "exe-smoke.jsonl")
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

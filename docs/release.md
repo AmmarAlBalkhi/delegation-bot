@@ -35,6 +35,7 @@ From the repository root:
 
 ```bash
 python -m pip install -e .
+delegation --version
 delegation --help
 delegation demo
 delegation init --goal "prepare this repo for safe AI delegation" --output Harnessfile.yaml
@@ -48,6 +49,7 @@ Before a public package release:
 - run `python scripts/qa.py`
 - run `python scripts/package_smoke.py`
 - run a source install smoke test
+- confirm `delegation --version` matches `pyproject.toml`
 - confirm `delegation --help` works after install
 - confirm `delegation demo` works outside the source checkout
 - confirm README examples use the package command where appropriate

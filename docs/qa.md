@@ -43,6 +43,7 @@ The QA command currently checks:
 - unit tests
 - package metadata parsing
 - package module CLI smoke test
+- CLI version smoke test
 - installed package demo smoke test
 - first-run `delegation demo` and `delegation init` flows
 - example Harnessfile validation

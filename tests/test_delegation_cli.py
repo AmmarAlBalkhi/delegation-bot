@@ -18,6 +18,14 @@ EXAMPLE = ROOT / "examples" / "ai-harness-control-plane.yaml"
 
 
 class DelegationCliTests(unittest.TestCase):
+    def test_version_command_prints_package_version(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            with self.assertRaises(SystemExit) as raised:
+                main(["--version"])
+
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn("DelegationHQ 0.1.0a0", output.getvalue())
+
     def test_validate_example(self) -> None:
         with redirect_stdout(io.StringIO()):
             status = main(["validate", str(EXAMPLE)])
@@ -556,6 +564,8 @@ class DelegationCliTests(unittest.TestCase):
 
         self.assertEqual(status, 0)
         self.assertIn("Delegation Doctor", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("delegation demo", output.getvalue())
         self.assertIn("Suggest Loop", output.getvalue())
 
     def test_doctor_command_can_print_json(self) -> None:

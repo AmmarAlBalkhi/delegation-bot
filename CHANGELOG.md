@@ -121,3 +121,5 @@ The project is currently pre-release.
 - Moved the public package identity from `delegation-bot` to `delegationhq`
   while preserving the `delegation` CLI and `delegation_bot` Python namespace.
 - Added a user-local Windows installer for `delegation.exe`.
+- Added `delegation --version`, version smoke checks, and clearer doctor next
+  steps for the first-run path.

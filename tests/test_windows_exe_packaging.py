@@ -16,6 +16,7 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("\"--console\"", text)
         self.assertIn("\"--copy-metadata\", \"delegationhq\"", text)
         self.assertIn("scripts\\delegation.py", text)
+        self.assertIn("--version", text)
         self.assertIn("demo --ledger", text)
         self.assertIn("init --goal", text)
         self.assertIn("validate $SmokeHarnessfile", text)
@@ -41,6 +42,7 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("scripts\\build-windows-exe.ps1", text)
         self.assertIn("scripts\\install-windows-exe.ps1", text)
         self.assertIn("delegation.exe", text)
+        self.assertIn("--version", text)
         self.assertIn("demo", text)
         self.assertIn("validate", text)
 
@@ -52,6 +54,7 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("Copy-Item", text)
         self.assertIn("[Environment]::SetEnvironmentVariable", text)
         self.assertIn("\"User\"", text)
+        self.assertIn("delegation.exe --version", text)
         self.assertIn("delegation.exe doctor --skip-github", text)
 
 

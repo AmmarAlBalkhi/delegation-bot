@@ -47,6 +47,8 @@ Deep only when the user asks for depth.
 - Hardened `github.actions` live dispatch with workflow metadata preflight,
   active duplicate-run protection, dispatch-time rechecks, cancellation guidance
   in ledger evidence, and focused fake-client tests.
+- Added `delegation --version`, package/EXE version smoke checks, and clearer
+  doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the
   `delegation` CLI and `delegation_bot` Python namespace.
 - Added a user-local Windows installer for `delegation.exe` under

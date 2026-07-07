@@ -33,6 +33,7 @@ From a source checkout:
 
 ```bash
 python -m pip install -e .
+delegation --version
 delegation demo
 ```
 
@@ -122,6 +123,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 
 | Command | Purpose |
 | --- | --- |
+| `delegation --version` | Show the installed DelegationHQ version. |
 | `delegation demo` | Run the install-safe mission-control demo in one command. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |

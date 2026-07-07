@@ -51,6 +51,22 @@ def main() -> int:
 
         env = dict(os.environ)
         env["PYTHONPATH"] = str(site_dir)
+        version = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "--version",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if version.returncode != 0 or "DelegationHQ " not in version.stdout:
+            print("FAIL: installed package version smoke")
+            print(version.stdout)
+            print(version.stderr, file=sys.stderr)
+            return version.returncode or 1
+
         ledger = tmp / "demo.jsonl"
         demo = _run(
             [
