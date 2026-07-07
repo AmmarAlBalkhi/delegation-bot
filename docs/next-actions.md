@@ -44,10 +44,10 @@ Human = final yes/no for danger.
 
 1. Connect `agent-audit` to real RunPrint recorded events once RunPrint can
    append live recording evidence, not only planned bundles.
-2. Add an approval inbox data model over Agent Gate receipts so the future app
-   can show "approve / block / needs evidence" without exposing raw JSON.
-3. Keep `app-state` aligned as the first cockpit backend, including one simple
-   approval-inbox-ready gate preview without designing UI yet.
+2. Add the next approval loop slice: optional reviewer notes, expiration, and
+   decision history summaries for repeated agent actions.
+3. Keep `app-state` aligned as the first cockpit backend without designing UI
+   until the visual direction is approved.
 4. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
 5. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
@@ -61,6 +61,9 @@ Human = final yes/no for danger.
 
 - Added Agent Gate ledger receipts and `delegation agent-audit` so a mission
   can compare what an agent asked to do with planned or recorded RunPrint
+  evidence.
+- Added `delegation approval-inbox` and `delegation approval-decision` so Agent
+  Gate receipts become simple human approve/block cards backed by ledger
   evidence.
 - Added `delegation agent-gate` for Agent Passport action previews. It returns
   `allow`, `warn`, `approval_required`, or `block`, supports Harnessfile and

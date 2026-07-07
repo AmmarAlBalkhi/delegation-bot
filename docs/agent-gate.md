@@ -66,10 +66,21 @@ Then compare that intent receipt with RunPrint recorder evidence:
 delegation agent-audit --ledger .delegation/demo.jsonl
 ```
 
+Or show a human-review card first:
+
+```bash
+delegation approval-inbox --ledger .delegation/demo.jsonl
+delegation approval-decision --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.implementer.create_pull_request \
+  --decision approve \
+  --approver Ammar
+```
+
 Simple version:
 
 ```text
 Agent Gate = receipt for what the agent wanted to do.
+Approval Inbox = card for the human.
 RunPrint = proof of what was planned or recorded.
 Agent audit = compare receipt with proof.
 ```

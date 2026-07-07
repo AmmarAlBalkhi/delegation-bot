@@ -426,6 +426,7 @@ def build_agent_gate_audit_report(
     gate_events = tuple(_agent_gate_events(ledger_events))
     evidence = build_evidence_report(ledger_events, source=ledger_source)
     recorded_events = tuple(_runprint_recorded_events(ledger_events))
+    approval_decisions = _approval_decisions_by_action(ledger_events)
     evidence_status = _evidence_status(evidence.bundle_count, len(recorded_events))
 
     if not gate_events:
@@ -439,7 +440,7 @@ def build_agent_gate_audit_report(
             warnings=("No Agent Gate preview events were found in this ledger.",),
         )
 
-    items = tuple(_audit_item(event, evidence_status) for event in gate_events)
+    items = tuple(_audit_item(event, evidence_status, approval_decisions.get(_event_action_id(event))) for event in gate_events)
     status = _audit_status(items)
     warnings = tuple(evidence.warnings)
     return AgentGateAuditReport(
@@ -544,7 +545,7 @@ def _agent_gate_events(events: T.Sequence[JsonMap]) -> T.Iterator[JsonMap]:
             yield event
 
 
-def _audit_item(event: JsonMap, evidence_status: str) -> AgentGateAuditItem:
+def _audit_item(event: JsonMap, evidence_status: str, approval_decision: str | None = None) -> AgentGateAuditItem:
     details = event.get("details") if isinstance(event.get("details"), dict) else {}
     gate = details.get("agent_gate") if isinstance(details.get("agent_gate"), dict) else {}
     agent_id = _string_value(gate.get("agent_id") or details.get("agent_id"), default="unknown-agent")
@@ -554,10 +555,26 @@ def _audit_item(event: JsonMap, evidence_status: str) -> AgentGateAuditItem:
     gate_status = _string_value(gate.get("status"), default=_gate_status_for_decision(decision))
     sequence = event.get("sequence") if isinstance(event.get("sequence"), int) else None
 
-    if decision == "block":
+    if approval_decision == "block":
+        outcome = "blocked_by_human"
+        message = "A human blocked this intent after the gate preview."
+        next_action = "Change the request or record a new approval decision before retrying."
+    elif decision == "block":
         outcome = "blocked_by_gate"
         message = "The gate blocked this intent before execution."
         next_action = "Change the request, agent passport, or target before trying again."
+    elif decision == "approval_required" and approval_decision == "approve" and evidence_status == "recorded":
+        outcome = "recorded"
+        message = "Human approval was recorded and RunPrint recorded execution evidence."
+        next_action = "Run evals and promotion checks against the ledger."
+    elif decision == "approval_required" and approval_decision == "approve" and evidence_status == "planned":
+        outcome = "recording_planned"
+        message = "Human approval was recorded and RunPrint has a planned evidence bundle."
+        next_action = "Execute under recorder control, then append recorded RunPrint evidence."
+    elif decision == "approval_required" and approval_decision == "approve":
+        outcome = "evidence_missing"
+        message = "Human approval was recorded, but no RunPrint evidence plan was found."
+        next_action = "Add a `runprint.recorder` step or provide recorded evidence before promotion."
     elif decision == "approval_required":
         outcome = "waiting_for_approval"
         message = "The gate found allowed work, but human approval is still required."
@@ -595,7 +612,7 @@ def _audit_item(event: JsonMap, evidence_status: str) -> AgentGateAuditItem:
 
 def _audit_status(items: T.Sequence[AgentGateAuditItem]) -> str:
     outcomes = {item.outcome for item in items}
-    if "blocked_by_gate" in outcomes:
+    if "blocked_by_gate" in outcomes or "blocked_by_human" in outcomes:
         return "blocked"
     if "waiting_for_approval" in outcomes:
         return "approval_required"
@@ -625,6 +642,29 @@ def _runprint_recorded_events(events: T.Sequence[JsonMap]) -> T.Iterator[JsonMap
         if event_type.endswith(".planned") or status == "planned":
             continue
         yield event
+
+
+def _approval_decisions_by_action(events: T.Sequence[JsonMap]) -> dict[str, str]:
+    decisions: dict[str, tuple[int, str]] = {}
+    for event in events:
+        event_type = event.get("type") if isinstance(event.get("type"), str) else ""
+        if event_type not in {"approval.granted", "approval.denied"}:
+            continue
+        action_id = _event_action_id(event)
+        if not action_id:
+            continue
+        sequence = event.get("sequence") if isinstance(event.get("sequence"), int) else -1
+        decision = "approve" if event_type == "approval.granted" else "block"
+        existing = decisions.get(action_id)
+        if existing and existing[0] > sequence:
+            continue
+        decisions[action_id] = (sequence, decision)
+    return {action_id: decision for action_id, (_, decision) in decisions.items()}
+
+
+def _event_action_id(event: JsonMap) -> str | None:
+    value = event.get("action_id")
+    return value if isinstance(value, str) and value.strip() else None
 
 
 def _find_passport(passports: T.Sequence[AgentPassport], agent_id: str) -> AgentPassport | None:

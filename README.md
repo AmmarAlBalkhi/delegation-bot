@@ -40,6 +40,7 @@ delegation app-state --ledger .delegation/demo.jsonl
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
+delegation approval-inbox --ledger .delegation/demo.jsonl
 delegation agent-audit --ledger .delegation/demo.jsonl
 ```
 
@@ -61,6 +62,9 @@ approval, or block?
 `agent-audit` compares the Agent Gate receipt with RunPrint evidence. Simple
 version: the guard wrote a receipt, the camera has a proof plan, and the ledger
 keeps both together.
+
+`approval-inbox` turns those receipts into simple cards. `approval-decision`
+records a local human approve/block receipt without executing anything.
 
 Want to start your own repo?
 
@@ -150,6 +154,8 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation app-state --ledger .delegation/run.jsonl` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
+| `delegation approval-inbox --ledger .delegation/run.jsonl` | Show simple approval cards from Agent Gate receipts. |
+| `delegation approval-decision --ledger .delegation/run.jsonl --action-id ID --decision approve --approver NAME` | Record a local human approve/block receipt. |
 | `delegation agent-audit --ledger .delegation/run.jsonl` | Compare Agent Gate intent receipts with RunPrint evidence. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
@@ -205,6 +211,7 @@ DelegationHQ is pre-release, but the foundation is working:
 - preview-first, gated live GitHub Actions dispatch with workflow preflight
 - dry-run RunPrint recorder evidence bundle planning
 - Agent Gate receipts and `agent-audit` for intent-vs-evidence checks
+- `approval-inbox` and `approval-decision` for simple human review receipts
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
 - `explain-policy` for low-friction classifier explanations that do not grant authority
@@ -247,6 +254,7 @@ Trust and operations:
 - [Hybrid trust model](docs/hybrid-trust-model.md)
 - [Agent enablement](docs/agent-enablement.md)
 - [Agent Gate](docs/agent-gate.md)
+- [Approval Inbox](docs/approval-inbox.md)
 - [Live execution gate](docs/live-execution-gate.md)
 - [GitHub Issue apply](docs/github-issue-apply.md)
 - [GitHub Actions apply](docs/github-actions-apply.md)

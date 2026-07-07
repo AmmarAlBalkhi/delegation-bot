@@ -198,6 +198,34 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "approval inbox",
+            [
+                python,
+                "scripts/delegation.py",
+                "approval-inbox",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+            ],
+        ),
+        Check(
+            "approval decision receipt",
+            [
+                python,
+                "scripts/delegation.py",
+                "approval-decision",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+                "--action-id",
+                "agent_gate.implementer.create_pull_request",
+                "--decision",
+                "approve",
+                "--approver",
+                "Ammar",
+                "--reason",
+                "QA smoke approval receipt.",
+            ],
+        ),
+        Check(
             "starter Harnessfile init",
             [
                 python,

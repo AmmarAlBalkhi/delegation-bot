@@ -133,6 +133,16 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    & $ExecutablePath approval-inbox --ledger (Join-Path $SmokeDir "exe-smoke.jsonl")
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & $ExecutablePath approval-decision --ledger (Join-Path $SmokeDir "exe-smoke.jsonl") --action-id agent_gate.implementer.create_pull_request --decision approve --approver exe-smoke
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath agent-audit --ledger (Join-Path $SmokeDir "exe-smoke.jsonl")
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

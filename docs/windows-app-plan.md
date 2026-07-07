@@ -113,12 +113,13 @@ delegation app-state --ledger .delegation/demo.jsonl --json
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml --json
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
+delegation approval-inbox --ledger .delegation/demo.jsonl --json
 ```
 
 `app-state` is the first backend slice for the local cockpit. It combines the
 app plan, doctor report, release readiness, mission dashboard, evidence bundle
-summary, next safe action, and guardrails without launching a UI or doing live
-work.
+summary, approval inbox summary, next safe action, and guardrails without
+launching a UI or doing live work.
 
 ## Milestones
 
@@ -131,8 +132,8 @@ work.
    approval, or block.
 6. A local app shell reads app-state JSON, Agent Passport JSON, and Agent Gate
    preview JSON.
-6. Approval Inbox previews risky actions without live execution.
-7. The app is packaged from a tagged commit with checksums and release rehearsal
+7. Approval Inbox previews risky actions without live execution.
+8. The app is packaged from a tagged commit with checksums and release rehearsal
    evidence.
 
 ## Design Boundary

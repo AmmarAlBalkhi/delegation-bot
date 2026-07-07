@@ -75,6 +75,8 @@ The project is currently pre-release.
   with Bring Your Own Agent passport direction.
 - Added Agent Gate ledger receipts and `delegation agent-audit` for comparing
   approved intent with planned or recorded RunPrint evidence.
+- Added `delegation approval-inbox` and `delegation approval-decision` for
+  local human approve/block receipts over Agent Gate cards.
 - Added playbook catalog filtering by tag and adapter.
 - Added hosted dashboard wireframe notes.
 - Added contributor license and DCO policy notes.

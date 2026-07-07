@@ -20,6 +20,14 @@ from delegation_bot.agent_gate import (
 from delegation_bot.agent_passports import build_agent_passport_report, render_agent_passport_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
+from delegation_bot.approval_inbox import (
+    APPROVAL_DECISIONS,
+    build_approval_decision_events,
+    build_approval_decision_receipt,
+    build_approval_inbox_report,
+    render_approval_decision_receipt,
+    render_approval_inbox_report,
+)
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
 from delegation_bot.dashboard import build_dashboard_snapshot, render_dashboard_snapshot
 from delegation_bot.doctor import render_doctor_report, run_doctor
@@ -337,6 +345,47 @@ def cmd_agent_audit(args: argparse.Namespace) -> int:
     else:
         print(render_agent_gate_audit_report(report))
     return 1 if report.blocked else 0
+
+
+def cmd_approval_inbox(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    report = build_approval_inbox_report(ledger_events, ledger_source=str(ledger_path))
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_approval_inbox_report(report))
+    return 0
+
+
+def cmd_approval_decision(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+        events = build_approval_decision_events(
+            ledger_events,
+            action_id=args.action_id,
+            decision=args.decision,
+            approver=args.approver,
+            reason=args.reason or "",
+        )
+        append_jsonl(events, ledger_path)
+    except (EvalError, OSError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    receipt = build_approval_decision_receipt(events[0], ledger_source=str(ledger_path))
+    if args.json:
+        print(json.dumps(receipt.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_approval_decision_receipt(receipt))
+        print(f"\nApproval decision appended: {ledger_path}")
+    return 0
 
 
 def _resolve_agent_gate_positionals(first: str | None, second: str | None) -> tuple[str | None, str | None]:
@@ -1415,6 +1464,26 @@ def build_parser() -> argparse.ArgumentParser:
     agent_audit.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
     agent_audit.add_argument("--json", action="store_true", help="Print the Agent Gate audit report as JSON.")
     agent_audit.set_defaults(func=cmd_agent_audit)
+
+    approval_inbox = subparsers.add_parser(
+        "approval-inbox",
+        help="Show app-ready approval cards from Agent Gate receipts.",
+    )
+    approval_inbox.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
+    approval_inbox.add_argument("--json", action="store_true", help="Print approval cards as JSON.")
+    approval_inbox.set_defaults(func=cmd_approval_inbox)
+
+    approval_decision = subparsers.add_parser(
+        "approval-decision",
+        help="Append a local human approval or block decision for an Agent Gate receipt.",
+    )
+    approval_decision.add_argument("--ledger", required=True, help="Append the decision to this run ledger JSONL file.")
+    approval_decision.add_argument("--action-id", required=True, help="Agent Gate action_id to approve or block.")
+    approval_decision.add_argument("--decision", required=True, choices=APPROVAL_DECISIONS, help="Human decision to record.")
+    approval_decision.add_argument("--approver", required=True, help="Human approver name or handle.")
+    approval_decision.add_argument("--reason", help="Optional short reason for the decision.")
+    approval_decision.add_argument("--json", action="store_true", help="Print the approval decision receipt as JSON.")
+    approval_decision.set_defaults(func=cmd_approval_decision)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

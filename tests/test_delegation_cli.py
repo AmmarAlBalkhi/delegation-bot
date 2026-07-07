@@ -122,6 +122,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["ledger"]["event_count"], data["ledger"]["dashboard"]["counts"]["events"])
         self.assertEqual(data["ledger"]["evidence"]["bundle_count"], 1)
         self.assertEqual(data["ledger"]["agent_audit"]["status"], "missing_gate")
+        self.assertEqual(data["ledger"]["approval_inbox"]["status"], "empty")
         self.assertEqual(data["agents"]["passport_count"], 4)
         self.assertEqual(data["agent_gate"]["status"], "not_requested")
         self.assertIn("delegation app-state --ledger .delegation/demo.jsonl --json", data["next_actions"])
@@ -308,6 +309,87 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["status"], "missing_gate")
         self.assertEqual(data["gate_count"], 0)
         self.assertEqual(data["runprint_bundle_count"], 1)
+
+    def test_approval_inbox_reports_pending_gate_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-gate",
+                            str(EXAMPLE),
+                            "implementer",
+                            "--action",
+                            "create_pull_request",
+                            "--target",
+                            "repository",
+                            "--ledger",
+                            str(ledger),
+                            "--write",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["approval-inbox", "--ledger", str(ledger), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "needs_attention")
+        self.assertEqual(data["pending_count"], 1)
+        self.assertEqual(data["items"][0]["status"], "pending_approval")
+
+    def test_approval_decision_command_appends_human_decision(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            action_id = "agent_gate.implementer.create_pull_request"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-gate",
+                            str(EXAMPLE),
+                            "implementer",
+                            "--action",
+                            "create_pull_request",
+                            "--target",
+                            "repository",
+                            "--ledger",
+                            str(ledger),
+                            "--write",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as receipt_output:
+                receipt_status = main(
+                    [
+                        "approval-decision",
+                        "--ledger",
+                        str(ledger),
+                        "--action-id",
+                        action_id,
+                        "--decision",
+                        "approve",
+                        "--approver",
+                        "Ammar",
+                        "--reason",
+                        "Scoped and evidence is planned.",
+                    ]
+                )
+            with redirect_stdout(io.StringIO()) as inbox_output:
+                inbox_status = main(["approval-inbox", "--ledger", str(ledger), "--json"])
+        data = json.loads(inbox_output.getvalue())
+
+        self.assertEqual(receipt_status, 0)
+        self.assertIn("Approval decision appended", receipt_output.getvalue())
+        self.assertEqual(inbox_status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertEqual(data["approved_count"], 1)
+        self.assertEqual(data["items"][0]["latest_decision"]["approver"], "Ammar")
 
     def test_app_state_can_include_agent_gate_preview(self) -> None:
         with redirect_stdout(io.StringIO()) as output:

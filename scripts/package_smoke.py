@@ -172,6 +172,48 @@ def main() -> int:
             print(agent_gate.stderr, file=sys.stderr)
             return agent_gate.returncode or 1
 
+        approval_inbox = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "approval-inbox",
+                "--ledger",
+                str(ledger),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if approval_inbox.returncode != 0 or "Approval Inbox" not in approval_inbox.stdout:
+            print("FAIL: installed package approval inbox smoke")
+            print(approval_inbox.stdout)
+            print(approval_inbox.stderr, file=sys.stderr)
+            return approval_inbox.returncode or 1
+
+        approval_decision = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "approval-decision",
+                "--ledger",
+                str(ledger),
+                "--action-id",
+                "agent_gate.smoke_cli_agent.read_run_ledger",
+                "--decision",
+                "approve",
+                "--approver",
+                "package-smoke",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if approval_decision.returncode != 0 or "Approval Decision" not in approval_decision.stdout:
+            print("FAIL: installed package approval decision smoke")
+            print(approval_decision.stdout)
+            print(approval_decision.stderr, file=sys.stderr)
+            return approval_decision.returncode or 1
+
         agent_audit = _run(
             [
                 sys.executable,
@@ -194,7 +236,9 @@ def main() -> int:
             print(agent_audit.stderr, file=sys.stderr)
             return agent_audit.returncode or 1
 
-    print("PASS: installed package demo, app-state, Agent Passport, Agent Gate, and Agent Gate audit smoke")
+    print(
+        "PASS: installed package demo, app-state, Agent Passport, Agent Gate, approval inbox, approval decision, and Agent Gate audit smoke"
+    )
     return 0
 
 

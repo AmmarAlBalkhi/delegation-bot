@@ -25,6 +25,8 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("agents \"examples\\ai-harness-control-plane.yaml\"", text)
         self.assertIn("agent-gate \"examples\\ai-harness-control-plane.yaml\" implementer", text)
         self.assertIn("agent-audit --ledger", text)
+        self.assertIn("approval-inbox --ledger", text)
+        self.assertIn("approval-decision --ledger", text)
         self.assertIn("examples\\agent-passports.yaml", text)
         self.assertIn("artifacts --dist $ResolvedDistPath", text)
         self.assertIn("SHA256SUMS.txt", text)
@@ -59,6 +61,8 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("agents", text)
         self.assertIn("agent-gate", text)
         self.assertIn("agent-audit", text)
+        self.assertIn("approval-inbox", text)
+        self.assertIn("approval-decision", text)
         self.assertIn("SHA256SUMS.txt", text)
         self.assertIn("artifacts-manifest.json", text)
 

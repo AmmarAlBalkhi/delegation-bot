@@ -11,6 +11,7 @@ from delegation_bot import __version__
 from delegation_bot.agent_gate import build_agent_gate_audit_report, build_agent_gate_report
 from delegation_bot.agent_passports import build_agent_passport_report
 from delegation_bot.app_plan import build_app_plan
+from delegation_bot.approval_inbox import build_approval_inbox_report
 from delegation_bot.dashboard import build_dashboard_snapshot
 from delegation_bot.doctor import DoctorReport, run_doctor
 from delegation_bot.evidence_report import build_evidence_report
@@ -31,6 +32,7 @@ class AppStateLedger:
     dashboard: JsonMap | None = None
     evidence: JsonMap | None = None
     agent_audit: JsonMap | None = None
+    approval_inbox: JsonMap | None = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> JsonMap:
@@ -41,6 +43,7 @@ class AppStateLedger:
             "dashboard": self.dashboard,
             "evidence": self.evidence,
             "agent_audit": self.agent_audit,
+            "approval_inbox": self.approval_inbox,
             "warnings": list(self.warnings),
         }
 
@@ -157,6 +160,7 @@ def render_app_state(state: AppState) -> str:
     mission = dashboard.get("mission") if isinstance(dashboard.get("mission"), dict) else {}
     evidence = state.ledger.evidence or {}
     agent_audit = state.ledger.agent_audit or {}
+    approval_inbox = state.ledger.approval_inbox or {}
     agents = state.agents
     agent_gate = state.agent_gate
 
@@ -212,6 +216,11 @@ def render_app_state(state: AppState) -> str:
         lines.append(f"- evidence bundles: {evidence.get('bundle_count', 0)}")
     if agent_audit:
         lines.append(f"- agent audit: {agent_audit.get('status', 'unknown')}")
+    if approval_inbox:
+        lines.append(
+            f"- approval inbox: {approval_inbox.get('status', 'unknown')} "
+            f"({approval_inbox.get('pending_count', 0)} pending)"
+        )
 
     warnings = list(state.ledger.warnings)
     if warnings:
@@ -255,7 +264,9 @@ def _build_ledger_state(
     dashboard = build_dashboard_snapshot(events, manifest=manifest, source=str(path))
     evidence = build_evidence_report(events, source=str(path))
     agent_audit = build_agent_gate_audit_report(events, ledger_source=str(path))
+    approval_inbox = build_approval_inbox_report(events, ledger_source=str(path))
     audit_warnings = agent_audit.warnings if agent_audit.gate_count else ()
+    inbox_warnings = approval_inbox.warnings if approval_inbox.item_count else ()
     return AppStateLedger(
         path=str(path),
         status=dashboard.status,
@@ -263,7 +274,8 @@ def _build_ledger_state(
         dashboard=dashboard.to_dict(),
         evidence=evidence.to_dict(),
         agent_audit=agent_audit.to_dict(),
-        warnings=tuple([*manifest_warnings, *dashboard.warnings, *evidence.warnings, *audit_warnings]),
+        approval_inbox=approval_inbox.to_dict(),
+        warnings=tuple([*manifest_warnings, *dashboard.warnings, *evidence.warnings, *audit_warnings, *inbox_warnings]),
     )
 
 
@@ -287,11 +299,13 @@ def _overall_status(
     agents: JsonMap,
     agent_gate: JsonMap,
 ) -> str:
+    approval_inbox = ledger.approval_inbox or {}
     if doctor.failed_count:
         return "blocked"
     if (
         release.failed_count
         or ledger.status in {"failed", "blocked", "needs_attention", "error"}
+        or approval_inbox.get("status") in {"needs_attention", "blocked"}
         or agents.get("status") == "warning"
         or agent_gate.get("status") in {"blocked", "incomplete"}
     ):
