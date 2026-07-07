@@ -684,6 +684,14 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["failed_count"], 0)
         self.assertTrue(any(check["id"] == "suggest_loop" for check in data["checks"]))
 
+    def test_doctor_command_can_include_github_app_diagnostics(self) -> None:
+        with patch.dict("os.environ", {}, clear=True), redirect_stdout(io.StringIO()) as output:
+            status = main(["doctor", "--skip-github", "--github-app"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("GitHub App Auth", output.getvalue())
+        self.assertIn("No DELEGATION_GITHUB_APP_* env vars were found.", output.getvalue())
+
     def test_apply_issues_previews_gated_github_issue_apply(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"

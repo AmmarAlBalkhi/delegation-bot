@@ -38,7 +38,8 @@ Deep only when the user asks for depth.
    `docs/public-roadmap-issues.md` when maintainers are ready.
 3. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
-4. Add GitHub App auth diagnostics to `delegation doctor`.
+4. Test the GitHub App issue-write path against a real installed app before
+   hosted auth work.
 5. Decide whether a dedicated `github.actions` cancel command belongs in the
    next public batch.
 
@@ -55,6 +56,8 @@ Deep only when the user asks for depth.
   optional issue closing with separate confirmation tokens.
 - Added the first GitHub App issue-write auth boundary for live issue commands
   through `--auth github-app`.
+- Added optional `delegation doctor --github-app` diagnostics for local GitHub
+  App auth setup without minting a token.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

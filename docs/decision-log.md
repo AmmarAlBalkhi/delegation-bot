@@ -1166,3 +1166,25 @@ Guardrails:
 
 Follow-up: Add GitHub App auth diagnostics to `delegation doctor`, then test
 the issue-write path against a real installed app before hosted auth work.
+
+## 2026-07-07: Add GitHub App Doctor Diagnostics
+
+Decision: Add optional `delegation doctor --github-app` diagnostics for local
+GitHub App auth setup.
+
+Why: The safer GitHub App path should not feel mysterious. Users need a quick
+way to see whether client/app id, installation id, private key, and optional
+signing dependencies are ready before they attempt a live issue write.
+
+Guardrails:
+
+- the diagnostic is opt-in, so first-run `delegation doctor` stays short
+- it reads local env/config only
+- it does not mint a token, sign a JWT, call GitHub, write issues, or call
+  models
+- missing or partial GitHub App config is a warning, not a failure, because
+  dry-runs and local planning still work
+- private key values and token values are never printed or serialized
+
+Follow-up: Test `--auth github-app` against a real installed app, then decide
+whether hosted auth starts with read-only import or issue-write feedback.

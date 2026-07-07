@@ -164,6 +164,12 @@ delegation apply-feedback Harnessfile.yaml \
   --auth github-app
 ```
 
+Before live apply, check local setup without minting a token:
+
+```bash
+delegation doctor --github-app
+```
+
 The token request uses only issue-write permissions and the repositories
 already present in the gated issue drafts. The token is never printed, written
 to the ledger, or stored in the repository. Ledger events record only the auth
@@ -204,7 +210,6 @@ Modes:
 Possible future commands:
 
 ```bash
-delegation doctor --github-app
 delegation github-app-plan --mode issue-write
 delegation app preview-install
 ```

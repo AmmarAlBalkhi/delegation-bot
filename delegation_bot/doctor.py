@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -13,6 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from delegation_bot import __version__
+from delegation_bot.github_auth import GitHubAuthError, github_app_credentials_from_env
 from delegation_bot.harness_manifest import ManifestError, load_manifest, validate_manifest
 from delegation_bot.harness_plan import build_dry_run_ledger, compile_plan
 from delegation_bot.ledger import load_ledger_events
@@ -77,7 +80,12 @@ class DoctorReport:
         }
 
 
-def run_doctor(root: Path = ROOT, *, include_github: bool = True) -> DoctorReport:
+def run_doctor(
+    root: Path = ROOT,
+    *,
+    include_github: bool = True,
+    include_github_app: bool = False,
+) -> DoctorReport:
     checks = [
         _check_python_version(),
         _check_dependencies(),
@@ -91,6 +99,8 @@ def run_doctor(root: Path = ROOT, *, include_github: bool = True) -> DoctorRepor
     ]
     if include_github:
         checks.append(_check_github_cli(root))
+    if include_github_app:
+        checks.append(_check_github_app_auth(root))
 
     next_commands = _next_commands(checks)
     return DoctorReport(checks=checks, next_commands=next_commands)
@@ -374,6 +384,104 @@ def _check_github_cli(root: Path) -> DoctorCheck:
     )
 
 
+def _check_github_app_auth(
+    root: Path,
+    *,
+    env: T.Mapping[str, str] | None = None,
+    find_spec: T.Callable[[str], T.Any] = importlib.util.find_spec,
+) -> DoctorCheck:
+    values = env or os.environ
+    if not _github_app_env_present(values):
+        return _warning(
+            "github_app_auth",
+            "GitHub App Auth",
+            "GitHub App auth is not configured.",
+            details=["No DELEGATION_GITHUB_APP_* env vars were found."],
+            next_action=(
+                "Run `delegation github-app-plan --mode issue-write`, then set GitHub App env vars "
+                "before using `--auth github-app`."
+            ),
+        )
+
+    try:
+        credentials, missing = github_app_credentials_from_env(values, cwd=root)
+    except GitHubAuthError as exc:
+        return _warning(
+            "github_app_auth",
+            "GitHub App Auth",
+            "GitHub App auth config could not be read.",
+            details=[str(exc)],
+            next_action="Fix the GitHub App env vars, then rerun `delegation doctor --github-app`.",
+        )
+
+    if credentials is None:
+        return _warning(
+            "github_app_auth",
+            "GitHub App Auth",
+            "GitHub App auth config is incomplete.",
+            details=list(missing),
+            next_action="Set the missing GitHub App env vars before using `--auth github-app`.",
+        )
+
+    missing_packages = _missing_github_app_signing_modules(find_spec)
+    if missing_packages:
+        return _warning(
+            "github_app_auth",
+            "GitHub App Auth",
+            "GitHub App env vars are present, but signing dependencies are missing.",
+            details=missing_packages,
+            next_action='Install optional auth support with `pip install "delegationhq[github-app]"`.',
+        )
+
+    return _ready(
+        "github_app_auth",
+        "GitHub App Auth",
+        "GitHub App issue-write auth looks locally configured.",
+        details=[
+            "client id: set",
+            "installation id: set",
+            f"private key: {_github_app_private_key_source(values)}",
+            f"api url: {credentials.api_url}",
+            f"api version: {credentials.api_version}",
+            "token mint: not attempted by doctor",
+        ],
+    )
+
+
+def _github_app_env_present(values: T.Mapping[str, str]) -> bool:
+    names = (
+        "DELEGATION_GITHUB_APP_CLIENT_ID",
+        "GITHUB_APP_CLIENT_ID",
+        "DELEGATION_GITHUB_APP_ID",
+        "GITHUB_APP_ID",
+        "DELEGATION_GITHUB_APP_INSTALLATION_ID",
+        "GITHUB_APP_INSTALLATION_ID",
+        "DELEGATION_GITHUB_APP_PRIVATE_KEY",
+        "GITHUB_APP_PRIVATE_KEY",
+        "DELEGATION_GITHUB_APP_PRIVATE_KEY_PATH",
+        "GITHUB_APP_PRIVATE_KEY_PATH",
+    )
+    return any(isinstance(values.get(name), str) and values[name].strip() for name in names)
+
+
+def _missing_github_app_signing_modules(find_spec: T.Callable[[str], T.Any]) -> list[str]:
+    missing: list[str] = []
+    if find_spec("jwt") is None:
+        missing.append("PyJWT")
+    if find_spec("cryptography") is None:
+        missing.append("cryptography")
+    return missing
+
+
+def _github_app_private_key_source(values: T.Mapping[str, str]) -> str:
+    path_names = ("DELEGATION_GITHUB_APP_PRIVATE_KEY_PATH", "GITHUB_APP_PRIVATE_KEY_PATH")
+    for name in path_names:
+        value = values.get(name)
+        if isinstance(value, str) and value.strip():
+            return f"path via {name}"
+    return "env var"
+
+
 def _run_command(command: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
     try:
         return subprocess.run(
@@ -401,4 +509,6 @@ def _next_commands(checks: list[DoctorCheck]) -> list[str]:
         commands.append(
             "Optional live GitHub: install/authenticate `gh`, or set `GITHUB_TOKEN`/`GH_TOKEN` before apply commands."
         )
+    if any(check.id == "github_app_auth" and check.status != CHECK_READY for check in checks):
+        commands.append("Optional safer GitHub auth: delegation github-app-plan --mode issue-write")
     return commands

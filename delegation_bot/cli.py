@@ -796,7 +796,7 @@ def cmd_catalog(args: argparse.Namespace) -> int:
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
-    report = run_doctor(include_github=not args.skip_github)
+    report = run_doctor(include_github=not args.skip_github, include_github_app=args.github_app)
     if args.json:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
@@ -1181,6 +1181,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--skip-github",
         action="store_true",
         help="Skip GitHub CLI/auth checks for deterministic local or CI runs.",
+    )
+    doctor.add_argument(
+        "--github-app",
+        action="store_true",
+        help="Include local GitHub App auth diagnostics without minting a token.",
     )
     doctor.set_defaults(func=cmd_doctor)
 
