@@ -115,6 +115,27 @@ DelegationHQ controls the mission, powers, approvals, evidence, evals, and auton
 
 The registry schema is `schemas/agent-registry.v1.schema.json`.
 
+## Agent Gate
+
+The next control step is Agent Gate.
+
+```text
+Passport = ID card.
+Gate = guard at the door.
+```
+
+The gate should answer:
+
+- who is the agent?
+- what does it want to do?
+- what can it touch?
+- what is blocked?
+- what needs human approval?
+- what evidence must be recorded?
+- what evals decide whether it did well?
+
+The first implementation plan is in `docs/agent-gate.md`.
+
 ## Capability Packs
 
 Capability packs are reusable bundles of powers.

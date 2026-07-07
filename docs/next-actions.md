@@ -30,18 +30,34 @@ Powerful after 10 minutes.
 Deep only when the user asks for depth.
 ```
 
+The simple mental model:
+
+```text
+Passport = agent ID card.
+Agent Gate = guard at the door.
+RunPrint = camera/proof.
+Evals = judges.
+Human = final yes/no for danger.
+```
+
 ## Now
 
-1. Keep `delegation app-state` aligned as the single read-only backend feed for
-   the first visible Windows EXE app slice before building any actual interface.
-2. Wire Agent Passport registry data into future approval and promotion views.
-3. Run `delegation release-check --strict-artifacts` on a clean Windows release
+1. Build `delegation agent-gate` as the next big batch. Given an agent,
+   requested action, target, and optional evidence, it should return `allow`,
+   `warn`, `approval_required`, or `block`.
+2. Keep the user-facing report simple: who wants to do what, risk, decision,
+   required approval, required evidence, and next safe action.
+3. Connect Agent Gate output to `app-state` as approval-inbox-ready data, but
+   do not build visual UI until the maintainer approves the design direction.
+4. After Agent Gate is stable, compare approved intent with RunPrint evidence:
+   what the agent asked to do versus what actually happened.
+5. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-4. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+6. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-5. Test the GitHub App issue-write path against a real installed app before
+7. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-6. Decide which `delegation github-app-plan` mode should become the first
+8. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently

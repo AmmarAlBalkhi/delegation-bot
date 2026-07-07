@@ -91,10 +91,13 @@ Goal: Agents can earn more power over time through visible evidence.
 Deliverables:
 
 - agent passports
+- Agent Passport registry for Bring Your Own Agent
+- agent gate previews for requested actions
 - autonomy ladder
 - capability packs
 - promotion rules based on evals and ledger evidence
 - promotion reports that show ready vs blocked agents
+- approval previews that return allow, warn, approval required, or block
 - compatibility notes for OpenClaw, Hermes-style agents, Codex, Claude Code,
   Anthropic Claude, OpenAI Agents SDK, LangGraph, CrewAI, AutoGen, and MCP tools
 
@@ -208,15 +211,16 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Run the Windows `.exe` build script on a clean Windows release host and
+1. Add `delegation agent-gate` as the core decision engine for Agent Passport
+   action previews.
+2. Keep the output simple: agent, requested action, target, risk, decision,
+   approval requirement, evidence requirement, and next step.
+3. Connect Agent Gate decisions to `app-state` so the future cockpit can show
+   approval inbox data without designing UI yet.
+4. Compare allowed intent with RunPrint-recorded reality after the first gate
+   path is stable.
+5. Run the Windows `.exe` build script on a clean Windows release host and
    record the executable smoke evidence.
-2. Open the first small public roadmap issue set from
-   `docs/public-roadmap-issues.md` when maintainers are ready.
-3. Design live feedback issue comments or close actions behind explicit gates.
-4. Sketch the GitHub App installation flow that can provide scoped tokens
-   without forcing users to paste personal tokens.
-5. Add token-scope diagnostics and a dedicated cancel command for
-   `github.actions` live dispatch.
 
 The adoption path starts with one quiet miracle: a developer can understand what
 an AI system is about to do before it does it.

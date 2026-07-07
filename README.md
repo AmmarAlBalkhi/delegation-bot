@@ -232,6 +232,7 @@ Trust and operations:
 
 - [Hybrid trust model](docs/hybrid-trust-model.md)
 - [Agent enablement](docs/agent-enablement.md)
+- [Agent Gate plan](docs/agent-gate.md)
 - [Live execution gate](docs/live-execution-gate.md)
 - [GitHub Issue apply](docs/github-issue-apply.md)
 - [GitHub Actions apply](docs/github-actions-apply.md)
