@@ -74,4 +74,14 @@ It should:
 
 - summarize what is ready
 - explain what needs attention
-- give a useful next command
+- show a safe fast path first: `delegation demo`
+- give clear optional setup steps only when they matter
+
+The first successful output should feel like:
+
+```text
+Status: ready
+Next:
+- delegation demo
+- delegation init --goal "prepare this repo for safe AI delegation"
+```

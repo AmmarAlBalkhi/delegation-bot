@@ -32,8 +32,8 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Run the Windows `.exe` build and user-local install scripts on a clean
-   Windows release host and record the executable smoke evidence.
+1. Run `delegation release-check --strict-artifacts` on a clean Windows release
+   host after building the `.exe` and checksum file.
 2. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 3. Design live feedback issue comments or close actions behind explicit gates.
@@ -47,6 +47,10 @@ Deep only when the user asks for depth.
 - Hardened `github.actions` live dispatch with workflow metadata preflight,
   active duplicate-run protection, dispatch-time rechecks, cancellation guidance
   in ledger evidence, and focused fake-client tests.
+- Added `delegation release-check` for local alpha release-readiness reports
+  that do not publish, tag, or call external services.
+- Added `delegation --version`, package/EXE version smoke checks, and clearer
+  doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the
   `delegation` CLI and `delegation_bot` Python namespace.
 - Added a user-local Windows installer for `delegation.exe` under

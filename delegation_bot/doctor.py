@@ -97,14 +97,20 @@ def run_doctor(root: Path = ROOT, *, include_github: bool = True) -> DoctorRepor
 
 
 def render_doctor_report(report: DoctorReport) -> str:
+    status_label = "ready" if report.failed_count == 0 else "needs attention"
     lines = [
         "Delegation Doctor",
         "",
-        f"Ready: {report.ready_count}",
+        f"Status: {status_label}",
+        f"Ready checks: {report.ready_count}/{len(report.checks)}",
         f"Needs attention: {report.warning_count + report.failed_count}",
         "",
-        "Ready:",
+        "Next:",
     ]
+    for command in report.next_commands:
+        lines.append(f"- {command}")
+
+    lines.extend(["", "Ready:"])
     ready_checks = [check for check in report.checks if check.status == CHECK_READY]
     if ready_checks:
         for check in ready_checks:
@@ -125,9 +131,6 @@ def render_doctor_report(report: DoctorReport) -> str:
     else:
         lines.append("- none")
 
-    lines.extend(["", "Next:"])
-    for command in report.next_commands:
-        lines.append(command)
     return "\n".join(lines)
 
 
@@ -389,7 +392,13 @@ def _run_command(command: list[str], *, cwd: Path) -> subprocess.CompletedProces
 def _next_commands(checks: list[DoctorCheck]) -> list[str]:
     if any(check.status == CHECK_FAILED for check in checks):
         return ["Fix failed checks, then run `delegation doctor` again."]
-    commands = ['delegation suggest "prepare this repo for release" --plan']
+    commands = [
+        "delegation demo",
+        'delegation init --goal "prepare this repo for safe AI delegation"',
+        'delegation suggest "prepare this repo for release" --plan',
+    ]
     if any(check.id == "github_cli" and check.status != CHECK_READY for check in checks):
-        commands.append("Install and authenticate `gh` before live GitHub apply mode.")
+        commands.append(
+            "Optional live GitHub: install/authenticate `gh`, or set `GITHUB_TOKEN`/`GH_TOKEN` before apply commands."
+        )
     return commands

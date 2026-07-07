@@ -45,6 +45,7 @@ dist/delegation.exe
 It also runs this safe smoke test unless `-SkipSmoke` is passed:
 
 ```powershell
+dist\delegation.exe --version
 dist\delegation.exe demo --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --output .delegation\exe-Harnessfile.yaml --force
 dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
@@ -78,6 +79,7 @@ The installer copies the executable to:
 It runs this smoke check unless `-NoSmoke` is passed:
 
 ```powershell
+delegation.exe --version
 delegation.exe doctor --skip-github
 ```
 
@@ -94,6 +96,7 @@ python: 3.12.13
 platform: Windows 11
 artifact: dist\delegation.exe
 smoke: demo, init, validate passed
+version: delegation.exe --version passed
 ```
 
 This proves the build path works on a development machine. It is not yet a
@@ -122,7 +125,7 @@ Do not publish an `.exe` until:
 - `.\scripts\install-windows-exe.ps1 -AddToPath` passes on Windows
 - the artifact is built from a tagged commit
 - docs explain that live writes remain gated
-- the executable version matches `pyproject.toml`
+- `delegation.exe --version` matches `pyproject.toml`
 - checksums are published next to the artifact
 
 ## Sources Checked

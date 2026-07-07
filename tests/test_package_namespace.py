@@ -25,6 +25,14 @@ class PackageNamespaceTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertIn("Harnessfile: ai-harness-control-plane", output.getvalue())
 
+    def test_package_cli_version_works(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            with self.assertRaises(SystemExit) as raised:
+                package_main(["--version"])
+
+        self.assertEqual(raised.exception.code, 0)
+        self.assertIn("DelegationHQ 0.1.0a0", output.getvalue())
+
     def test_script_cli_wrapper_still_works(self) -> None:
         with redirect_stdout(io.StringIO()) as output:
             status = script_main(["adapters", "codex.thread"])

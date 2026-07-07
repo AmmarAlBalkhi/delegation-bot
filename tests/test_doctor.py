@@ -28,9 +28,11 @@ class DoctorTests(unittest.TestCase):
         rendered = render_doctor_report(report)
 
         self.assertIn("Delegation Doctor", rendered)
+        self.assertIn("Status: ready", rendered)
         self.assertIn("Ready:", rendered)
         self.assertIn("Needs attention:", rendered)
         self.assertIn("Next:", rendered)
+        self.assertIn("delegation demo", rendered)
 
     def test_doctor_report_is_json_serializable(self) -> None:
         report = run_doctor(ROOT, include_github=False)
