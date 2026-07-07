@@ -36,11 +36,16 @@ python -m pip install -e .
 delegation --version
 delegation demo
 delegation app-plan
+delegation app-state --ledger .delegation/demo.jsonl
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
 GitHub Actions preview, recorder evidence, and evals. It does not write to
 GitHub, call a model, run an agent, or capture files.
+
+`app-state` gives the future app and a first-time user one compact health view:
+local readiness, release readiness, ledger snapshot, evidence bundles, next
+safe action, and guardrails.
 
 Want to start your own repo?
 
@@ -127,6 +132,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation --version` | Show the installed DelegationHQ version. |
 | `delegation demo` | Run the install-safe mission-control demo in one command. |
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
+| `delegation app-state --ledger .delegation/run.jsonl` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
 | `delegation release-check` | Check local alpha release readiness without publishing anything. |
@@ -189,6 +195,7 @@ DelegationHQ is pre-release, but the foundation is working:
   command
 - Windows `.exe` build and user-local install scripts for local packaging smoke
   tests
+- `app-state` as a single read-only state bundle for the future local cockpit
 
 Live agent execution is intentionally not the default yet. The current focus is
 trustworthy plans, evidence, adapter portability, feedback loops, and a first

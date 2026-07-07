@@ -117,6 +117,11 @@ if (-not $SkipSmoke) {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
+
+    & $ExecutablePath app-state --ledger (Join-Path $SmokeDir "exe-smoke.jsonl")
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 & $Python $DelegationScript artifacts --dist $ResolvedDistPath

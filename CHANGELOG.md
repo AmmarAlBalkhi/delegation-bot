@@ -142,3 +142,6 @@ The project is currently pre-release.
 - Added `delegation release-rehearse` for local release evidence bundles that
   collect release readiness, artifact verification, git state, metadata, and
   next steps without publishing anything.
+- Added `delegation app-state` as one read-only state bundle for the future
+  local cockpit, combining app plan, doctor, release readiness, mission
+  snapshot, evidence bundles, next action, and guardrails.

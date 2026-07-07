@@ -302,7 +302,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
         text = (root / "scripts" / "package_smoke.py").read_text(encoding="utf-8")
     except OSError as exc:
         return _failed("package_smoke", "Package Smoke", "scripts/package_smoke.py could not be read.", details=[str(exc)])
-    problems = [needle for needle in ("--version", "demo", "Status: ready") if needle not in text]
+    problems = [needle for needle in ("--version", "demo", "app-state", "Status: ready") if needle not in text]
     if problems:
         return _failed(
             "package_smoke",
@@ -310,7 +310,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "Installed package smoke does not cover the first-run path.",
             details=[f"missing `{needle}`" for needle in problems],
         )
-    return _ready("package_smoke", "Package Smoke", "Installed package smoke checks version and demo.")
+    return _ready("package_smoke", "Package Smoke", "Installed package smoke checks version, demo, and app state.")
 
 
 def _check_windows_packaging(root: Path) -> ReleaseCheck:
@@ -326,6 +326,7 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "demo --ledger",
         "init --goal",
         "validate $SmokeHarnessfile",
+        "app-state --ledger",
         "artifacts --dist $ResolvedDistPath",
         "SHA256SUMS.txt",
         "artifacts-manifest.json",

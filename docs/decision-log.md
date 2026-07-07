@@ -1291,3 +1291,25 @@ Guardrails:
 
 Follow-up: Run the command with `--strict-artifacts` on a clean Windows release
 host and keep the bundle with the release notes.
+
+## 2026-07-07: Add App-Ready Local State Bundle
+
+Decision: Add `delegation app-state` as the first command-backed backend feed
+for the future local mission cockpit.
+
+Why: The Windows app should not invent hidden state or ship a generic interface
+before the design direction is approved. A single read-only state bundle lets
+the CLI remain the engine while the future EXE can show local readiness,
+release readiness, mission snapshot, evidence bundles, next safe action, and
+guardrails from one source.
+
+Guardrails:
+
+- the command is read-only
+- it does not call models, run agents, write to GitHub, or dispatch workflows
+- GitHub diagnostics stay opt-in
+- missing ledgers are warnings, not hidden setup work
+- actual visual/interface design still waits for maintainer approval
+
+Follow-up: Build the first local app shell against `app-state --json` after the
+visual direction is chosen.

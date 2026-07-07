@@ -89,6 +89,51 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(any(surface["id"] == "agent_passports" for surface in data["surfaces"]))
         self.assertIn("runtime type", data["bring_your_own_agent"]["passport_fields"])
 
+    def test_app_state_command_is_human_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["app-state", "--ledger", str(ledger), "--harnessfile", str(EXAMPLE)])
+
+        self.assertEqual(status, 0)
+        text = output.getvalue()
+        self.assertIn("DelegationHQ App State", text)
+        self.assertIn("Doctor: ready", text)
+        self.assertIn("Ledger: planned", text)
+        self.assertIn("evidence bundles: 1", text)
+        self.assertIn("This state command is read-only.", text)
+
+    def test_app_state_command_can_print_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["app-state", "--ledger", str(ledger), "--harnessfile", str(EXAMPLE), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["schema_version"], "delegation.app-state.v1")
+        self.assertTrue(data["read_only"])
+        self.assertEqual(data["live_risk"], "none")
+        self.assertEqual(data["app_plan"]["app_name"], "DelegationHQ Local Mission Cockpit")
+        self.assertEqual(data["ledger"]["event_count"], data["ledger"]["dashboard"]["counts"]["events"])
+        self.assertEqual(data["ledger"]["evidence"]["bundle_count"], 1)
+        self.assertIn("delegation app-state --ledger .delegation/demo.jsonl --json", data["next_actions"])
+
+    def test_app_state_reports_missing_ledger_without_process_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing = Path(tmpdir) / "missing.jsonl"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["app-state", "--ledger", str(missing), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["ledger"]["status"], "missing")
+        self.assertIn("Ledger does not exist", data["ledger"]["warnings"][0])
+
     def test_init_command_writes_starter_harnessfile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             harnessfile = Path(tmpdir) / "Harnessfile.yaml"

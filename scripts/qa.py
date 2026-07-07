@@ -146,6 +146,18 @@ def build_checks(python: str) -> list[Check]:
             [python, "scripts/delegation.py", "app-plan"],
         ),
         Check(
+            "EXE app state",
+            [
+                python,
+                "scripts/delegation.py",
+                "app-state",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+                "--harnessfile",
+                "examples/ai-harness-control-plane.yaml",
+            ],
+        ),
+        Check(
             "starter Harnessfile init",
             [
                 python,

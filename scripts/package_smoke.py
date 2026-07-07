@@ -90,7 +90,25 @@ def main() -> int:
             print(demo.stdout)
             return 1
 
-    print("PASS: installed package demo smoke")
+        app_state = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "app-state",
+                "--ledger",
+                str(ledger),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if app_state.returncode != 0 or "DelegationHQ App State" not in app_state.stdout:
+            print("FAIL: installed package app-state smoke")
+            print(app_state.stdout)
+            print(app_state.stderr, file=sys.stderr)
+            return app_state.returncode or 1
+
+    print("PASS: installed package demo and app-state smoke")
     return 0
 
 

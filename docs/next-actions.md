@@ -32,8 +32,8 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Keep `delegation app-plan` aligned with the first visible Windows EXE app
-   slice before building any actual interface.
+1. Keep `delegation app-state` aligned as the single read-only backend feed for
+   the first visible Windows EXE app slice before building any actual interface.
 2. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
 3. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
@@ -48,6 +48,9 @@ Deep only when the user asks for depth.
 - Hardened `github.actions` live dispatch with workflow metadata preflight,
   active duplicate-run protection, dispatch-time rechecks, cancellation guidance
   in ledger evidence, and focused fake-client tests.
+- Added `delegation app-state` as one read-only state bundle for the future
+  local cockpit, combining app plan, doctor, release readiness, mission
+  snapshot, evidence bundles, next action, and guardrails.
 - Added `delegation release-check` for local alpha release-readiness reports
   that do not publish, tag, or call external services.
 - Added `delegation github-app-plan` for local GitHub App permission and

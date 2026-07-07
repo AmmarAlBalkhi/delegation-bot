@@ -14,6 +14,8 @@ The next product step is a local Windows mission cockpit. See
 ```powershell
 delegation app-plan
 delegation app-plan --json
+delegation app-state --ledger .delegation/demo.jsonl
+delegation app-state --ledger .delegation/demo.jsonl --json
 ```
 
 ## Current State
@@ -60,6 +62,7 @@ dist\delegation.exe demo --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --output .delegation\exe-Harnessfile.yaml --force
 dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
 dist\delegation.exe app-plan
+dist\delegation.exe app-state --ledger .delegation\exe-smoke.jsonl
 ```
 
 The executable build bundles `examples/`, `playbooks/`, `schemas/`, `LICENSE`,

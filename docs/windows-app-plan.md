@@ -22,6 +22,7 @@ It should consume the same command-backed data that already works:
 
 - `delegation demo`
 - `delegation doctor`
+- `delegation app-state --json`
 - `delegation dashboard --json`
 - `delegation evidence --json`
 - `delegation release-check`
@@ -102,15 +103,29 @@ delegation app-plan
 delegation app-plan --json
 ```
 
+Inspect the app-ready state bundle:
+
+```bash
+delegation demo --ledger .delegation/demo.jsonl
+delegation app-state --ledger .delegation/demo.jsonl
+delegation app-state --ledger .delegation/demo.jsonl --json
+```
+
+`app-state` is the first backend slice for the local cockpit. It combines the
+app plan, doctor report, release readiness, mission dashboard, evidence bundle
+summary, next safe action, and guardrails without launching a UI or doing live
+work.
+
 ## Milestones
 
 1. `app-plan` exists and is covered by tests.
-2. The Windows EXE can run `demo`, `doctor`, `dashboard`, `evidence`, and
-   `app-plan`.
-3. A local app shell reads dashboard and evidence JSON.
-4. Agent Passports become a first-class registry.
-5. Approval Inbox previews risky actions without live execution.
-6. The app is packaged from a tagged commit with checksums and release rehearsal
+2. `app-state` exists as one read-only JSON feed for the future local cockpit.
+3. The Windows EXE can run `demo`, `doctor`, `dashboard`, `evidence`,
+   `app-plan`, and `app-state`.
+4. A local app shell reads app-state JSON.
+5. Agent Passports become a first-class registry.
+6. Approval Inbox previews risky actions without live execution.
+7. The app is packaged from a tagged commit with checksums and release rehearsal
    evidence.
 
 ## Design Boundary

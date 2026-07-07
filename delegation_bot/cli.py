@@ -11,6 +11,7 @@ from pathlib import Path
 
 from delegation_bot import __version__
 from delegation_bot.app_plan import build_app_plan, render_app_plan
+from delegation_bot.app_state import build_app_state, render_app_state
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
 from delegation_bot.dashboard import build_dashboard_snapshot, render_dashboard_snapshot
 from delegation_bot.doctor import render_doctor_report, run_doctor
@@ -220,6 +221,21 @@ def cmd_app_plan(args: argparse.Namespace) -> int:
         print(json.dumps(plan.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_app_plan(plan))
+    return 0
+
+
+def cmd_app_state(args: argparse.Namespace) -> int:
+    state = build_app_state(
+        ledger_path=Path(args.ledger) if args.ledger else None,
+        harnessfile=Path(args.harnessfile) if args.harnessfile else None,
+        include_github=args.github_checks,
+        include_github_app=args.github_app,
+        strict_artifacts=args.strict_artifacts,
+    )
+    if args.json:
+        print(json.dumps(state.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_app_state(state))
     return 0
 
 
@@ -1179,6 +1195,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     app_plan.add_argument("--json", action="store_true", help="Print the app plan as JSON.")
     app_plan.set_defaults(func=cmd_app_plan)
+
+    app_state = subparsers.add_parser(
+        "app-state",
+        help="Show one read-only app-ready state bundle for the future local cockpit.",
+    )
+    app_state.add_argument("--ledger", help="Optional run ledger JSONL path for mission/evidence state.")
+    app_state.add_argument("--harnessfile", help="Optional Harnessfile for agent and owner context.")
+    app_state.add_argument(
+        "--github-checks",
+        action="store_true",
+        help="Include GitHub CLI/auth checks in the doctor section.",
+    )
+    app_state.add_argument(
+        "--github-app",
+        action="store_true",
+        help="Include local GitHub App auth diagnostics without minting a token.",
+    )
+    app_state.add_argument(
+        "--strict-artifacts",
+        action="store_true",
+        help="Mark missing standalone release artifacts as failed in the release section.",
+    )
+    app_state.add_argument("--json", action="store_true", help="Print the app state as JSON.")
+    app_state.set_defaults(func=cmd_app_state)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

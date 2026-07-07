@@ -46,7 +46,8 @@ The QA command currently checks:
 - CLI version smoke test
 - release-readiness report smoke test
 - release rehearsal evidence bundle generation
-- installed package demo smoke test
+- app-ready state bundle generation for the future local cockpit
+- installed package demo and app-state smoke test
 - first-run `delegation demo` and `delegation init` flows
 - example Harnessfile validation
 - example Harnessfile dry-run planning
