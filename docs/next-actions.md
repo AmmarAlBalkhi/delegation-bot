@@ -40,8 +40,8 @@ Deep only when the user asks for depth.
    hosted auth work.
 4. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
-5. Add a release rehearsal note that names the exact artifact files produced
-   by the clean Windows host.
+5. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+   and keep the generated evidence bundle with release notes.
 
 ## Completed Recently
 
@@ -66,6 +66,9 @@ Deep only when the user asks for depth.
 - Added `delegation artifacts` for release checksum and artifact-manifest
   generation, wired it into the Windows EXE build path, and verified stale
   checksum detection.
+- Added `delegation release-rehearse` for a local evidence bundle that captures
+  release readiness, artifact verification, git state, metadata, and next steps
+  without publishing anything.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

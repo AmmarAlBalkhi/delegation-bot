@@ -1269,3 +1269,25 @@ Guardrails:
 
 Follow-up: Run the full Windows release rehearsal on a clean host and record
 the exact artifact files before publishing.
+
+## 2026-07-07: Add Local Release Rehearsal Evidence Bundle
+
+Decision: Add `delegation release-rehearse` to write a local evidence bundle
+for release review.
+
+Why: Release readiness should not be scattered across terminal scrollback. A
+maintainer needs one folder that captures release-check output, artifact
+verification, git state, package metadata, and next steps before any public
+tag, upload, package publish, or executable release.
+
+Guardrails:
+
+- default mode does not require standalone artifacts, so contributors can run
+  local QA before an executable is built
+- `--strict-artifacts` fails when executable artifacts or checksum proof are
+  missing
+- the command writes local files only
+- it does not publish, tag, upload, dispatch workflows, or call live services
+
+Follow-up: Run the command with `--strict-artifacts` on a clean Windows release
+host and keep the bundle with the release notes.
