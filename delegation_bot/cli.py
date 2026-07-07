@@ -37,6 +37,12 @@ from delegation_bot.github_actions_apply import (
     build_actions_apply_report,
     render_actions_apply_report,
 )
+from delegation_bot.github_app_plan import (
+    MODE_CHOICES,
+    build_github_app_plan,
+    render_github_app_plan,
+    write_github_app_plan,
+)
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
     apply_github_issue_drafts,
@@ -814,6 +820,29 @@ def cmd_release_check(args: argparse.Namespace) -> int:
     return 1 if report.failed_count else 0
 
 
+def cmd_github_app_plan(args: argparse.Namespace) -> int:
+    try:
+        plan = build_github_app_plan(args.mode, repository=args.repository)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.output:
+        try:
+            write_github_app_plan(plan, Path(args.output))
+        except OSError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(json.dumps(plan.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_github_app_plan(plan))
+        if args.output:
+            print(f"\nPlan written: {args.output}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"DelegationHQ {__version__}")
@@ -1014,6 +1043,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     release_check.add_argument("--json", action="store_true", help="Print release readiness as JSON.")
     release_check.set_defaults(func=cmd_release_check)
+
+    github_app_plan = subparsers.add_parser(
+        "github-app-plan",
+        help="Plan GitHub App permissions and installation-token shape without live auth.",
+    )
+    github_app_plan.add_argument(
+        "--mode",
+        choices=MODE_CHOICES,
+        default="read-only",
+        help="Permission mode to plan.",
+    )
+    github_app_plan.add_argument("--repository", help="Optional owner/name repository to scope the token request.")
+    github_app_plan.add_argument("--output", help="Write the permission plan JSON to this path.")
+    github_app_plan.add_argument("--json", action="store_true", help="Print the permission plan as JSON.")
+    github_app_plan.set_defaults(func=cmd_github_app_plan)
 
     apply_issues = subparsers.add_parser(
         "apply-issues",

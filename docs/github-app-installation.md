@@ -120,13 +120,40 @@ The future hosted service should:
 The local CLI can continue supporting `GITHUB_TOKEN` for development. The app
 path should be added when the hosted or team workflow needs it.
 
+GitHub installation access tokens are short-lived. The token request can also
+be narrowed to specific repositories and permissions, but it cannot exceed the
+repositories or permissions granted to the app installation.
+
+## Local Permission Plan
+
+Use the local planner before building live GitHub App auth:
+
+```bash
+delegation github-app-plan --mode read-only
+delegation github-app-plan --mode issue-write --repository AmmarAlBalkhi/delegation-bot
+delegation github-app-plan --mode actions-control --output .delegation/github-app-plan.json
+```
+
+The command does not create a GitHub App, mint a token, call GitHub, or write to
+a repository. It gives maintainers a permission plan and installation-token
+request shape that can be reviewed before implementation.
+
+Modes:
+
+- `read-only`: metadata, contents, issues, pull requests, actions, and checks
+  read access for imported evidence and dashboards.
+- `issue-write`: same read access, with issue write access for approved
+  feedback drafts.
+- `actions-control`: same read access, with actions write access for approved
+  workflow dispatch or cancellation.
+
 ## CLI And Dashboard UX
 
 Possible future commands:
 
 ```bash
 delegation doctor --github-app
-delegation app permissions
+delegation github-app-plan --mode issue-write
 delegation app preview-install
 ```
 

@@ -1087,3 +1087,27 @@ PATH, and running `doctor --skip-github` as a smoke check.
 
 Follow-up: Run the build and install scripts on a clean Windows release host
 before publishing a public `.exe`.
+
+## 2026-07-07: Add GitHub App Scoped Token Planning
+
+Decision: Add `delegation github-app-plan` for local GitHub App permission and
+installation-token planning.
+
+Why: Real users should not need broad personal tokens for live actions. Before
+DelegationHQ implements hosted GitHub App auth, maintainers need a concrete,
+reviewable plan for read-only, issue-write, and actions-control modes. This
+keeps GitHub auth inside the same control-plane loop: plan first, gate later,
+record everything.
+
+Guardrails:
+
+- the command does not create a GitHub App
+- the command does not mint tokens, call GitHub, or write to repositories
+- issue-write and actions-control stay separate modes
+- a GitHub App token never bypasses dry-runs, policy gates, confirmation
+  tokens, or ledger evidence
+- private keys, webhook secrets, and installation tokens stay outside the
+  repository
+
+Follow-up: Choose the first hosted implementation target, likely read-only or
+issue-write, after the local preview flow feels clear.

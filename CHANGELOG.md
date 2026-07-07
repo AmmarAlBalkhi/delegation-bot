@@ -126,3 +126,6 @@ The project is currently pre-release.
 - Added `delegation release-check` for local alpha release-readiness reports
   across package metadata, docs, legal files, QA evidence, Windows packaging,
   git state, and standalone artifacts.
+- Added `delegation github-app-plan` for local GitHub App permission and scoped
+  installation-token planning across read-only, issue-write, and
+  actions-control modes.
