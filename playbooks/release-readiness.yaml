@@ -133,6 +133,24 @@ executors:
       repository: AmmarAlBalkhi/delegation-bot
       workflow_ref: .github/workflows/tests.yml
 
+  - id: release_evidence_recorder
+    kind: recorder
+    adapter: runprint.recorder
+    purpose: Plan the release evidence bundle before publication is considered.
+    inputs:
+      workspace: AmmarAlBalkhi/delegation-bot
+      scope: Record release ledger, QA evidence, changelog proof, and approval signoff.
+      artifacts:
+        - id: release-ledger
+          kind: jsonl
+          path: .delegation/release-readiness.jsonl
+        - id: qa-report
+          kind: report
+          path: dist/release-rehearsal/report.json
+        - id: changelog
+          kind: markdown
+          path: CHANGELOG.md
+
   - id: maintainer_signoff
     kind: human
     adapter: human.approval
@@ -174,6 +192,7 @@ policies:
 outputs:
   - type: github.issue
   - type: test_result
+  - type: evidence_bundle
   - type: github.pull_request
   - type: approval
   - type: run_ledger

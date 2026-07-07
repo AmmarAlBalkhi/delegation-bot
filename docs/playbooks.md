@@ -101,6 +101,7 @@ It plans:
 - a local risk-classifier step
 - a Codex thread handoff for scoped release doc or metadata fixes
 - a GitHub Actions verification step
+- a RunPrint recorder step for release evidence bundle planning
 - a human approval checkpoint
 - evals for adapter evidence, approvals, duplicates, and test evidence before
   pull request readiness

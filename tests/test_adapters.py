@@ -16,13 +16,17 @@ class AdapterContractTests(unittest.TestCase):
         self.assertIn("openai.agents", ids)
         self.assertIn("anthropic.messages", ids)
         self.assertIn("claude.code", ids)
+        self.assertIn("runprint.recorder", ids)
         self.assertIn("sample.echo", ids)
 
         for contract in contracts:
             data = contract.to_dict()
             self.assertEqual(data["id"], contract.id)
             self.assertIn(contract.risk, {"low", "medium", "high"})
-            self.assertIn(contract.kind, {"workflow", "ai_harness", "model_provider", "tool", "ml_model", "human"})
+            self.assertIn(
+                contract.kind,
+                {"workflow", "ai_harness", "model_provider", "tool", "ml_model", "recorder", "human"},
+            )
             self.assertTrue(contract.inputs)
             self.assertTrue(contract.outputs)
             self.assertTrue(contract.planned_event_types)

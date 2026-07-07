@@ -4,8 +4,9 @@ Adapter contracts are the socket shape for external execution systems.
 
 Simple version: before DelegationHQ talks to Codex, Claude/Anthropic, GitHub
 Actions, MCP, OpenAI Agents SDK, LangGraph, OpenClaw, Hermes-style agents, or a
-human approver, it should know what that adapter expects, what it can return,
-what risk level it carries, and what evidence must appear in the run ledger.
+RunPrint-style recorder, or a human approver, it should know what that adapter
+expects, what it can return, what risk level it carries, and what evidence must
+appear in the run ledger.
 
 This is the foundation for becoming a harness for AI harnesses.
 
@@ -27,7 +28,7 @@ Each adapter contract declares:
 
 - `id`: stable adapter id, such as `codex.thread`
 - `kind`: broad family, such as `ai_harness`, `model_provider`, `workflow`,
-  `tool`, `ml_model`, or `human`
+  `tool`, `ml_model`, `recorder`, or `human`
 - `description`: what the adapter is for
 - `risk`: `low`, `medium`, or `high`
 - `approval_required_for`: policy approval names that can gate the adapter
@@ -74,6 +75,7 @@ execution adapters:
 - `github.issue`
 - `github.actions`
 - `sample.echo`
+- `runprint.recorder`
 - `codex.thread`
 - `openai.agents`
 - `anthropic.messages`
@@ -93,6 +95,11 @@ implementations. They are not live integrations yet.
 live gate through `delegation apply-actions`. Dispatch requires explicit
 confirmation, token evidence, repository policy, ledger evidence, and approval
 evidence when policy requires it.
+
+`runprint.recorder` plans the evidence bundle a recorder should capture for a
+mission. It is dry-run only today: it creates `recording_id`,
+`evidence_bundle_id`, and `artifact_manifest` evidence without reading files or
+calling RunPrint.
 
 `mcp.tool` now includes `permission_scope`, `risk_level`, and
 `prompt_injection_risk` evidence so tool calls can be reviewed before any live

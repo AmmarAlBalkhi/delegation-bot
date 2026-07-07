@@ -266,6 +266,127 @@ class SampleEchoDryRunAdapter(ContractBackedDryRunAdapter):
         return hashlib.sha256(raw).hexdigest()[:16]
 
 
+class RunPrintRecorderDryRunAdapter(ContractBackedDryRunAdapter):
+    """Dry-run adapter for planning RunPrint evidence capture."""
+
+    def __init__(self) -> None:
+        super().__init__(_contract_or_raise("runprint.recorder"))
+
+    def recording_id(self, request: AdapterRequest) -> str:
+        workspace = _string_input(request, "workspace", "unknown-workspace")
+        scope = _string_input(request, "scope", request.objective)
+        artifacts = _input_value(request, "artifacts", [])
+        return f"rec_{_json_digest(self.contract.id, request.action_id, workspace, scope, artifacts, length=20)}"
+
+    def evidence_bundle_id(self, request: AdapterRequest) -> str:
+        return f"bundle_{_json_digest(self.contract.id, self.recording_id(request), request.inputs, length=20)}"
+
+    def artifact_manifest(self, request: AdapterRequest) -> list[JsonMap]:
+        artifacts = _input_value(request, "artifacts", [])
+        if not isinstance(artifacts, list) or not artifacts:
+            return [
+                {
+                    "id": "dry-run:no-artifacts-selected",
+                    "kind": "placeholder",
+                    "required": True,
+                }
+            ]
+
+        manifest: list[JsonMap] = []
+        for index, artifact in enumerate(artifacts, start=1):
+            if isinstance(artifact, dict):
+                artifact_id = str(artifact.get("id") or artifact.get("path") or artifact.get("name") or f"artifact-{index}")
+                manifest.append(
+                    {
+                        "id": artifact_id,
+                        "kind": str(artifact.get("kind") or artifact.get("type") or "artifact"),
+                        "path": str(artifact.get("path") or artifact_id),
+                        "required": bool(artifact.get("required", True)),
+                    }
+                )
+            else:
+                artifact_id = str(artifact)
+                manifest.append(
+                    {
+                        "id": artifact_id,
+                        "kind": "artifact",
+                        "path": artifact_id,
+                        "required": True,
+                    }
+                )
+        return manifest
+
+    def build_outputs(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> JsonMap:
+        workspace = _string_input(request, "workspace", "unknown-workspace")
+        scope = _string_input(request, "scope", request.objective)
+        manifest = self.artifact_manifest(request)
+        recording_id = self.recording_id(request)
+        evidence_bundle_id = self.evidence_bundle_id(request)
+        return {
+            "recording_session": {
+                "recording_id": recording_id,
+                "workspace": workspace,
+                "scope": scope[:240],
+                "recorder": "runprint",
+                "status": "planned" if not missing_inputs else "blocked",
+                "dry_run": True,
+                "missing_inputs": list(missing_inputs),
+            },
+            "evidence_bundle": {
+                "evidence_bundle_id": evidence_bundle_id,
+                "recording_id": recording_id,
+                "artifact_manifest": manifest,
+                "artifact_count": len(manifest),
+                "ledger_link_required": True,
+                "dry_run": True,
+                "missing_inputs": list(missing_inputs),
+            },
+        }
+
+    def build_evidence(self, request: AdapterRequest, missing_inputs: tuple[str, ...]) -> JsonMap:
+        evidence: JsonMap = {
+            "recording_id": self.recording_id(request),
+            "evidence_bundle_id": self.evidence_bundle_id(request),
+            "artifact_manifest": self.artifact_manifest(request),
+        }
+        if missing_inputs:
+            evidence["missing_inputs"] = list(missing_inputs)
+        return evidence
+
+    def build_events(
+        self,
+        request: AdapterRequest,
+        status: str,
+        missing_inputs: tuple[str, ...],
+        outputs: JsonMap,
+        evidence: JsonMap,
+    ) -> tuple[AdapterEvent, ...]:
+        session = outputs["recording_session"]
+        bundle = outputs["evidence_bundle"]
+        base_details = {
+            "adapter": self.contract.id,
+            "contract_kind": self.contract.kind,
+            "risk": self.contract.risk,
+            "dry_run": True,
+            "recorder": "runprint",
+            "recording_id": session["recording_id"],
+            "evidence_bundle_id": bundle["evidence_bundle_id"],
+            "artifact_count": bundle["artifact_count"],
+            "missing_inputs": list(missing_inputs),
+            "evidence_keys": sorted(evidence),
+        }
+        return tuple(
+            AdapterEvent(
+                type=event_type,
+                status=status,
+                action_id=request.action_id,
+                message=f"Dry-run planned RunPrint recorder event `{event_type}`.",
+                details=base_details,
+            )
+            for event_type in self.contract.planned_event_types
+        )
+
+
 class GitHubActionsDryRunAdapter(ContractBackedDryRunAdapter):
     """Dry-run adapter for planning a GitHub Actions workflow run."""
 
@@ -904,6 +1025,7 @@ BUILT_IN_DRY_RUN_ADAPTERS: dict[str, Adapter] = {
     "mcp.tool": McpToolDryRunAdapter(),
     "openai.agents": OpenAIAgentsDryRunAdapter(),
     "openclaw.gateway": OpenClawGatewayDryRunAdapter(),
+    "runprint.recorder": RunPrintRecorderDryRunAdapter(),
     "sample.echo": SampleEchoDryRunAdapter(),
 }
 

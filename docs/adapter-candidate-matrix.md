@@ -36,14 +36,15 @@ Good adapter candidates have:
 | --- | --- | --- | --- | --- | --- |
 | 1 | `mcp.tool` | MCP is becoming the common tool/data connector layer for agent apps. | Better server/tool capability evidence, permission scope, and prompt-injection notes. | high | [MCP intro](https://modelcontextprotocol.io/docs/getting-started/intro) |
 | 2 | `github.actions` | GitHub Actions is the repo-native execution and CI surface. | Read workflow/job intent, require approval for dispatch, record run URL. | medium | [GitHub Actions docs](https://docs.github.com/actions) |
-| 3 | `claude.code` / `anthropic.messages` | Claude Code is a major coding-agent workflow, and Anthropic exposes agent/tool patterns. | Plan coding-agent handoff, capture permission mode, evidence path, and model context. | high | [Claude Code repo](https://github.com/anthropics/claude-code), [Anthropic MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) |
-| 4 | `openai.agents` | OpenAI Agents SDK has first-party agent, handoff, tool, guardrail, and tracing concepts. | Map agents, tools, guardrails, handoffs, and trace ids into ledger evidence. | medium | [OpenAI Agents guide](https://developers.openai.com/api/docs/guides/agents), [Agents SDK docs](https://openai.github.io/openai-agents-python/) |
-| 5 | `langgraph.graph` | LangGraph is strong where durability, human-in-the-loop, and stateful workflows matter. | Capture graph id, checkpoint id, interrupted state, and resume policy. | medium | [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview) |
-| 6 | `local.classifier` / `ollama.model` | Local models support privacy-preserving policy checks and low-cost suggestions. | Keep local model suggestions and classifier explanations opt-in and non-authoritative. | medium | [Ollama API](https://docs.ollama.com/api/introduction), [Ollama tool calling](https://docs.ollama.com/capabilities/tool-calling) |
-| 7 | `crewai.crew` | CrewAI has a popular multi-agent mental model: crews, agents, tasks, flows. | Dry-run crew/task map and expected artifacts. | medium | [CrewAI docs](https://docs.crewai.com/) |
-| 8 | `microsoft.agent_framework` | Microsoft is moving AutoGen and Semantic Kernel concepts into a newer Agent Framework. | Track as a successor path for `autogen`-style multi-agent orchestration. | medium | [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/overview/), [AutoGen research](https://www.microsoft.com/en-us/research/project/autogen/) |
-| 9 | `linear.issue` / `jira.issue` | Teams live in issue trackers; GitHub Issues will not be enough for companies. | Preview-first issue draft and update evidence. | low | Future enterprise research |
-| 10 | `slack.message` | Human approval and visibility often happen in chat. | Draft-only message preview with approval links and ledger references. | high | Future enterprise research |
+| 3 | `runprint.recorder` | Recorder evidence makes DelegationHQ more than a planner: it can require proof bundles before promotion. | Plan artifact manifests, bundle IDs, and recorder ledger evidence before live capture. | medium | DelegationHQ ecosystem |
+| 4 | `claude.code` / `anthropic.messages` | Claude Code is a major coding-agent workflow, and Anthropic exposes agent/tool patterns. | Plan coding-agent handoff, capture permission mode, evidence path, and model context. | high | [Claude Code repo](https://github.com/anthropics/claude-code), [Anthropic MCP connector](https://platform.claude.com/docs/en/agents-and-tools/mcp-connector) |
+| 5 | `openai.agents` | OpenAI Agents SDK has first-party agent, handoff, tool, guardrail, and tracing concepts. | Map agents, tools, guardrails, handoffs, and trace ids into ledger evidence. | medium | [OpenAI Agents guide](https://developers.openai.com/api/docs/guides/agents), [Agents SDK docs](https://openai.github.io/openai-agents-python/) |
+| 6 | `langgraph.graph` | LangGraph is strong where durability, human-in-the-loop, and stateful workflows matter. | Capture graph id, checkpoint id, interrupted state, and resume policy. | medium | [LangGraph overview](https://docs.langchain.com/oss/python/langgraph/overview) |
+| 7 | `local.classifier` / `ollama.model` | Local models support privacy-preserving policy checks and low-cost suggestions. | Keep local model suggestions and classifier explanations opt-in and non-authoritative. | medium | [Ollama API](https://docs.ollama.com/api/introduction), [Ollama tool calling](https://docs.ollama.com/capabilities/tool-calling) |
+| 8 | `crewai.crew` | CrewAI has a popular multi-agent mental model: crews, agents, tasks, flows. | Dry-run crew/task map and expected artifacts. | medium | [CrewAI docs](https://docs.crewai.com/) |
+| 9 | `microsoft.agent_framework` | Microsoft is moving AutoGen and Semantic Kernel concepts into a newer Agent Framework. | Track as a successor path for `autogen`-style multi-agent orchestration. | medium | [Microsoft Agent Framework](https://learn.microsoft.com/en-us/agent-framework/overview/), [AutoGen research](https://www.microsoft.com/en-us/research/project/autogen/) |
+| 10 | `linear.issue` / `jira.issue` | Teams live in issue trackers; GitHub Issues will not be enough for companies. | Preview-first issue draft and update evidence. | low | Future enterprise research |
+| 11 | `slack.message` | Human approval and visibility often happen in chat. | Draft-only message preview with approval links and ledger references. | high | Future enterprise research |
 
 ## What To Build First
 
@@ -51,7 +52,8 @@ Build in this order:
 
 1. Improve adapters already in the repo before adding many new names.
 2. Add stronger evidence contracts for `mcp.tool`, `github.actions`,
-   `openai.agents`, `anthropic.messages`, `claude.code`, and `langgraph.graph`.
+   `runprint.recorder`, `openai.agents`, `anthropic.messages`, `claude.code`,
+   and `langgraph.graph`.
 3. Add one new adapter only when it proves a new category: local model,
    multi-agent crew, enterprise tracker, or team chat.
 4. Keep every new adapter dry-run first.

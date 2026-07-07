@@ -70,6 +70,17 @@ BUILT_IN_ADAPTERS: dict[str, AdapterContract] = {
         planned_event_types=("adapter.sample.echo.prepare", "sample.echo.planned"),
         required_evidence=("echo_hash",),
     ),
+    "runprint.recorder": AdapterContract(
+        id="runprint.recorder",
+        kind="recorder",
+        description="Plan a RunPrint evidence recording session for delegated work.",
+        risk="medium",
+        approval_required_for=("evidence_capture",),
+        inputs=("workspace", "scope", "artifacts"),
+        outputs=("recording_session", "evidence_bundle", "run_ledger"),
+        planned_event_types=("adapter.runprint.recorder.prepare", "runprint.recording.planned"),
+        required_evidence=("recording_id", "evidence_bundle_id", "artifact_manifest"),
+    ),
     "codex.thread": AdapterContract(
         id="codex.thread",
         kind="ai_harness",

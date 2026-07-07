@@ -97,7 +97,7 @@ def build_demo_manifest(*, repository: str = DEFAULT_REPOSITORY, owner: str = "m
         "version": "delegation.ai/v1",
         "id": "demo-ai-mission-control",
         "name": "Demo: AI Mission Control",
-        "objective": "Show a safe agentic mission with model planning, MCP tool policy, GitHub workflow preview, ledger evidence, and evals.",
+        "objective": "Show a safe agentic mission with model planning, MCP tool policy, GitHub workflow preview, recorder evidence, and evals.",
         "triggers": [{"type": "manual"}],
         "owners": {"accountable": owner, "reviewers": [owner]},
         "models": [
@@ -204,6 +204,21 @@ def build_demo_manifest(*, repository: str = DEFAULT_REPOSITORY, owner: str = "m
                 },
             },
             {
+                "id": "evidence_recorder",
+                "kind": "recorder",
+                "adapter": "runprint.recorder",
+                "purpose": "Preview the evidence bundle RunPrint would capture for the mission.",
+                "inputs": {
+                    "workspace": repository,
+                    "scope": "Record dry-run ledger, eval report, workflow preview, and approval evidence.",
+                    "artifacts": [
+                        {"id": "run-ledger", "kind": "jsonl", "path": ".delegation/demo.jsonl"},
+                        {"id": "eval-report", "kind": "report", "path": ".delegation/evals.json"},
+                        {"id": "workflow-preview", "kind": "url", "path": "github.actions.preview"},
+                    ],
+                },
+            },
+            {
                 "id": "risk_classifier",
                 "kind": "ml_model",
                 "adapter": "local.classifier",
@@ -241,6 +256,7 @@ def build_demo_manifest(*, repository: str = DEFAULT_REPOSITORY, owner: str = "m
             {"type": "model_response"},
             {"type": "tool_result"},
             {"type": "test_result"},
+            {"type": "evidence_bundle"},
             {"type": "approval"},
             {"type": "run_ledger"},
             {"type": "eval_report"},
@@ -362,6 +378,7 @@ def render_demo_report(report: DemoReport) -> str:
             "- AI work can be planned before it runs.",
             "- MCP tools can be allowlisted and risk-checked.",
             "- GitHub Actions can be previewed before dispatch.",
+            "- Recorder evidence can be planned before proof capture.",
             "- Ledger evidence and evals decide what earns trust.",
             "",
             "Next:",

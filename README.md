@@ -7,7 +7,7 @@ keep evidence, run evals, and promote agents only when trust is earned.
 
 The big idea is a **harness for AI harnesses**: a repo-native layer above Codex,
 Claude Code, Anthropic Claude, OpenAI Agents SDK, LangGraph, MCP tools, GitHub
-Actions, local scripts, and human review.
+Actions, RunPrint evidence recording, local scripts, and human review.
 
 ```text
 AI proposes.
@@ -38,8 +38,8 @@ delegation demo
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
-GitHub Actions preview, and evals. It does not write to GitHub, call a model, or
-run an agent.
+GitHub Actions preview, recorder evidence, and evals. It does not write to
+GitHub, call a model, run an agent, or capture files.
 
 Want to start your own repo?
 
@@ -84,8 +84,8 @@ See [`docs/windows-exe.md`](docs/windows-exe.md) before publishing any public
 - Compiles a Harnessfile into a dry-run execution plan.
 - Routes work through adapter contracts such as `github.issue`, `mcp.tool`,
   `openai.agents`, `anthropic.messages`, `claude.code`, `langgraph.graph`,
-  `github.actions`, `human.approval`, `openclaw.gateway`, `hermes.agent`, and
-  local classifiers.
+  `github.actions`, `runprint.recorder`, `human.approval`,
+  `openclaw.gateway`, `hermes.agent`, and local classifiers.
 - Writes a run ledger so every plan, adapter result, eval, approval, and future
   live action has evidence.
 - Runs evals for duplicate issue markers, missing adapter evidence, risky
@@ -175,6 +175,7 @@ DelegationHQ is pre-release, but the foundation is working:
 - evals, feedback drafts, and promotion reports
 - preview-first live GitHub Issue apply
 - preview-first, gated live GitHub Actions dispatch with workflow preflight
+- dry-run RunPrint recorder evidence bundle planning
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
 - `explain-policy` for low-friction classifier explanations that do not grant authority
@@ -217,6 +218,7 @@ Trust and operations:
 - [GitHub Issue apply](docs/github-issue-apply.md)
 - [GitHub Actions apply](docs/github-actions-apply.md)
 - [MCP tool risk](docs/mcp-tool-risk.md)
+- [RunPrint recorder boundary](docs/runprint-recorder.md)
 - [Local classifier policy](docs/local-classifier-policy.md)
 - [Eval-to-issue feedback](docs/eval-to-issue-feedback.md)
 - [Ledger viewer](docs/ledger-viewer.md)

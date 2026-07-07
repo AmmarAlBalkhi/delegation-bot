@@ -12,7 +12,7 @@ from delegation_bot.adapters import AdapterContract
 
 JsonMap = dict[str, T.Any]
 
-VALID_ADAPTER_KINDS = {"workflow", "ai_harness", "model_provider", "tool", "ml_model", "human"}
+VALID_ADAPTER_KINDS = {"workflow", "ai_harness", "model_provider", "tool", "ml_model", "recorder", "human"}
 VALID_ADAPTER_RISKS = {"low", "medium", "high"}
 VALID_RESULT_STATUSES = {"planned", "blocked", "running", "succeeded", "failed", "skipped"}
 

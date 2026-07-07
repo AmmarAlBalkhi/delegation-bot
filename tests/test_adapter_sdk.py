@@ -231,6 +231,32 @@ class AdapterSdkTests(unittest.TestCase):
         self.assertEqual(result.outputs["classification"]["recommended_gate"], "none")
         self.assertEqual(result.evidence["policy_profile"], "delegation.default")
 
+    def test_runprint_recorder_adapter_plans_evidence_bundle(self) -> None:
+        contract = get_adapter_contract("runprint.recorder")
+        adapter = get_builtin_adapter("runprint.recorder")
+        self.assertIsNotNone(contract)
+        self.assertIsNotNone(adapter)
+        request = adapter_request(
+            "runprint.recorder",
+            workspace="AmmarAlBalkhi/delegation-bot",
+            scope="Capture proof for the dry-run mission.",
+            artifacts=[
+                {"id": "ledger", "kind": "jsonl", "path": ".delegation/latest.jsonl"},
+                {"id": "eval-report", "kind": "report", "path": ".delegation/evals.json"},
+            ],
+        )
+
+        result = adapter.plan(request) if adapter else None
+        errors = validate_adapter_result(contract, result) if contract and result else ["missing result"]
+
+        self.assertEqual(errors, [])
+        self.assertEqual(result.status if result else "", "planned")
+        self.assertEqual(result.outputs["recording_session"]["recorder"], "runprint")
+        self.assertEqual(result.outputs["evidence_bundle"]["artifact_count"], 2)
+        self.assertIn("recording_id", result.evidence)
+        self.assertIn("evidence_bundle_id", result.evidence)
+        self.assertEqual(result.evidence["artifact_manifest"][0]["id"], "ledger")
+
     def test_new_harness_dry_run_adapters_satisfy_contracts_without_network(self) -> None:
         requests = {
             "mcp.tool": adapter_request(
@@ -267,6 +293,15 @@ class AdapterSdkTests(unittest.TestCase):
                 objective="Review proposed code changes.",
                 repository="AmmarAlBalkhi/delegation-bot",
                 allowed_files=["delegation_bot/**", "tests/**"],
+            ),
+            "runprint.recorder": adapter_request(
+                "runprint.recorder",
+                workspace="AmmarAlBalkhi/delegation-bot",
+                scope="Capture proof for a delegated coding mission.",
+                artifacts=[
+                    {"id": "ledger", "kind": "jsonl", "path": ".delegation/latest.jsonl"},
+                    {"id": "patch", "kind": "diff", "path": ".delegation/patch.diff"},
+                ],
             ),
             "local.classifier": adapter_request(
                 "local.classifier",
@@ -351,6 +386,7 @@ class AdapterSdkTests(unittest.TestCase):
                 "mcp.tool",
                 "openai.agents",
                 "openclaw.gateway",
+                "runprint.recorder",
                 "sample.echo",
             ],
         )

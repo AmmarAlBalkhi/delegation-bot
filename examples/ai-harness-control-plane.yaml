@@ -203,6 +203,24 @@ executors:
       repository: AmmarAlBalkhi/delegation-bot
       workflow_ref: .github/workflows/tests.yml
 
+  - id: evidence_recorder
+    kind: recorder
+    adapter: runprint.recorder
+    purpose: Plan the RunPrint evidence bundle before proof capture.
+    inputs:
+      workspace: AmmarAlBalkhi/delegation-bot
+      scope: Record dry-run ledger, evals, workflow preview, and approval evidence.
+      artifacts:
+        - id: run-ledger
+          kind: jsonl
+          path: .delegation/demo.jsonl
+        - id: eval-report
+          kind: report
+          path: .delegation/evals.json
+        - id: workflow-preview
+          kind: url
+          path: github.actions.preview
+
   - id: graph_orchestrator
     kind: workflow
     adapter: langgraph.graph
@@ -287,6 +305,7 @@ outputs:
   - type: model_response
   - type: tool_result
   - type: test_result
+  - type: evidence_bundle
   - type: graph_state
   - type: checkpoint
   - type: approval

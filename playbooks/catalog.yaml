@@ -77,6 +77,7 @@ playbooks:
       - local.classifier
       - codex.thread
       - github.actions
+      - runprint.recorder
       - human.approval
     expected_eval_states:
       ledger_is_valid: passed

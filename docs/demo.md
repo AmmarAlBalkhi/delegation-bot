@@ -8,7 +8,8 @@ Simple version:
 AI proposes.
 Bot dry-runs.
 Policy gates check risk.
-Ledger keeps proof.
+Recorder plans proof.
+Ledger keeps receipts.
 Evals decide what earns trust.
 ```
 
@@ -27,7 +28,7 @@ Status: ready
 ```
 
 That one command writes `.delegation/demo.jsonl`, checks the MCP gate, previews
-GitHub Actions dispatch, and runs evals.
+GitHub Actions dispatch, plans a RunPrint-style evidence bundle, and runs evals.
 
 ## Run The Full Flagship Flow
 
@@ -51,8 +52,8 @@ Status: ready
 ```
 
 That proves the mission did not only create a plan. It also declared which MCP
-server and tool are allowed, checked the ledger evidence, and confirmed the tool
-risk gate before anything live ran.
+server and tool are allowed, planned recorder evidence, checked the ledger, and
+confirmed the tool risk gate before anything live ran.
 
 After `apply-actions`, the important idea is preview-first execution:
 
@@ -67,6 +68,7 @@ That is the product: powerful AI work with visible control before power is used.
 - The Harnessfile describes a mission, not one brittle script.
 - The plan shows agents, models, workflows, tools, policies, outputs, and evals.
 - The ledger records evidence without running live agents or tools.
+- The recorder step plans the proof bundle before any evidence capture happens.
 - `mcp-gate` checks MCP server/tool allowlists and tool risk evidence.
 - `apply-actions` previews workflow dispatch by default and can dispatch only with explicit live gates.
 - `explain-policy` turns classifier evidence into plain language without giving the model authority.
@@ -80,6 +82,7 @@ DelegationHQ should make powerful AI work feel inspectable:
 
 ```text
 Before the AI does the thing, you can see the thing.
+Before proof is captured, you can see what proof is needed.
 Before tools run, you can see the power they ask for.
 Before trust increases, evidence must pass.
 ```

@@ -63,6 +63,14 @@ SAMPLE_INPUTS: dict[str, JsonMap] = {
         "repository": "AmmarAlBalkhi/delegation-bot",
         "allowed_files": ["delegation_bot/**", "tests/**"],
     },
+    "runprint.recorder": {
+        "workspace": "AmmarAlBalkhi/delegation-bot",
+        "scope": "Capture proof for a dry-run AI mission.",
+        "artifacts": [
+            {"id": "ledger", "kind": "jsonl", "path": ".delegation/latest.jsonl"},
+            {"id": "eval-report", "kind": "report", "path": ".delegation/evals.json"},
+        ],
+    },
     "local.classifier": {
         "plan": "Classify this dry-run mission for risk.",
         "policy": "Require approvals for writes, workflows, and agent execution.",

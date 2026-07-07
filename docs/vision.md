@@ -25,7 +25,7 @@ DelegationHQ becomes the repo-native operating layer above AI harnesses.
 
 It does not need to replace OpenAI Agents SDK, Anthropic Claude, Claude Code,
 LangGraph, GitHub Actions, MCP, or custom scripts. It should coordinate them
-through manifests, adapters, policies, and run ledgers.
+through manifests, adapters, policies, run ledgers, and recorder evidence.
 
 The central primitive is:
 
@@ -131,6 +131,8 @@ instead of being either fully blocked or fully trusted.
 
    A task is not done because an agent says it is done. It is done when the
    required artifacts, checks, links, screenshots, traces, or reviews exist.
+   RunPrint-style recording belongs here as proof capture, while DelegationHQ
+   remains the mission controller and evaluator.
 
 5. Evals from reality
 
