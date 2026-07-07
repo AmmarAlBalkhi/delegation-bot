@@ -129,3 +129,6 @@ The project is currently pre-release.
 - Added `delegation github-app-plan` for local GitHub App permission and scoped
   installation-token planning across read-only, issue-write, and
   actions-control modes.
+- Added `delegation cancel-actions` for preview-first GitHub Actions
+  cancellation, with exact confirmation, force-cancel gating, token
+  diagnostics, optional ledger evidence, and fake-client coverage.

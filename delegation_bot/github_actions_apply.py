@@ -17,6 +17,8 @@ from delegation_bot.harness_plan import ExecutionPlan, LedgerEvent, PlanAction
 
 JsonMap = dict[str, T.Any]
 ACTIONS_CONFIRMATION = "LIVE_GITHUB_ACTIONS"
+CANCEL_CONFIRMATION = "CANCEL_GITHUB_ACTIONS"
+FORCE_CANCEL_CONFIRMATION = "FORCE_CANCEL_GITHUB_ACTIONS"
 GITHUB_API_VERSION = "2026-03-10"
 _SENSITIVE_INPUT_RE = re.compile(r"(token|secret|password|credential|api[_-]?key)", re.IGNORECASE)
 _ACTIVE_RUN_STATUSES = ("queued", "in_progress", "requested", "waiting", "pending")
@@ -132,6 +134,64 @@ class GitHubActionsDispatchResult:
 
 
 @dataclass(frozen=True)
+class GitHubActionsCancelTarget:
+    repository: str
+    run_id: str
+    force: bool = False
+
+    def to_dict(self) -> JsonMap:
+        details: JsonMap = {
+            "repository": self.repository,
+            "run_id": self.run_id,
+            "force": self.force,
+        }
+        try:
+            owner, repo = _split_repository(self.repository)
+        except GitHubActionsApplyError:
+            return details
+        suffix = "force-cancel" if self.force else "cancel"
+        details["api_path"] = f"/repos/{owner}/{repo}/actions/runs/{self.run_id}/{suffix}"
+        details["actions_url"] = f"https://github.com/{self.repository}/actions/runs/{self.run_id}"
+        return details
+
+
+@dataclass(frozen=True)
+class GitHubActionsCancelResult:
+    status_code: int
+    api_path: str
+    force: bool = False
+    raw: JsonMap = field(default_factory=dict)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "status_code": self.status_code,
+            "api_path": self.api_path,
+            "force": self.force,
+            "raw": self.raw,
+        }
+
+
+@dataclass(frozen=True)
+class GitHubTokenDiagnostics:
+    available: bool
+    oauth_scopes: tuple[str, ...] = ()
+    accepted_oauth_scopes: tuple[str, ...] = ()
+    rate_limit_remaining: str = ""
+    request_id: str = ""
+    note: str = ""
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "available": self.available,
+            "oauth_scopes": list(self.oauth_scopes),
+            "accepted_oauth_scopes": list(self.accepted_oauth_scopes),
+            "rate_limit_remaining": self.rate_limit_remaining,
+            "request_id": self.request_id,
+            "note": self.note,
+        }
+
+
+@dataclass(frozen=True)
 class GitHubActionsApplyReport:
     status: str
     apply: bool
@@ -156,8 +216,31 @@ class GitHubActionsApplyReport:
         }
 
 
+@dataclass(frozen=True)
+class GitHubActionsCancelReport:
+    status: str
+    apply: bool
+    target: GitHubActionsCancelTarget
+    gates: tuple[GitHubActionsGate, ...]
+    token_diagnostics: GitHubTokenDiagnostics | None = None
+
+    @property
+    def blocked(self) -> bool:
+        return any(gate.status == "blocked" for gate in self.gates)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "status": self.status,
+            "apply": self.apply,
+            "blocked": self.blocked,
+            "target": self.target.to_dict(),
+            "gates": [gate.to_dict() for gate in self.gates],
+            "token_diagnostics": self.token_diagnostics.to_dict() if self.token_diagnostics else None,
+        }
+
+
 class GitHubActionsClient:
-    """Tiny GitHub REST client for gated workflow dispatch."""
+    """Tiny GitHub REST client for gated workflow dispatch and cancellation."""
 
     def __init__(self, token: str, *, api_url: str = "https://api.github.com") -> None:
         if not token.strip():
@@ -253,6 +336,38 @@ class GitHubActionsClient:
             raw=data,
         )
 
+    def inspect_token(self) -> GitHubTokenDiagnostics:
+        requests = _requests_module()
+        response = requests.get(
+            f"{self.api_url}/rate_limit",
+            headers=self._headers(),
+            timeout=20,
+        )
+        _raise_for_response(response)
+        return _token_diagnostics_from_headers(getattr(response, "headers", {}))
+
+    def cancel_workflow_run(self, target: GitHubActionsCancelTarget) -> GitHubActionsCancelResult:
+        requests = _requests_module()
+        owner, repo = _split_repository(target.repository)
+        suffix = "force-cancel" if target.force else "cancel"
+        api_path = f"/repos/{owner}/{repo}/actions/runs/{target.run_id}/{suffix}"
+        response = requests.post(
+            f"{self.api_url}{api_path}",
+            headers=self._headers(),
+            timeout=20,
+        )
+        _raise_for_response(response)
+        raw: JsonMap = {}
+        if getattr(response, "text", ""):
+            parsed = response.json()
+            raw = parsed if isinstance(parsed, dict) else {}
+        return GitHubActionsCancelResult(
+            status_code=int(getattr(response, "status_code", 0) or 0),
+            api_path=api_path,
+            force=target.force,
+            raw=raw,
+        )
+
     def _headers(self) -> dict[str, str]:
         return {
             "Accept": "application/vnd.github+json",
@@ -302,6 +417,155 @@ def build_actions_apply_report(
         gates=gates,
         live_dispatch_supported=True,
     )
+
+
+def build_actions_cancel_report(
+    repository: str,
+    run_id: str,
+    *,
+    apply: bool = False,
+    force: bool = False,
+    confirmation: str | None = None,
+    token: str | None = None,
+    token_diagnostics: GitHubTokenDiagnostics | None = None,
+) -> GitHubActionsCancelReport:
+    target = GitHubActionsCancelTarget(repository=repository, run_id=run_id, force=force)
+    gates = tuple(
+        [
+            *_cancel_target_gates(target),
+            _cancel_intent_gate(apply, confirmation, force=force),
+            _token_gate(apply, token, operation="live workflow cancellation"),
+            _token_diagnostics_gate(token_diagnostics),
+        ]
+    )
+    blocked = any(gate.status == "blocked" for gate in gates)
+    status = "blocked" if blocked else "ready_to_cancel" if apply else "ready"
+    return GitHubActionsCancelReport(
+        status=status,
+        apply=apply,
+        target=target,
+        gates=gates,
+        token_diagnostics=token_diagnostics,
+    )
+
+
+def render_actions_cancel_report(report: GitHubActionsCancelReport) -> str:
+    if report.apply and report.target.force:
+        mode = "force-cancel requested"
+    elif report.apply:
+        mode = "live cancel requested"
+    else:
+        mode = "preview"
+    lines = [
+        "GitHub Actions Cancel Gate",
+        "",
+        f"Status: {report.status}",
+        f"Mode: {mode}",
+        f"Repository: {report.target.repository}",
+        f"Run id: {report.target.run_id}",
+        "",
+        "Gates:",
+    ]
+    for gate in report.gates:
+        prefix = "PASS" if gate.status == "passed" else "BLOCKED"
+        lines.append(f"- [{prefix}] {gate.id}: {gate.message}")
+        if gate.next_action:
+            lines.append(f"  next: {gate.next_action}")
+
+    lines.extend(["", "Target:"])
+    for key, value in report.target.to_dict().items():
+        lines.append(f"- {key}: {value}")
+
+    if report.token_diagnostics:
+        lines.extend(["", "Token diagnostics:"])
+        diagnostics = report.token_diagnostics.to_dict()
+        for key in ("oauth_scopes", "accepted_oauth_scopes", "rate_limit_remaining", "request_id", "note"):
+            value = diagnostics[key]
+            if value:
+                lines.append(f"- {key}: {value}")
+
+    lines.extend(["", "Next:"])
+    if report.blocked:
+        lines.append("Fix blocked gates, then rerun the cancel preview.")
+    elif report.apply:
+        lines.append("Live workflow cancellation is ready to execute.")
+    elif report.target.force:
+        lines.append(f"Rerun with `--apply --confirm {FORCE_CANCEL_CONFIRMATION}` to force-cancel this run.")
+    else:
+        lines.append(f"Rerun with `--apply --confirm {CANCEL_CONFIRMATION}` to cancel this run.")
+    return "\n".join(lines)
+
+
+def cancel_github_actions_run(
+    target: GitHubActionsCancelTarget,
+    *,
+    client: GitHubActionsClient,
+    run_id: str,
+    start_sequence: int,
+    timestamp: str | None = None,
+) -> list[LedgerEvent]:
+    event_time = timestamp or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    events: list[LedgerEvent] = []
+
+    def append_event(
+        event_type: str,
+        status: str,
+        message: str,
+        details: JsonMap | None = None,
+    ) -> None:
+        events.append(
+            LedgerEvent(
+                run_id=run_id,
+                sequence=start_sequence + len(events),
+                timestamp=event_time,
+                type=event_type,
+                status=status,
+                message=message,
+                action_id=None,
+                details=details or {},
+            )
+        )
+
+    base_details = {
+        "adapter": "github.actions",
+        "repository": target.repository,
+        "workflow_run_id": target.run_id,
+        "force": target.force,
+    }
+    append_event(
+        "github.actions.cancel.started",
+        "executed",
+        "Started GitHub Actions workflow cancellation.",
+        details=base_details,
+    )
+    try:
+        result = client.cancel_workflow_run(target)
+        append_event(
+            "github.actions.force_cancel.requested" if target.force else "github.actions.cancel.requested",
+            "executed",
+            "GitHub Actions workflow cancellation requested.",
+            details={**base_details, "result": result.to_dict(), "dry_run": False},
+        )
+        append_event(
+            "github.actions.cancel.completed",
+            "passed",
+            "GitHub Actions workflow cancellation completed.",
+            details={**base_details, "status_code": result.status_code},
+        )
+    except Exception as exc:  # pragma: no cover - network failures are environment-specific
+        append_event(
+            "github.actions.cancel.failed",
+            "failed",
+            "GitHub Actions workflow cancellation failed.",
+            details={**base_details, "error": str(exc)},
+        )
+        append_event(
+            "github.actions.cancel.completed",
+            "failed",
+            "GitHub Actions workflow cancellation completed with errors.",
+            details=base_details,
+        )
+    return events
 
 
 def render_actions_apply_report(report: GitHubActionsApplyReport) -> str:
@@ -744,16 +1008,111 @@ def _apply_intent_gate(apply: bool, confirmation: str | None) -> GitHubActionsGa
     )
 
 
-def _token_gate(apply: bool, token: str | None) -> GitHubActionsGate:
+def _token_gate(apply: bool, token: str | None, *, operation: str = "live dispatch") -> GitHubActionsGate:
     if not apply:
         return GitHubActionsGate("github.token", "passed", "GitHub token is not required for preview mode.")
     if token and token.strip():
-        return GitHubActionsGate("github.token", "passed", "GitHub token is available for live dispatch.")
+        return GitHubActionsGate("github.token", "passed", f"GitHub token is available for {operation}.")
     return GitHubActionsGate(
         "github.token",
         "blocked",
-        "GITHUB_TOKEN or GH_TOKEN is required for live dispatch.",
-        next_action="Set GITHUB_TOKEN before running live dispatch.",
+        f"GITHUB_TOKEN or GH_TOKEN is required for {operation}.",
+        next_action=f"Set GITHUB_TOKEN before running {operation}.",
+    )
+
+
+def _cancel_target_gates(target: GitHubActionsCancelTarget) -> list[GitHubActionsGate]:
+    gates: list[GitHubActionsGate] = []
+    try:
+        _split_repository(target.repository)
+    except GitHubActionsApplyError as exc:
+        gates.append(
+            GitHubActionsGate(
+                "cancel.repository",
+                "blocked",
+                str(exc),
+                next_action="Use repository form `owner/name`.",
+            )
+        )
+    else:
+        gates.append(
+            GitHubActionsGate(
+                "cancel.repository",
+                "passed",
+                f"Repository target is `{target.repository}`.",
+            )
+        )
+
+    if target.run_id.isdigit() and int(target.run_id) > 0:
+        gates.append(
+            GitHubActionsGate(
+                "cancel.run_id",
+                "passed",
+                f"Workflow run id `{target.run_id}` is valid.",
+            )
+        )
+    else:
+        gates.append(
+            GitHubActionsGate(
+                "cancel.run_id",
+                "blocked",
+                "Workflow run id must be a positive integer.",
+                next_action="Copy the numeric run id from the GitHub Actions run URL.",
+            )
+        )
+    return gates
+
+
+def _cancel_intent_gate(apply: bool, confirmation: str | None, *, force: bool) -> GitHubActionsGate:
+    if not apply:
+        return GitHubActionsGate("intent.cancel", "passed", "Preview mode only; no GitHub workflow run will be canceled.")
+    required = FORCE_CANCEL_CONFIRMATION if force else CANCEL_CONFIRMATION
+    if confirmation == required:
+        label = "force-cancel" if force else "cancel"
+        return GitHubActionsGate("intent.cancel", "passed", f"Explicit live {label} confirmation was provided.")
+    return GitHubActionsGate(
+        "intent.cancel",
+        "blocked",
+        "Live cancellation requires explicit confirmation.",
+        next_action=f"Use `--confirm {required}` with `--apply`.",
+    )
+
+
+def _token_diagnostics_gate(diagnostics: GitHubTokenDiagnostics | None) -> GitHubActionsGate:
+    if diagnostics is None:
+        return GitHubActionsGate(
+            "github.token_diagnostics",
+            "passed",
+            "Token scope diagnostics were not run before a confirmed live operation.",
+        )
+    if not diagnostics.available:
+        return GitHubActionsGate(
+            "github.token_diagnostics",
+            "blocked",
+            f"Token diagnostics failed: {diagnostics.note or 'unknown error'}.",
+            next_action="Check token validity and network access before live cancellation.",
+        )
+    if diagnostics.oauth_scopes:
+        scopes = ", ".join(diagnostics.oauth_scopes)
+        if "repo" in diagnostics.oauth_scopes:
+            return GitHubActionsGate(
+                "github.token_diagnostics",
+                "passed",
+                f"Classic OAuth scopes are visible and include repo: {scopes}.",
+            )
+        return GitHubActionsGate(
+            "github.token_diagnostics",
+            "passed",
+            f"Classic OAuth scopes are visible but do not include repo: {scopes}.",
+            next_action=(
+                "For private repositories, classic tokens usually need `repo`; "
+                "fine-grained tokens may not expose OAuth scopes."
+            ),
+        )
+    return GitHubActionsGate(
+        "github.token_diagnostics",
+        "passed",
+        "No OAuth scope header was returned; fine-grained or GitHub App tokens may omit classic scopes.",
     )
 
 
@@ -865,6 +1224,20 @@ def _cancellation_guidance(repository: str, result: GitHubActionsDispatchResult)
         "force_cancel_api_path": f"/repos/{owner}/{repo}/actions/runs/{run_id}/force-cancel",
         "note": "Use force-cancel only if normal cancel does not stop the run.",
     }
+
+
+def _token_diagnostics_from_headers(headers: T.Mapping[str, T.Any]) -> GitHubTokenDiagnostics:
+    return GitHubTokenDiagnostics(
+        available=True,
+        oauth_scopes=_split_header_list(str(headers.get("X-OAuth-Scopes") or "")),
+        accepted_oauth_scopes=_split_header_list(str(headers.get("X-Accepted-OAuth-Scopes") or "")),
+        rate_limit_remaining=str(headers.get("X-RateLimit-Remaining") or ""),
+        request_id=str(headers.get("X-GitHub-Request-Id") or ""),
+    )
+
+
+def _split_header_list(value: str) -> tuple[str, ...]:
+    return tuple(part.strip() for part in value.split(",") if part.strip())
 
 
 def _split_repository(repository: str) -> tuple[str, str]:

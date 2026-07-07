@@ -760,6 +760,31 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(status, 1)
         self.assertIn("GITHUB_TOKEN or GH_TOKEN is required", output.getvalue())
 
+    def test_cancel_actions_preview_is_safe(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["cancel-actions", "AmmarAlBalkhi/delegation-bot", "123"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("GitHub Actions Cancel Gate", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("CANCEL_GITHUB_ACTIONS", output.getvalue())
+
+    def test_cancel_actions_live_mode_blocks_without_token(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(
+                [
+                    "cancel-actions",
+                    "AmmarAlBalkhi/delegation-bot",
+                    "123",
+                    "--apply",
+                    "--confirm",
+                    "CANCEL_GITHUB_ACTIONS",
+                ]
+            )
+
+        self.assertEqual(status, 1)
+        self.assertIn("GITHUB_TOKEN or GH_TOKEN is required", output.getvalue())
+
     def test_mcp_gate_reports_ready_policy_for_example(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"

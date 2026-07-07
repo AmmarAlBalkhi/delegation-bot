@@ -40,8 +40,7 @@ Deep only when the user asks for depth.
    hosted GitHub App implementation target.
 4. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-5. Decide whether a dedicated `github.actions` cancel command belongs in the
-   next public batch.
+5. Add stronger cross-machine idempotency for `github.actions` live dispatch.
 
 ## Completed Recently
 
@@ -58,6 +57,9 @@ Deep only when the user asks for depth.
   through `--auth github-app`.
 - Added optional `delegation doctor --github-app` diagnostics for local GitHub
   App auth setup without minting a token.
+- Added `delegation cancel-actions` with preview-first GitHub Actions
+  cancellation, force-cancel confirmation, token diagnostics, optional ledger
+  evidence, and fake-client tests.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

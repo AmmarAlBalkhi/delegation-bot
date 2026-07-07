@@ -6,11 +6,19 @@ from pathlib import Path
 
 from delegation_bot.github_actions_apply import (
     ACTIONS_CONFIRMATION,
+    CANCEL_CONFIRMATION,
+    FORCE_CANCEL_CONFIRMATION,
     GitHubActionsDispatchResult,
+    GitHubActionsCancelTarget,
+    GitHubActionsCancelResult,
+    GitHubTokenDiagnostics,
     GitHubWorkflowMetadata,
     GitHubWorkflowRunSummary,
     apply_github_actions_drafts,
+    build_actions_cancel_report,
     build_actions_apply_report,
+    cancel_github_actions_run,
+    render_actions_cancel_report,
     render_actions_apply_report,
 )
 from delegation_bot.harness_manifest import load_manifest
@@ -70,6 +78,75 @@ class GitHubActionsApplyTests(unittest.TestCase):
         self.assertFalse(report.blocked)
         self.assertEqual(report.status, "ready_to_dispatch")
         self.assertTrue(report.live_dispatch_supported)
+
+    def test_cancel_actions_preview_is_ready_without_token(self) -> None:
+        report = build_actions_cancel_report("AmmarAlBalkhi/delegation-bot", "123")
+        text = render_actions_cancel_report(report)
+
+        self.assertFalse(report.blocked)
+        self.assertEqual(report.status, "ready")
+        self.assertIn("GitHub Actions Cancel Gate", text)
+        self.assertIn("CANCEL_GITHUB_ACTIONS", text)
+
+    def test_cancel_actions_blocks_live_without_confirmation(self) -> None:
+        report = build_actions_cancel_report(
+            "AmmarAlBalkhi/delegation-bot",
+            "123",
+            apply=True,
+            token="fake-token",
+        )
+
+        self.assertTrue(report.blocked)
+        self.assertIn("intent.cancel", {gate.id for gate in report.gates if gate.status == "blocked"})
+
+    def test_force_cancel_requires_force_confirmation(self) -> None:
+        blocked = build_actions_cancel_report(
+            "AmmarAlBalkhi/delegation-bot",
+            "123",
+            apply=True,
+            force=True,
+            confirmation=CANCEL_CONFIRMATION,
+            token="fake-token",
+        )
+        ready = build_actions_cancel_report(
+            "AmmarAlBalkhi/delegation-bot",
+            "123",
+            apply=True,
+            force=True,
+            confirmation=FORCE_CANCEL_CONFIRMATION,
+            token="fake-token",
+            token_diagnostics=GitHubTokenDiagnostics(available=True, oauth_scopes=("repo",)),
+        )
+
+        self.assertTrue(blocked.blocked)
+        self.assertFalse(ready.blocked)
+        self.assertEqual(ready.status, "ready_to_cancel")
+
+    def test_cancel_actions_writes_ledger_events(self) -> None:
+        class FakeClient:
+            def cancel_workflow_run(self, target):
+                return GitHubActionsCancelResult(
+                    status_code=202,
+                    api_path="/repos/AmmarAlBalkhi/delegation-bot/actions/runs/123/cancel",
+                )
+
+        target = GitHubActionsCancelTarget("AmmarAlBalkhi/delegation-bot", "123")
+
+        events = cancel_github_actions_run(
+            target,
+            client=FakeClient(),
+            run_id="cancel-run",
+            start_sequence=1,
+            timestamp="2026-07-07T00:00:00+00:00",
+        )
+
+        self.assertEqual([event.type for event in events], [
+            "github.actions.cancel.started",
+            "github.actions.cancel.requested",
+            "github.actions.cancel.completed",
+        ])
+        self.assertEqual(events[1].details["result"]["status_code"], 202)
+        self.assertEqual(events[-1].status, "passed")
 
     def test_live_report_runs_preflight_with_fake_client(self) -> None:
         class FakeClient:

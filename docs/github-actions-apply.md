@@ -99,6 +99,52 @@ The preview checks:
 - live preflight confirms the workflow is active before dispatch
 - live preflight blocks duplicate active `workflow_dispatch` runs on the same ref
 
+## Cancellation
+
+If a workflow run should stop, preview the cancellation first:
+
+```bash
+delegation cancel-actions AmmarAlBalkhi/delegation-bot 1234567890
+```
+
+Preview mode does not call GitHub and does not need a token. It checks the
+repository shape, run id, live intent, token requirement, and token diagnostics
+gate.
+
+Live cancellation requires exact intent:
+
+```bash
+delegation cancel-actions AmmarAlBalkhi/delegation-bot 1234567890 \
+  --apply \
+  --confirm CANCEL_GITHUB_ACTIONS \
+  --ledger .delegation/latest.jsonl
+```
+
+If normal cancellation does not stop a run, force-cancel is deliberately louder:
+
+```bash
+delegation cancel-actions AmmarAlBalkhi/delegation-bot 1234567890 \
+  --force \
+  --apply \
+  --confirm FORCE_CANCEL_GITHUB_ACTIONS \
+  --ledger .delegation/latest.jsonl
+```
+
+When a ledger path is provided, DelegationHQ appends cancellation evidence such
+as:
+
+```text
+github.actions.cancel.started
+github.actions.cancel.requested
+github.actions.cancel.completed
+```
+
+Token diagnostics call GitHub's rate-limit endpoint and report visible OAuth
+scope headers when GitHub returns them. Classic token scope headers are useful,
+but fine-grained personal tokens and GitHub App installation tokens may not show
+classic OAuth scopes. The final authority is still GitHub's response to the
+cancel endpoint.
+
 ## Fixture
 
 Inspect the no-network lifecycle:
@@ -128,9 +174,8 @@ Sources checked on 2026-07-06:
 
 The current client is still intentionally small. Future hardening should add:
 
-- token scope checks
 - stronger idempotency keys that survive across machines
-- a dedicated cancel command behind explicit confirmation
+- GitHub App installation tokens so users do not need broad personal tokens
 
 The correct behavior remains boring and safe: preview first, prove gates, then
 dispatch only when the operator asks for it.

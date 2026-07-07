@@ -67,6 +67,8 @@ The QA command currently checks:
 - GitHub Actions live preflight, duplicate-run blocking, and cancellation
   evidence coverage
 - GitHub App permission and scoped installation-token planning
+- GitHub Actions cancel preview, token diagnostics, and fake-client cancellation
+  evidence coverage
 - MCP tool risk evidence eval and fixture coverage
 - MCP tool policy gate coverage
 - local-classifier policy profile evidence

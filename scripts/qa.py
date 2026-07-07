@@ -312,6 +312,16 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "github actions cancel gate preview",
+            [
+                python,
+                "scripts/delegation.py",
+                "cancel-actions",
+                "AmmarAlBalkhi/delegation-bot",
+                "123",
+            ],
+        ),
+        Check(
             "MCP tool policy gate",
             [
                 python,
