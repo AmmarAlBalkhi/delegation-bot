@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from delegation_bot import __version__
-from delegation_bot.agent_gate import build_agent_gate_report
+from delegation_bot.agent_gate import build_agent_gate_audit_report, build_agent_gate_report
 from delegation_bot.agent_passports import build_agent_passport_report
 from delegation_bot.app_plan import build_app_plan
 from delegation_bot.dashboard import build_dashboard_snapshot
@@ -30,6 +30,7 @@ class AppStateLedger:
     event_count: int = 0
     dashboard: JsonMap | None = None
     evidence: JsonMap | None = None
+    agent_audit: JsonMap | None = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> JsonMap:
@@ -39,6 +40,7 @@ class AppStateLedger:
             "event_count": self.event_count,
             "dashboard": self.dashboard,
             "evidence": self.evidence,
+            "agent_audit": self.agent_audit,
             "warnings": list(self.warnings),
         }
 
@@ -154,6 +156,7 @@ def render_app_state(state: AppState) -> str:
     dashboard_counts = dashboard.get("counts") if isinstance(dashboard.get("counts"), dict) else {}
     mission = dashboard.get("mission") if isinstance(dashboard.get("mission"), dict) else {}
     evidence = state.ledger.evidence or {}
+    agent_audit = state.ledger.agent_audit or {}
     agents = state.agents
     agent_gate = state.agent_gate
 
@@ -207,6 +210,8 @@ def render_app_state(state: AppState) -> str:
 
     if evidence:
         lines.append(f"- evidence bundles: {evidence.get('bundle_count', 0)}")
+    if agent_audit:
+        lines.append(f"- agent audit: {agent_audit.get('status', 'unknown')}")
 
     warnings = list(state.ledger.warnings)
     if warnings:
@@ -249,13 +254,16 @@ def _build_ledger_state(
 
     dashboard = build_dashboard_snapshot(events, manifest=manifest, source=str(path))
     evidence = build_evidence_report(events, source=str(path))
+    agent_audit = build_agent_gate_audit_report(events, ledger_source=str(path))
+    audit_warnings = agent_audit.warnings if agent_audit.gate_count else ()
     return AppStateLedger(
         path=str(path),
         status=dashboard.status,
         event_count=len(events),
         dashboard=dashboard.to_dict(),
         evidence=evidence.to_dict(),
-        warnings=tuple([*manifest_warnings, *dashboard.warnings, *evidence.warnings]),
+        agent_audit=agent_audit.to_dict(),
+        warnings=tuple([*manifest_warnings, *dashboard.warnings, *evidence.warnings, *audit_warnings]),
     )
 
 

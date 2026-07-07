@@ -10,7 +10,13 @@ import typing as T
 from pathlib import Path
 
 from delegation_bot import __version__
-from delegation_bot.agent_gate import build_agent_gate_report, render_agent_gate_report
+from delegation_bot.agent_gate import (
+    build_agent_gate_audit_report,
+    build_agent_gate_events,
+    build_agent_gate_report,
+    render_agent_gate_audit_report,
+    render_agent_gate_report,
+)
 from delegation_bot.agent_passports import build_agent_passport_report, render_agent_passport_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
@@ -272,6 +278,9 @@ def cmd_agent_gate(args: argparse.Namespace) -> int:
     if not agent_id:
         print("ERROR: agent-gate needs an agent id.", file=sys.stderr)
         return 1
+    if args.write and not args.ledger:
+        print("ERROR: agent-gate --write requires --ledger.", file=sys.stderr)
+        return 1
 
     manifest = None
     if harnessfile:
@@ -294,6 +303,39 @@ def cmd_agent_gate(args: argparse.Namespace) -> int:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_agent_gate_report(report))
+    if args.write and args.ledger:
+        ledger_path = Path(args.ledger)
+        try:
+            existing_events = load_jsonl(ledger_path) if ledger_path.exists() else []
+            run_id = str(existing_events[0].get("run_id")) if existing_events else f"agent-gate-{agent_id}"
+            events = build_agent_gate_events(
+                report,
+                run_id=run_id,
+                start_sequence=len(existing_events) + 1,
+            )
+            ledger_path.parent.mkdir(parents=True, exist_ok=True)
+            append_jsonl(events, ledger_path)
+        except (EvalError, OSError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        if not args.json:
+            print(f"\nAgent Gate event appended: {ledger_path}")
+    return 1 if report.blocked else 0
+
+
+def cmd_agent_audit(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    report = build_agent_gate_audit_report(ledger_events, ledger_source=str(ledger_path))
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_agent_gate_audit_report(report))
     return 1 if report.blocked else 0
 
 
@@ -1357,8 +1399,22 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         help="Evidence already present for this preview. Repeatable.",
     )
+    agent_gate.add_argument("--ledger", help="Optional ledger path for appending Agent Gate evidence.")
+    agent_gate.add_argument(
+        "--write",
+        action="store_true",
+        help="Append this Agent Gate preview as a JSONL ledger event. Requires --ledger.",
+    )
     agent_gate.add_argument("--json", action="store_true", help="Print the Agent Gate report as JSON.")
     agent_gate.set_defaults(func=cmd_agent_gate)
+
+    agent_audit = subparsers.add_parser(
+        "agent-audit",
+        help="Compare Agent Gate intent receipts with RunPrint recorder evidence in a ledger.",
+    )
+    agent_audit.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
+    agent_audit.add_argument("--json", action="store_true", help="Print the Agent Gate audit report as JSON.")
+    agent_audit.set_defaults(func=cmd_agent_audit)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

@@ -39,6 +39,8 @@ delegation app-plan
 delegation app-state --ledger .delegation/demo.jsonl
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
+delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
+delegation agent-audit --ledger .delegation/demo.jsonl
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
@@ -55,6 +57,10 @@ Bring Your Own Agent registries.
 `agent-gate` answers the practical control question: this agent wants to do
 this action on this target, so should DelegationHQ allow, warn, ask for
 approval, or block?
+
+`agent-audit` compares the Agent Gate receipt with RunPrint evidence. Simple
+version: the guard wrote a receipt, the camera has a proof plan, and the ledger
+keeps both together.
 
 Want to start your own repo?
 
@@ -144,6 +150,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation app-state --ledger .delegation/run.jsonl` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
+| `delegation agent-audit --ledger .delegation/run.jsonl` | Compare Agent Gate intent receipts with RunPrint evidence. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
 | `delegation release-check` | Check local alpha release readiness without publishing anything. |
@@ -197,6 +204,7 @@ DelegationHQ is pre-release, but the foundation is working:
 - preview-first live GitHub Issue apply
 - preview-first, gated live GitHub Actions dispatch with workflow preflight
 - dry-run RunPrint recorder evidence bundle planning
+- Agent Gate receipts and `agent-audit` for intent-vs-evidence checks
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
 - `explain-policy` for low-friction classifier explanations that do not grant authority

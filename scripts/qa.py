@@ -169,6 +169,35 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "Agent Gate receipt",
+            [
+                python,
+                "scripts/delegation.py",
+                "agent-gate",
+                "examples/ai-harness-control-plane.yaml",
+                "implementer",
+                "--action",
+                "create_pull_request",
+                "--target",
+                "repository",
+                "--approval",
+                "pull_request",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+                "--write",
+            ],
+        ),
+        Check(
+            "Agent Gate evidence audit",
+            [
+                python,
+                "scripts/delegation.py",
+                "agent-audit",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+            ],
+        ),
+        Check(
             "starter Harnessfile init",
             [
                 python,

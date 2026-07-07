@@ -17,7 +17,8 @@ delegation app-plan --json
 delegation app-state --ledger .delegation/demo.jsonl
 delegation app-state --ledger .delegation/demo.jsonl --json
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
-delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
+delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
+delegation agent-audit --ledger .delegation/demo.jsonl
 ```
 
 ## Current State
@@ -66,7 +67,8 @@ dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
 dist\delegation.exe app-plan
 dist\delegation.exe app-state --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry examples\agent-passports.yaml
-dist\delegation.exe agent-gate examples\ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
+dist\delegation.exe agent-gate examples\ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation\exe-smoke.jsonl --write
+dist\delegation.exe agent-audit --ledger .delegation\exe-smoke.jsonl
 ```
 
 The executable build bundles `examples/`, `playbooks/`, `schemas/`, `LICENSE`,

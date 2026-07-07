@@ -121,6 +121,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["app_plan"]["app_name"], "DelegationHQ Local Mission Cockpit")
         self.assertEqual(data["ledger"]["event_count"], data["ledger"]["dashboard"]["counts"]["events"])
         self.assertEqual(data["ledger"]["evidence"]["bundle_count"], 1)
+        self.assertEqual(data["ledger"]["agent_audit"]["status"], "missing_gate")
         self.assertEqual(data["agents"]["passport_count"], 4)
         self.assertEqual(data["agent_gate"]["status"], "not_requested")
         self.assertIn("delegation app-state --ledger .delegation/demo.jsonl --json", data["next_actions"])
@@ -229,6 +230,84 @@ class DelegationCliTests(unittest.TestCase):
             )
 
         self.assertEqual(status, 1)
+
+    def test_agent_gate_command_can_write_ledger_event(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "agent-gate",
+                        str(EXAMPLE),
+                        "implementer",
+                        "--action",
+                        "create_pull_request",
+                        "--target",
+                        "repository",
+                        "--approval",
+                        "pull_request",
+                        "--ledger",
+                        str(ledger),
+                        "--write",
+                    ]
+                )
+            events = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+
+        self.assertEqual(status, 0)
+        self.assertIn("Agent Gate event appended", output.getvalue())
+        self.assertEqual(events[-1]["type"], "agent.gate.previewed")
+        self.assertEqual(events[-1]["status"], "allow")
+        self.assertEqual(events[-1]["details"]["agent_gate"]["decision"], "allow")
+
+    def test_agent_audit_reports_ready_for_recording(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-gate",
+                            str(EXAMPLE),
+                            "implementer",
+                            "--action",
+                            "create_pull_request",
+                            "--target",
+                            "repository",
+                            "--approval",
+                            "pull_request",
+                            "--ledger",
+                            str(ledger),
+                            "--write",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["agent-audit", "--ledger", str(ledger), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready_for_recording")
+        self.assertEqual(data["gate_count"], 1)
+        self.assertEqual(data["runprint_bundle_count"], 1)
+        self.assertEqual(data["items"][0]["outcome"], "recording_planned")
+
+    def test_agent_audit_blocks_missing_gate_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["agent-audit", "--ledger", str(ledger), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 1)
+        self.assertEqual(data["status"], "missing_gate")
+        self.assertEqual(data["gate_count"], 0)
+        self.assertEqual(data["runprint_bundle_count"], 1)
 
     def test_app_state_can_include_agent_gate_preview(self) -> None:
         with redirect_stdout(io.StringIO()) as output:

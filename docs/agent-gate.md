@@ -48,6 +48,32 @@ delegation agent-gate examples/ai-harness-control-plane.yaml implementer \
   --approval pull_request
 ```
 
+To make the preview part of the mission timeline, write a gate receipt into
+the same ledger:
+
+```bash
+delegation agent-gate examples/ai-harness-control-plane.yaml implementer \
+  --action create_pull_request \
+  --target repository \
+  --approval pull_request \
+  --ledger .delegation/demo.jsonl \
+  --write
+```
+
+Then compare that intent receipt with RunPrint recorder evidence:
+
+```bash
+delegation agent-audit --ledger .delegation/demo.jsonl
+```
+
+Simple version:
+
+```text
+Agent Gate = receipt for what the agent wanted to do.
+RunPrint = proof of what was planned or recorded.
+Agent audit = compare receipt with proof.
+```
+
 The command also supports JSON for future app/cockpit use:
 
 ```bash
@@ -67,6 +93,7 @@ The command accepts:
 - optional requested risk
 - optional evidence already present
 - optional Agent Passport registry
+- optional ledger path when `--write` is used
 
 ## Output
 
@@ -95,6 +122,34 @@ Next:
 ```
 
 JSON output should carry the same fields for `app-state` and future UI work.
+
+## Ledger Receipt
+
+`--write --ledger LEDGER` appends one JSONL event:
+
+```text
+type: agent.gate.previewed
+status: allow | warn | approval_required | block
+details.agent_gate: full Agent Gate report
+```
+
+This does not execute the agent. It records the decision so approval evidence,
+RunPrint evidence, evals, and promotion checks can share one timeline.
+
+## Evidence Audit
+
+`delegation agent-audit --ledger LEDGER` reads the ledger and returns:
+
+- `missing_gate` when no Agent Gate receipt exists
+- `approval_required` when the receipt still needs human approval
+- `needs_evidence` when the gate allowed work but no RunPrint evidence plan was found
+- `ready_for_recording` when the gate allowed work and a RunPrint evidence bundle is planned
+- `recorded` when live RunPrint recording events are present
+- `blocked` when the gate blocked the intent
+
+Today RunPrint evidence is usually planned evidence from `runprint.recorder`.
+That is honest: it says the camera has a plan. Later live RunPrint events will
+let this same audit prove what actually happened.
 
 ## Approval Is Not Permission
 
@@ -137,16 +192,18 @@ The first implementation should be deterministic:
 - `delegation agent-gate` has human and JSON output
 - Harnessfile agents and custom registry agents both work
 - focused tests cover allow, warn, approval required, block
+- `--write --ledger` records Agent Gate preview receipts
+- `delegation agent-audit` compares gate intent with RunPrint evidence
 - `app-state` can include gate-ready data
 - docs show simple examples without asking users to write many rules
 - full QA passes
 
 ## Later
 
-After the first gate works, connect it to RunPrint:
+After planned evidence works, connect it to live RunPrint recording:
 
 ```text
-planned intent -> approved gate -> recorded reality -> eval judgment
+planned intent -> approved gate receipt -> recorded reality -> eval judgment
 ```
 
 That comparison is where DelegationHQ becomes stronger than a planner or a

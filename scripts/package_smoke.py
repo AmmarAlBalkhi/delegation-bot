@@ -159,6 +159,9 @@ def main() -> int:
                 "read.run_ledger",
                 "--target",
                 "smoke",
+                "--ledger",
+                str(ledger),
+                "--write",
             ],
             cwd=tmp,
             env=env,
@@ -169,7 +172,29 @@ def main() -> int:
             print(agent_gate.stderr, file=sys.stderr)
             return agent_gate.returncode or 1
 
-    print("PASS: installed package demo, app-state, Agent Passport, and Agent Gate smoke")
+        agent_audit = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "agent-audit",
+                "--ledger",
+                str(ledger),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if (
+            agent_audit.returncode != 0
+            or "Agent Gate Evidence Audit" not in agent_audit.stdout
+            or "Status: ready_for_recording" not in agent_audit.stdout
+        ):
+            print("FAIL: installed package Agent Gate audit smoke")
+            print(agent_audit.stdout)
+            print(agent_audit.stderr, file=sys.stderr)
+            return agent_audit.returncode or 1
+
+    print("PASS: installed package demo, app-state, Agent Passport, Agent Gate, and Agent Gate audit smoke")
     return 0
 
 

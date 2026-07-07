@@ -47,6 +47,21 @@ delegation evidence --ledger .delegation/demo.jsonl
 This report is intentionally read-only. It summarizes the recorder plan already
 written to the ledger.
 
+Compare an Agent Gate receipt with RunPrint evidence:
+
+```bash
+delegation agent-gate examples/ai-harness-control-plane.yaml implementer \
+  --action create_pull_request \
+  --target repository \
+  --approval pull_request \
+  --ledger .delegation/demo.jsonl \
+  --write
+delegation agent-audit --ledger .delegation/demo.jsonl
+```
+
+Today that usually means "gate approved, RunPrint evidence bundle planned."
+Later live RunPrint events will let the same audit say what actually happened.
+
 ## Harnessfile Example
 
 ```yaml

@@ -128,7 +128,12 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
-    & $ExecutablePath agent-gate "examples\ai-harness-control-plane.yaml" implementer --action create_pull_request --target repository
+    & $ExecutablePath agent-gate "examples\ai-harness-control-plane.yaml" implementer --action create_pull_request --target repository --approval pull_request --ledger (Join-Path $SmokeDir "exe-smoke.jsonl") --write
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & $ExecutablePath agent-audit --ledger (Join-Path $SmokeDir "exe-smoke.jsonl")
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

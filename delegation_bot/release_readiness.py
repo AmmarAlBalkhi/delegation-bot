@@ -310,8 +310,10 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "app-state",
             "agents",
             "agent-gate",
+            "agent-audit",
             "Agent Passport Registry",
             "Agent Gate",
+            "Agent Gate Evidence Audit",
             "Status: ready",
         )
         if needle not in text
@@ -326,7 +328,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, demo, app state, Agent Passports, and Agent Gate.",
+        "Installed package smoke checks version, demo, app state, Agent Passports, Agent Gate, and Agent Gate audit.",
     )
 
 
@@ -346,6 +348,7 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "app-state --ledger",
         "agents \"examples\\ai-harness-control-plane.yaml\"",
         "agent-gate \"examples\\ai-harness-control-plane.yaml\" implementer",
+        "agent-audit --ledger",
         "examples\\agent-passports.yaml",
         "artifacts --dist $ResolvedDistPath",
         "SHA256SUMS.txt",

@@ -73,6 +73,8 @@ The project is currently pre-release.
   `delegation eval --feedback`.
 - Added `delegation app-plan` for the first Windows EXE mission-cockpit plan
   with Bring Your Own Agent passport direction.
+- Added Agent Gate ledger receipts and `delegation agent-audit` for comparing
+  approved intent with planned or recorded RunPrint evidence.
 - Added playbook catalog filtering by tag and adapter.
 - Added hosted dashboard wireframe notes.
 - Added contributor license and DCO policy notes.
