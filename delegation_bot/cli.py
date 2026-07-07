@@ -10,6 +10,7 @@ import typing as T
 from pathlib import Path
 
 from delegation_bot import __version__
+from delegation_bot.agent_gate import build_agent_gate_report, render_agent_gate_report
 from delegation_bot.agent_passports import build_agent_passport_report, render_agent_passport_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
@@ -233,6 +234,12 @@ def cmd_app_state(args: argparse.Namespace) -> int:
         include_github=args.github_checks,
         include_github_app=args.github_app,
         strict_artifacts=args.strict_artifacts,
+        gate_agent=args.gate_agent,
+        gate_action=args.gate_action,
+        gate_target=args.gate_target,
+        gate_risk=args.gate_risk,
+        gate_approvals=tuple(args.gate_approval or ()),
+        gate_evidence=tuple(args.gate_evidence or ()),
     )
     if args.json:
         print(json.dumps(state.to_dict(), indent=2, sort_keys=True))
@@ -258,6 +265,47 @@ def cmd_agents(args: argparse.Namespace) -> int:
     else:
         print(render_agent_passport_report(report))
     return 0
+
+
+def cmd_agent_gate(args: argparse.Namespace) -> int:
+    harnessfile, agent_id = _resolve_agent_gate_positionals(args.harnessfile_or_agent, args.agent_id)
+    if not agent_id:
+        print("ERROR: agent-gate needs an agent id.", file=sys.stderr)
+        return 1
+
+    manifest = None
+    if harnessfile:
+        manifest, status = _load_valid_manifest(Path(harnessfile))
+        if status != 0 or manifest is None:
+            return status
+
+    report = build_agent_gate_report(
+        agent_id=agent_id,
+        action=args.action,
+        target=args.target,
+        manifest=manifest,
+        manifest_source=harnessfile,
+        registry_paths=tuple(Path(path) for path in args.registry or ()),
+        requested_risk=args.risk,
+        provided_evidence=tuple(args.evidence or ()),
+        provided_approvals=tuple(args.approval or ()),
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_agent_gate_report(report))
+    return 1 if report.blocked else 0
+
+
+def _resolve_agent_gate_positionals(first: str | None, second: str | None) -> tuple[str | None, str | None]:
+    if second:
+        return first, second
+    if not first:
+        return None, None
+    candidate = Path(first)
+    if candidate.exists() or candidate.suffix.lower() in {".yaml", ".yml", ".json"}:
+        return first, None
+    return None, first
 
 
 def cmd_suggest(args: argparse.Namespace) -> int:
@@ -1244,6 +1292,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Mark missing standalone release artifacts as failed in the release section.",
     )
     app_state.add_argument("--json", action="store_true", help="Print the app state as JSON.")
+    app_state.add_argument("--gate-agent", help="Optional Agent Gate preview agent id.")
+    app_state.add_argument("--gate-action", help="Optional Agent Gate preview action.")
+    app_state.add_argument("--gate-target", help="Optional Agent Gate preview target.")
+    app_state.add_argument(
+        "--gate-risk",
+        choices=("low", "medium", "high", "critical"),
+        help="Optional Agent Gate requested risk.",
+    )
+    app_state.add_argument(
+        "--gate-approval",
+        action="append",
+        help="Optional Agent Gate approval evidence. Repeatable.",
+    )
+    app_state.add_argument(
+        "--gate-evidence",
+        action="append",
+        help="Optional Agent Gate evidence already present. Repeatable.",
+    )
     app_state.set_defaults(func=cmd_app_state)
 
     agents = subparsers.add_parser(
@@ -1258,6 +1324,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     agents.add_argument("--json", action="store_true", help="Print Agent Passports as JSON.")
     agents.set_defaults(func=cmd_agents)
+
+    agent_gate = subparsers.add_parser(
+        "agent-gate",
+        help="Preview whether an Agent Passport can perform a requested action.",
+    )
+    agent_gate.add_argument(
+        "harnessfile_or_agent",
+        nargs="?",
+        help="Harnessfile path, or the agent id when using only --registry.",
+    )
+    agent_gate.add_argument("agent_id", nargs="?", help="Agent id when a Harnessfile path is provided.")
+    agent_gate.add_argument(
+        "--registry",
+        action="append",
+        help="Optional Agent Passport registry file. Repeatable.",
+    )
+    agent_gate.add_argument("--action", required=True, help="Requested action, such as create_pull_request.")
+    agent_gate.add_argument("--target", required=True, help="Target resource, file, tool, or data scope.")
+    agent_gate.add_argument(
+        "--risk",
+        choices=("low", "medium", "high", "critical"),
+        help="Optional requested risk override.",
+    )
+    agent_gate.add_argument(
+        "--approval",
+        action="append",
+        help="Approval evidence already present for this preview. Repeatable.",
+    )
+    agent_gate.add_argument(
+        "--evidence",
+        action="append",
+        help="Evidence already present for this preview. Repeatable.",
+    )
+    agent_gate.add_argument("--json", action="store_true", help="Print the Agent Gate report as JSON.")
+    agent_gate.set_defaults(func=cmd_agent_gate)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

@@ -146,7 +146,30 @@ def main() -> int:
             print(agents.stderr, file=sys.stderr)
             return agents.returncode or 1
 
-    print("PASS: installed package demo, app-state, and Agent Passport smoke")
+        agent_gate = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "agent-gate",
+                "--registry",
+                str(registry),
+                "smoke_cli_agent",
+                "--action",
+                "read.run_ledger",
+                "--target",
+                "smoke",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if agent_gate.returncode != 0 or "Agent Gate" not in agent_gate.stdout or "Decision: allow" not in agent_gate.stdout:
+            print("FAIL: installed package Agent Gate smoke")
+            print(agent_gate.stdout)
+            print(agent_gate.stderr, file=sys.stderr)
+            return agent_gate.returncode or 1
+
+    print("PASS: installed package demo, app-state, Agent Passport, and Agent Gate smoke")
     return 0
 
 

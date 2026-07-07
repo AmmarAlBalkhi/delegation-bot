@@ -304,7 +304,16 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
         return _failed("package_smoke", "Package Smoke", "scripts/package_smoke.py could not be read.", details=[str(exc)])
     problems = [
         needle
-        for needle in ("--version", "demo", "app-state", "agents", "Agent Passport Registry", "Status: ready")
+        for needle in (
+            "--version",
+            "demo",
+            "app-state",
+            "agents",
+            "agent-gate",
+            "Agent Passport Registry",
+            "Agent Gate",
+            "Status: ready",
+        )
         if needle not in text
     ]
     if problems:
@@ -317,7 +326,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, demo, app state, and Agent Passports.",
+        "Installed package smoke checks version, demo, app state, Agent Passports, and Agent Gate.",
     )
 
 
@@ -336,6 +345,7 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "validate $SmokeHarnessfile",
         "app-state --ledger",
         "agents \"examples\\ai-harness-control-plane.yaml\"",
+        "agent-gate \"examples\\ai-harness-control-plane.yaml\" implementer",
         "examples\\agent-passports.yaml",
         "artifacts --dist $ResolvedDistPath",
         "SHA256SUMS.txt",

@@ -134,7 +134,7 @@ The gate should answer:
 - what evidence must be recorded?
 - what evals decide whether it did well?
 
-The first implementation plan is in `docs/agent-gate.md`.
+The first command guide is in `docs/agent-gate.md`.
 
 ## Capability Packs
 

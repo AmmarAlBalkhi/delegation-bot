@@ -49,7 +49,7 @@ delegation demo
 delegation init --goal "prepare this repo for safe AI delegation"
 delegation plan Harnessfile.yaml
 delegation agents Harnessfile.yaml
-delegation agent-gate Harnessfile.yaml planner --action create_pull_request --target repository
+delegation agent-gate Harnessfile.yaml implementer --action create_pull_request --target repository
 delegation mcp-gate Harnessfile.yaml --ledger .delegation/latest.jsonl
 delegation explain-policy --ledger .delegation/latest.jsonl
 delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write

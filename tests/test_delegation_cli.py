@@ -122,6 +122,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["ledger"]["event_count"], data["ledger"]["dashboard"]["counts"]["events"])
         self.assertEqual(data["ledger"]["evidence"]["bundle_count"], 1)
         self.assertEqual(data["agents"]["passport_count"], 4)
+        self.assertEqual(data["agent_gate"]["status"], "not_requested")
         self.assertIn("delegation app-state --ledger .delegation/demo.jsonl --json", data["next_actions"])
 
     def test_app_state_can_include_custom_agent_registry(self) -> None:
@@ -166,6 +167,91 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["status"], "ready")
         self.assertEqual(data["passport_count"], 2)
         self.assertIn("crm_update_agent", [passport["id"] for passport in data["passports"]])
+
+    def test_agent_gate_command_previews_harnessfile_agent(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(
+                [
+                    "agent-gate",
+                    str(EXAMPLE),
+                    "implementer",
+                    "--action",
+                    "create_pull_request",
+                    "--target",
+                    "repository",
+                ]
+            )
+
+        self.assertEqual(status, 0)
+        text = output.getvalue()
+        self.assertIn("Agent Gate", text)
+        self.assertIn("Decision: approval_required", text)
+        self.assertIn("write.pull_request_draft", text)
+
+    def test_agent_gate_command_can_print_custom_registry_json(self) -> None:
+        registry = ROOT / "examples" / "agent-passports.yaml"
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(
+                [
+                    "agent-gate",
+                    "--registry",
+                    str(registry),
+                    "crm_update_agent",
+                    "--action",
+                    "crm.write",
+                    "--target",
+                    "crm.accounts",
+                    "--json",
+                ]
+            )
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["schema_version"], "delegation.agent-gate.v1")
+        self.assertEqual(data["decision"], "approval_required")
+        self.assertEqual(data["matched_approvals"], ["crm.write"])
+
+    def test_agent_gate_command_blocks_wrong_agent(self) -> None:
+        with redirect_stdout(io.StringIO()):
+            status = main(
+                [
+                    "agent-gate",
+                    str(EXAMPLE),
+                    "planner",
+                    "--action",
+                    "create_pull_request",
+                    "--target",
+                    "repository",
+                    "--approval",
+                    "pull_request",
+                    "--json",
+                ]
+            )
+
+        self.assertEqual(status, 1)
+
+    def test_app_state_can_include_agent_gate_preview(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(
+                [
+                    "app-state",
+                    "--harnessfile",
+                    str(EXAMPLE),
+                    "--gate-agent",
+                    "implementer",
+                    "--gate-action",
+                    "create_pull_request",
+                    "--gate-target",
+                    "repository",
+                    "--json",
+                ]
+            )
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["agent_gate"]["decision"], "approval_required")
+        self.assertEqual(data["agent_gate"]["preview_count"], 1)
+        self.assertEqual(data["agent_gate"]["agent_id"], "implementer")
 
     def test_init_command_writes_starter_harnessfile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

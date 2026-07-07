@@ -23,10 +23,10 @@ earned and understandable:
 - forbidden actions are blocked
 - every decision names the evidence that must be recorded
 
-## First Command Shape
+## Command Shape
 
 ```bash
-delegation agent-gate examples/ai-harness-control-plane.yaml planner \
+delegation agent-gate examples/ai-harness-control-plane.yaml implementer \
   --action create_pull_request \
   --target repository
 ```
@@ -39,9 +39,27 @@ delegation agent-gate --registry examples/agent-passports.yaml crm_update_agent 
   --target crm.accounts
 ```
 
+If approval evidence already exists, pass it explicitly:
+
+```bash
+delegation agent-gate examples/ai-harness-control-plane.yaml implementer \
+  --action create_pull_request \
+  --target repository \
+  --approval pull_request
+```
+
+The command also supports JSON for future app/cockpit use:
+
+```bash
+delegation agent-gate --registry examples/agent-passports.yaml repo_cli_agent \
+  --action read.run_ledger \
+  --target run_ledger \
+  --json
+```
+
 ## Inputs
 
-The first version should accept:
+The command accepts:
 
 - agent id
 - requested action
@@ -58,17 +76,40 @@ The report should stay simple:
 Agent Gate
 
 Decision: approval_required
-Agent: planner
+Status: approval_required
+Agent: implementer
 Action: create_pull_request
 Target: repository
 Risk: medium
-Reason: pull_request requires human approval.
-Required approvals: pull_request
-Required evidence: run_ledger, adapter_result, eval_report
-Next: collect approval before live action
+Checks:
+- [PASS] scope.action: Action matches capability `write.pull_request_draft`.
+- [PASS] scope.target: Target is inside allowed scope.
+- [APPROVAL] approval.required: Human approval is required for pull_request.
+Required approvals:
+- pull_request
+Required evidence:
+- run_ledger
+- adapter_result
+Next:
+- Collect approval evidence before live action.
 ```
 
 JSON output should carry the same fields for `app-state` and future UI work.
+
+## Approval Is Not Permission
+
+Human approval unlocks work the passport already allows. It does not create a
+new power.
+
+Example:
+
+```text
+implementer can draft pull requests -> approval_required
+planner tries to create a pull request -> block
+```
+
+This keeps the system enabling but honest. The right agent can move forward
+with approval. The wrong agent is stopped before it reaches live action.
 
 ## Decisions
 
@@ -84,10 +125,11 @@ JSON output should carry the same fields for `app-state` and future UI work.
 The first implementation should be deterministic:
 
 - if the agent is unknown, block
-- if action/target is outside the passport, block
+- if action or target is outside the passport, block
 - if action matches required approvals, require approval
-- if risk is high or critical and no approval exists, require approval or block
-- if evidence requirements are missing, warn or require approval
+- if risk is high or critical and no approval policy exists, block
+- if risk is high or critical and approval is missing, require approval
+- if evidence requirements are missing from the passport, warn
 - if everything is inside scope and low risk, allow
 
 ## Done Means

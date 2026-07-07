@@ -42,26 +42,26 @@ Human = final yes/no for danger.
 
 ## Now
 
-1. Build `delegation agent-gate` as the next big batch. Given an agent,
-   requested action, target, and optional evidence, it should return `allow`,
-   `warn`, `approval_required`, or `block`.
-2. Keep the user-facing report simple: who wants to do what, risk, decision,
-   required approval, required evidence, and next safe action.
-3. Connect Agent Gate output to `app-state` as approval-inbox-ready data, but
-   do not build visual UI until the maintainer approves the design direction.
-4. After Agent Gate is stable, compare approved intent with RunPrint evidence:
+1. Compare approved Agent Gate intent with RunPrint evidence:
    what the agent asked to do versus what actually happened.
-5. Run `delegation release-check --strict-artifacts` on a clean Windows release
+2. Add ledger events for Agent Gate previews so approvals and later RunPrint
+   evidence can share the same mission timeline.
+3. Keep `app-state` aligned as the first cockpit backend, including one simple
+   approval-inbox-ready gate preview without designing UI yet.
+4. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-6. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+5. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-7. Test the GitHub App issue-write path against a real installed app before
+6. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-8. Decide which `delegation github-app-plan` mode should become the first
+7. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently
 
+- Added `delegation agent-gate` for Agent Passport action previews. It returns
+  `allow`, `warn`, `approval_required`, or `block`, supports Harnessfile and
+  custom registry agents, and feeds gate-ready JSON into `app-state`.
 - Hardened `github.actions` live dispatch with workflow metadata preflight,
   active duplicate-run protection, dispatch-time rechecks, cancellation guidance
   in ledger evidence, and focused fake-client tests.

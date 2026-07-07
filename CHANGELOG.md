@@ -98,6 +98,8 @@ The project is currently pre-release.
   reports, plus a 60-second demo guide and Windows EXE packaging plan.
 - Added `delegation demo`, `delegation init`, and an installed-package demo
   smoke test to make first-run setup faster and more production-like.
+- Added `delegation agent-gate` for Agent Passport action previews across
+  Harnessfile agents and custom registries, with JSON output for `app-state`.
 - Added opt-in Ollama-backed `delegation suggest` so local models can draft
   Harnessfiles through the same validation and dry-run ledger path.
 - Added a Windows `.exe` build script with bundled runtime assets and safe

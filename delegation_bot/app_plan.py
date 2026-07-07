@@ -101,7 +101,7 @@ def build_app_plan() -> AppPlan:
                 id="approval_inbox",
                 title="Approval Inbox",
                 purpose="Make risky actions visible before live writes, workflow dispatch, or agent execution.",
-                source="policy gates; apply-issues/apply-actions previews",
+                source="agent-gate; policy gates; apply-issues/apply-actions previews",
                 first_slice="Preview-only approval queue; no live action button until gates and confirmations exist.",
                 live_risk="high",
             ),

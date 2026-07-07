@@ -112,6 +112,7 @@ delegation app-state --ledger .delegation/demo.jsonl
 delegation app-state --ledger .delegation/demo.jsonl --json
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml --json
+delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
 ```
 
 `app-state` is the first backend slice for the local cockpit. It combines the
@@ -126,7 +127,10 @@ work.
 3. The Windows EXE can run `demo`, `doctor`, `dashboard`, `evidence`,
    `app-plan`, and `app-state`.
 4. `agents` shows Harnessfile and custom registry Agent Passports.
-5. A local app shell reads app-state JSON and Agent Passport JSON.
+5. `agent-gate` previews whether an agent action should allow, warn, require
+   approval, or block.
+6. A local app shell reads app-state JSON, Agent Passport JSON, and Agent Gate
+   preview JSON.
 6. Approval Inbox previews risky actions without live execution.
 7. The app is packaged from a tagged commit with checksums and release rehearsal
    evidence.

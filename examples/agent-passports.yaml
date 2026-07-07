@@ -11,6 +11,7 @@ agents:
     capabilities:
       - read.crm_accounts
       - draft.crm_updates
+      - crm.write
       - retrieve.customer_context
     allowed_tools:
       - crm.search

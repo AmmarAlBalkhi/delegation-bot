@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from delegation_bot import __version__
+from delegation_bot.agent_gate import build_agent_gate_report
 from delegation_bot.agent_passports import build_agent_passport_report
 from delegation_bot.app_plan import build_app_plan
 from delegation_bot.dashboard import build_dashboard_snapshot
@@ -55,6 +56,7 @@ class AppState:
     release: JsonMap
     app_plan: JsonMap
     agents: JsonMap
+    agent_gate: JsonMap
     ledger: AppStateLedger
     next_actions: tuple[str, ...]
     guardrails: tuple[str, ...]
@@ -72,6 +74,7 @@ class AppState:
             "release": self.release,
             "app_plan": self.app_plan,
             "agents": self.agents,
+            "agent_gate": self.agent_gate,
             "ledger": self.ledger.to_dict(),
             "next_actions": list(self.next_actions),
             "guardrails": list(self.guardrails),
@@ -87,6 +90,12 @@ def build_app_state(
     include_github_app: bool = False,
     strict_artifacts: bool = False,
     agent_registries: T.Sequence[Path] = (),
+    gate_agent: str | None = None,
+    gate_action: str | None = None,
+    gate_target: str | None = None,
+    gate_risk: str | None = None,
+    gate_approvals: T.Sequence[str] = (),
+    gate_evidence: T.Sequence[str] = (),
 ) -> AppState:
     """Build a read-only state bundle for the future local app."""
 
@@ -104,19 +113,31 @@ def build_app_state(
         manifest_source=str(harnessfile) if harnessfile else None,
         registry_paths=agent_registries,
     )
+    agent_gate = _build_agent_gate_state(
+        manifest=manifest,
+        harnessfile=harnessfile,
+        registry_paths=agent_registries,
+        agent_id=gate_agent,
+        action=gate_action,
+        target=gate_target,
+        risk=gate_risk,
+        approvals=gate_approvals,
+        evidence=gate_evidence,
+    )
 
     return AppState(
         schema_version="delegation.app-state.v1",
         app_name=app_plan.app_name,
         version=__version__,
         mode="local-read-only",
-        status=_overall_status(doctor, release, ledger, agents.to_dict()),
+        status=_overall_status(doctor, release, ledger, agents.to_dict(), agent_gate),
         read_only=True,
         live_risk="none",
         doctor=doctor.to_dict(),
         release=release.to_dict(),
         app_plan=app_plan.to_dict(),
         agents=agents.to_dict(),
+        agent_gate=agent_gate,
         ledger=ledger,
         next_actions=_next_actions(doctor, release, ledger),
         guardrails=(
@@ -134,6 +155,7 @@ def render_app_state(state: AppState) -> str:
     mission = dashboard.get("mission") if isinstance(dashboard.get("mission"), dict) else {}
     evidence = state.ledger.evidence or {}
     agents = state.agents
+    agent_gate = state.agent_gate
 
     lines = [
         "DelegationHQ App State",
@@ -156,6 +178,7 @@ def render_app_state(state: AppState) -> str:
             f"{state.release['warning_count']} warnings, {state.release['failed_count']} failed)"
         ),
         f"- Agent passports: {agents.get('status', 'unknown')} ({agents.get('passport_count', 0)} agents)",
+        f"- Agent gate: {agent_gate.get('status', 'unknown')}",
         f"- Ledger: {state.ledger.status} ({state.ledger.event_count} events)",
     ]
 
@@ -249,13 +272,20 @@ def _load_optional_manifest(path: Path | None) -> tuple[Manifest | None, list[st
     return manifest, []
 
 
-def _overall_status(doctor: DoctorReport, release: ReleaseReadinessReport, ledger: AppStateLedger, agents: JsonMap) -> str:
+def _overall_status(
+    doctor: DoctorReport,
+    release: ReleaseReadinessReport,
+    ledger: AppStateLedger,
+    agents: JsonMap,
+    agent_gate: JsonMap,
+) -> str:
     if doctor.failed_count:
         return "blocked"
     if (
         release.failed_count
         or ledger.status in {"failed", "blocked", "needs_attention", "error"}
         or agents.get("status") == "warning"
+        or agent_gate.get("status") in {"blocked", "incomplete"}
     ):
         return "needs_attention"
     if ledger.status == "missing":
@@ -283,6 +313,58 @@ def _next_actions(
         actions.extend(release.next_commands[:2])
     actions.append("delegation app-state --ledger .delegation/demo.jsonl --json")
     return tuple(_dedupe(actions))
+
+
+def _build_agent_gate_state(
+    *,
+    manifest: Manifest | None,
+    harnessfile: Path | None,
+    registry_paths: T.Sequence[Path],
+    agent_id: str | None,
+    action: str | None,
+    target: str | None,
+    risk: str | None,
+    approvals: T.Sequence[str],
+    evidence: T.Sequence[str],
+) -> JsonMap:
+    if not any((agent_id, action, target)):
+        return {
+            "status": "not_requested",
+            "preview_count": 0,
+            "next_command": "delegation agent-gate Harnessfile.yaml AGENT_ID --action ACTION --target TARGET",
+        }
+
+    missing = [
+        name
+        for name, value in (
+            ("agent id", agent_id),
+            ("action", action),
+            ("target", target),
+        )
+        if not value
+    ]
+    if missing:
+        return {
+            "status": "incomplete",
+            "preview_count": 0,
+            "warnings": ["Agent Gate request is missing: " + ", ".join(missing) + "."],
+            "next_command": "Provide --gate-agent, --gate-action, and --gate-target together.",
+        }
+
+    report = build_agent_gate_report(
+        agent_id=agent_id or "",
+        action=action or "",
+        target=target or "",
+        manifest=manifest,
+        manifest_source=str(harnessfile) if harnessfile else None,
+        registry_paths=registry_paths,
+        requested_risk=risk,
+        provided_approvals=approvals,
+        provided_evidence=evidence,
+    )
+    data = report.to_dict()
+    data["preview_count"] = 1
+    return data
 
 
 def _dedupe(values: T.Iterable[str]) -> list[str]:

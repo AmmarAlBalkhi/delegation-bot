@@ -127,6 +127,11 @@ if (-not $SkipSmoke) {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
+
+    & $ExecutablePath agent-gate "examples\ai-harness-control-plane.yaml" implementer --action create_pull_request --target repository
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 & $Python $DelegationScript artifacts --dist $ResolvedDistPath
