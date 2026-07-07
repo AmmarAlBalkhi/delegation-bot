@@ -132,3 +132,5 @@ The project is currently pre-release.
 - Added `delegation cancel-actions` for preview-first GitHub Actions
   cancellation, with exact confirmation, force-cancel gating, token
   diagnostics, optional ledger evidence, and fake-client coverage.
+- Added secret-safe GitHub Actions dispatch ids and a ledger idempotency gate
+  that blocks repeated live dispatches for the same workflow/ref/input shape.

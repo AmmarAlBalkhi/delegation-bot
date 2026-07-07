@@ -36,11 +36,11 @@ Deep only when the user asks for depth.
    host after building the `.exe` and checksum file.
 2. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
-3. Decide which `delegation github-app-plan` mode should become the first
-   hosted GitHub App implementation target.
-4. Test the GitHub App issue-write path against a real installed app before
+3. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-5. Add stronger cross-machine idempotency for `github.actions` live dispatch.
+4. Add release artifact checksum generation to the Windows build path.
+5. Decide which `delegation github-app-plan` mode should become the first
+   hosted GitHub App implementation target.
 
 ## Completed Recently
 
@@ -60,6 +60,8 @@ Deep only when the user asks for depth.
 - Added `delegation cancel-actions` with preview-first GitHub Actions
   cancellation, force-cancel confirmation, token diagnostics, optional ledger
   evidence, and fake-client tests.
+- Added ledger-based GitHub Actions dispatch idempotency with stable
+  secret-safe dispatch ids and duplicate-dispatch blocking.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the
