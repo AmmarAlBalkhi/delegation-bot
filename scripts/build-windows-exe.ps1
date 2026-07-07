@@ -25,6 +25,7 @@ $ResolvedDistPath = Resolve-RepoPath $DistPath
 $ResolvedWorkPath = Resolve-RepoPath $WorkPath
 $SpecPath = Join-Path $ResolvedWorkPath "spec"
 $EntryPoint = Join-Path $RepoRoot "scripts\delegation.py"
+$DelegationScript = Join-Path $RepoRoot "scripts\delegation.py"
 
 if ($InstallDependencies) {
     & $Python -m pip install -e ".[exe]"
@@ -113,4 +114,18 @@ if (-not $SkipSmoke) {
     }
 }
 
+& $Python $DelegationScript artifacts --dist $ResolvedDistPath
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+& $Python $DelegationScript artifacts --dist $ResolvedDistPath --check
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+$ChecksumsPath = Join-Path $ResolvedDistPath "SHA256SUMS.txt"
+$ManifestPath = Join-Path $ResolvedDistPath "artifacts-manifest.json"
 Write-Host "Built: $ExecutablePath"
+Write-Host "Checksums: $ChecksumsPath"
+Write-Host "Manifest: $ManifestPath"

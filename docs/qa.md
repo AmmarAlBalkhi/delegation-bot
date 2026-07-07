@@ -73,6 +73,8 @@ The QA command currently checks:
 - optional Windows EXE packaging dependency metadata
 - Windows EXE build script structure, user-local install script structure, and
   generated artifact ignores
+- release artifact checksum and manifest generation, including stale checksum
+  detection
 - read-only CLI behavior without eager live-network imports
 - example promotion report from the generated QA ledger
 - starter playbook validation and dry-run planning

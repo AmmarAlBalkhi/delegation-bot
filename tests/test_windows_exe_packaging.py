@@ -20,6 +20,9 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("demo --ledger", text)
         self.assertIn("init --goal", text)
         self.assertIn("validate $SmokeHarnessfile", text)
+        self.assertIn("artifacts --dist $ResolvedDistPath", text)
+        self.assertIn("SHA256SUMS.txt", text)
+        self.assertIn("artifacts-manifest.json", text)
 
     def test_build_script_bundles_runtime_assets(self) -> None:
         text = (ROOT / "scripts" / "build-windows-exe.ps1").read_text(encoding="utf-8")
@@ -45,6 +48,8 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("--version", text)
         self.assertIn("demo", text)
         self.assertIn("validate", text)
+        self.assertIn("SHA256SUMS.txt", text)
+        self.assertIn("artifacts-manifest.json", text)
 
     def test_user_local_install_script_is_non_admin_and_path_aware(self) -> None:
         text = (ROOT / "scripts" / "install-windows-exe.ps1").read_text(encoding="utf-8")

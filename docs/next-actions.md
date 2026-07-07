@@ -33,14 +33,14 @@ Deep only when the user asks for depth.
 ## Now
 
 1. Run `delegation release-check --strict-artifacts` on a clean Windows release
-   host after building the `.exe` and checksum file.
+   host after building the `.exe`, checksum file, and artifact manifest.
 2. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 3. Design live feedback issue comments or close actions behind explicit gates.
 4. Sketch the GitHub App installation flow that can provide scoped tokens
    without forcing users to paste personal tokens.
-5. Add token-scope diagnostics and a dedicated cancel command for
-   `github.actions` live dispatch.
+5. Add a release rehearsal note that names the exact artifact files produced
+   by the clean Windows host.
 
 ## Completed Recently
 
@@ -49,6 +49,9 @@ Deep only when the user asks for depth.
   in ledger evidence, and focused fake-client tests.
 - Added `delegation release-check` for local alpha release-readiness reports
   that do not publish, tag, or call external services.
+- Added `delegation artifacts` for release checksum and artifact-manifest
+  generation, wired it into the Windows EXE build path, and verified stale
+  checksum detection.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the
