@@ -1,6 +1,6 @@
 # Support
 
-Delegation Bot is pre-release.
+DelegationHQ is pre-release.
 
 Use GitHub Issues for:
 
@@ -13,5 +13,4 @@ Use GitHub Issues for:
 For security-sensitive reports, follow `SECURITY.md` instead of opening a public
 issue.
 
-Commercial support, hosted plans, and private adapter work are future product
-directions, not active offerings yet.
+There are no paid support commitments for the pre-release project.

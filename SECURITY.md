@@ -1,6 +1,6 @@
 # Security Policy
 
-Delegation Bot is early-stage software. It should not be trusted with secrets,
+DelegationHQ is early-stage software. It should not be trusted with secrets,
 privileged automation, or production write access without careful review.
 
 ## Supported Versions

@@ -225,8 +225,7 @@ Launch readiness:
 - [Windows EXE install](docs/windows-exe.md)
 - [Brand transition](docs/brand-transition.md)
 - [TestPyPI dry run](docs/testpypi-dry-run.md)
-- [Business model notes](docs/business-model.md)
-- [Domain strategy](docs/domain-strategy.md)
+- [Open-core strategy](docs/open-core-strategy.md)
 - [Contributor license policy](docs/contributor-license-policy.md)
 
 ## Contributing

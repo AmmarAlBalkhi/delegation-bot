@@ -12,9 +12,7 @@ Mission control for agentic work.
 
 - Public name: `DelegationHQ`
 - Python distribution name: `delegationhq`
-- Future repository name: `AmmarAlBalkhi/delegationhq`
-- Primary domain target: `delegationhq.ai`
-- Developer domain target: `delegationhq.dev`
+- Possible future repository name: `AmmarAlBalkhi/delegationhq`
 - Windows install directory: `%LOCALAPPDATA%\DelegationHQ\bin`
 
 ## What Stays Stable
@@ -41,14 +39,20 @@ Use `DelegationHQ` in README, release, install, package, and website-facing
 docs. Older architecture notes may keep historic wording until they are touched
 for product work.
 
+Until domains are owned and configured, package metadata should point to the
+current GitHub repository. Domain names can be added later without changing the
+CLI, package name, or Harnessfile vocabulary.
+
 ## Trademark And Domain Notes
 
-Buying a domain does not create trademark rights by itself. Before a serious
-commercial launch, the maintainer should:
+Buying a domain does not create trademark rights by itself. Domains can wait
+until the product story and budget are ready. Before a serious commercial
+launch, the maintainer should:
 
 - keep dated evidence of public use
 - do a deeper trademark search
 - file `DELEGATIONHQ` as a word mark when the product is ready
-- keep renewal reminders for `delegationhq.ai` and `delegationhq.dev`
+- avoid publishing package links to domains the project does not control
 
-Simple version: buy early, use clearly, file before the product becomes loud.
+Simple version: use clearly, keep dated proof, and file before the product
+becomes loud.

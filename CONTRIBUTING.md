@@ -1,6 +1,6 @@
 # Contributing
 
-Delegation Bot is becoming mission control for agentic work. Contributions
+DelegationHQ is becoming mission control for agentic work. Contributions
 should make AI delegation easier to inspect, approve, evaluate, and improve.
 
 ## Good First Contributions
