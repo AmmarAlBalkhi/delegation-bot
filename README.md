@@ -127,6 +127,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation demo` | Run the install-safe mission-control demo in one command. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
+| `delegation release-check` | Check local alpha release readiness without publishing anything. |
 | `delegation suggest "goal" --plan --ledger .delegation/run.jsonl` | Draft a Harnessfile from plain language and dry-run it. |
 | `delegation plan Harnessfile.yaml --ledger .delegation/run.jsonl` | Compile a Harnessfile into a dry-run ledger. |
 | `delegation ledger .delegation/run.jsonl` | Inspect run evidence. |

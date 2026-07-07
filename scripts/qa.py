@@ -124,6 +124,10 @@ def build_checks(python: str) -> list[Check]:
             [python, "scripts/delegation.py", "doctor", "--skip-github"],
         ),
         Check(
+            "release readiness",
+            [python, "scripts/delegation.py", "release-check"],
+        ),
+        Check(
             "first-run demo",
             [python, "scripts/delegation.py", "demo", "--ledger", ".delegation/qa-demo.jsonl"],
         ),

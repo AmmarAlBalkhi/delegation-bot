@@ -42,12 +42,37 @@ delegation init --goal "prepare this repo for safe AI delegation" --output Harne
 python -m delegation_bot adapters codex.thread
 ```
 
+## Local Release Check
+
+Before publishing anything, run the local release-readiness report:
+
+```bash
+delegation release-check
+```
+
+The command checks package metadata, legal files, release-facing docs,
+changelog coverage, CI release evidence, package smoke coverage, Windows EXE
+packaging coverage, git cleanliness, and local release artifacts.
+
+It is a dry run. It does not tag, upload, publish, or call external services.
+Warnings are allowed during normal development; failed checks must be fixed
+before a public release.
+
+For final release rehearsal, require standalone artifacts too:
+
+```bash
+delegation release-check --strict-artifacts
+```
+
 ## Release Checklist
 
 Before a public package release:
 
+- run `delegation release-check`
 - run `python scripts/qa.py`
 - run `python scripts/package_smoke.py`
+- run `delegation release-check --strict-artifacts` after building standalone
+  artifacts
 - run a source install smoke test
 - confirm `delegation --version` matches `pyproject.toml`
 - confirm `delegation --help` works after install

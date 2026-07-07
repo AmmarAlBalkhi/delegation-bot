@@ -123,3 +123,6 @@ The project is currently pre-release.
 - Added a user-local Windows installer for `delegation.exe`.
 - Added `delegation --version`, version smoke checks, and clearer doctor next
   steps for the first-run path.
+- Added `delegation release-check` for local alpha release-readiness reports
+  across package metadata, docs, legal files, QA evidence, Windows packaging,
+  git state, and standalone artifacts.

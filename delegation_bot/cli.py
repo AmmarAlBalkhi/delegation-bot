@@ -76,6 +76,7 @@ from delegation_bot.playbook_catalog import (
     validate_catalog,
 )
 from delegation_bot.promotion import PromotionError, evaluate_promotions, load_ledger, render_promotion_report
+from delegation_bot.release_readiness import build_release_readiness_report, render_release_readiness_report
 from delegation_bot.suggest import (
     SUGGESTION_TEMPLATE_IDS,
     HarnessSuggestion,
@@ -804,6 +805,15 @@ def cmd_mcp_gate(args: argparse.Namespace) -> int:
     return 1 if report.blocked else 0
 
 
+def cmd_release_check(args: argparse.Namespace) -> int:
+    report = build_release_readiness_report(strict_artifacts=args.strict_artifacts)
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_release_readiness_report(report))
+    return 1 if report.failed_count else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"DelegationHQ {__version__}")
@@ -992,6 +1002,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip GitHub CLI/auth checks for deterministic local or CI runs.",
     )
     doctor.set_defaults(func=cmd_doctor)
+
+    release_check = subparsers.add_parser(
+        "release-check",
+        help="Check local alpha release readiness without publishing anything.",
+    )
+    release_check.add_argument(
+        "--strict-artifacts",
+        action="store_true",
+        help="Fail when standalone artifacts such as dist/delegation.exe or checksums are missing.",
+    )
+    release_check.add_argument("--json", action="store_true", help="Print release readiness as JSON.")
+    release_check.set_defaults(func=cmd_release_check)
 
     apply_issues = subparsers.add_parser(
         "apply-issues",

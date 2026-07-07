@@ -44,6 +44,7 @@ The QA command currently checks:
 - package metadata parsing
 - package module CLI smoke test
 - CLI version smoke test
+- release-readiness report smoke test
 - installed package demo smoke test
 - first-run `delegation demo` and `delegation init` flows
 - example Harnessfile validation
@@ -105,6 +106,9 @@ Package metadata must stay aligned with the actual project state:
 - alpha versions should be used until public schemas are stable
 
 Before a public release, run the checklist in `docs/release.md`.
+Use `delegation release-check` for a quick local release-readiness report, and
+`delegation release-check --strict-artifacts` after standalone artifacts are
+built.
 
 ## Documentation Expectations
 
