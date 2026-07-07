@@ -32,16 +32,16 @@ Deep only when the user asks for depth.
 
 ## Now
 
-1. Run `delegation release-check --strict-artifacts` on a clean Windows release
+1. Keep `delegation app-plan` aligned with the first visible Windows EXE app
+   slice before building any actual interface.
+2. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-2. Open the first small public roadmap issue set from
-   `docs/public-roadmap-issues.md` when maintainers are ready.
-3. Test the GitHub App issue-write path against a real installed app before
-   hosted auth work.
-4. Decide which `delegation github-app-plan` mode should become the first
-   hosted GitHub App implementation target.
-5. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+3. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
+4. Test the GitHub App issue-write path against a real installed app before
+   hosted auth work.
+5. Decide which `delegation github-app-plan` mode should become the first
+   hosted GitHub App implementation target.
 
 ## Completed Recently
 
@@ -69,6 +69,8 @@ Deep only when the user asks for depth.
 - Added `delegation release-rehearse` for a local evidence bundle that captures
   release readiness, artifact verification, git state, metadata, and next steps
   without publishing anything.
+- Added `delegation app-plan` for the first visible Windows EXE mission-cockpit
+  plan, including Bring Your Own Agent passport direction.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

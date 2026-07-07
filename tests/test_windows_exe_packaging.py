@@ -20,6 +20,7 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("demo --ledger", text)
         self.assertIn("init --goal", text)
         self.assertIn("validate $SmokeHarnessfile", text)
+        self.assertIn("app-plan", text)
         self.assertIn("artifacts --dist $ResolvedDistPath", text)
         self.assertIn("SHA256SUMS.txt", text)
         self.assertIn("artifacts-manifest.json", text)
@@ -48,6 +49,7 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("--version", text)
         self.assertIn("demo", text)
         self.assertIn("validate", text)
+        self.assertIn("app-plan", text)
         self.assertIn("SHA256SUMS.txt", text)
         self.assertIn("artifacts-manifest.json", text)
 

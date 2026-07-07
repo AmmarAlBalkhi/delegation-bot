@@ -112,6 +112,11 @@ if (-not $SkipSmoke) {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
+
+    & $ExecutablePath app-plan
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 & $Python $DelegationScript artifacts --dist $ResolvedDistPath

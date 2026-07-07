@@ -10,6 +10,7 @@ import typing as T
 from pathlib import Path
 
 from delegation_bot import __version__
+from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
 from delegation_bot.dashboard import build_dashboard_snapshot, render_dashboard_snapshot
 from delegation_bot.doctor import render_doctor_report, run_doctor
@@ -210,6 +211,15 @@ def cmd_init(args: argparse.Namespace) -> int:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_init_report(report))
+    return 0
+
+
+def cmd_app_plan(args: argparse.Namespace) -> int:
+    plan = build_app_plan()
+    if args.json:
+        print(json.dumps(plan.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_app_plan(plan))
     return 0
 
 
@@ -1162,6 +1172,13 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--ledger", help="Ledger path for --plan. Defaults to .delegation/init.jsonl.")
     init.add_argument("--json", action="store_true", help="Print the init report as JSON.")
     init.set_defaults(func=cmd_init)
+
+    app_plan = subparsers.add_parser(
+        "app-plan",
+        help="Show the first visible Windows EXE app plan without launching a UI.",
+    )
+    app_plan.add_argument("--json", action="store_true", help="Print the app plan as JSON.")
+    app_plan.set_defaults(func=cmd_app_plan)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

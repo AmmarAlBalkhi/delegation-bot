@@ -35,6 +35,7 @@ From a source checkout:
 python -m pip install -e .
 delegation --version
 delegation demo
+delegation app-plan
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
@@ -125,6 +126,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | --- | --- |
 | `delegation --version` | Show the installed DelegationHQ version. |
 | `delegation demo` | Run the install-safe mission-control demo in one command. |
+| `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
 | `delegation release-check` | Check local alpha release readiness without publishing anything. |
@@ -233,6 +235,7 @@ Launch readiness:
 - [QA and backup discipline](docs/qa.md)
 - [Release checklist](docs/release.md)
 - [Windows EXE install](docs/windows-exe.md)
+- [Windows EXE app plan](docs/windows-app-plan.md)
 - [Brand transition](docs/brand-transition.md)
 - [TestPyPI dry run](docs/testpypi-dry-run.md)
 - [Open-core strategy](docs/open-core-strategy.md)

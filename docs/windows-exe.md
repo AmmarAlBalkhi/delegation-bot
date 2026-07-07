@@ -8,6 +8,14 @@ Run delegation demo.
 Try the demo without learning Python packaging.
 ```
 
+The next product step is a local Windows mission cockpit. See
+`docs/windows-app-plan.md`. The app plan is inspectable today:
+
+```powershell
+delegation app-plan
+delegation app-plan --json
+```
+
 ## Current State
 
 DelegationHQ is a Python CLI package today:
@@ -51,6 +59,7 @@ dist\delegation.exe --version
 dist\delegation.exe demo --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --output .delegation\exe-Harnessfile.yaml --force
 dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
+dist\delegation.exe app-plan
 ```
 
 The executable build bundles `examples/`, `playbooks/`, `schemas/`, `LICENSE`,

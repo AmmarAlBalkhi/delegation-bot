@@ -69,6 +69,26 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["mcp_gate"]["status"], "ready")
         self.assertTrue(data["ledger_event_count"])
 
+    def test_app_plan_command_is_human_readable(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["app-plan"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("DelegationHQ EXE App Plan", output.getvalue())
+        self.assertIn("Mission Snapshot", output.getvalue())
+        self.assertIn("Bring Your Own Agent", output.getvalue())
+        self.assertIn("Visual/interface design waits", output.getvalue())
+
+    def test_app_plan_command_can_print_json(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["app-plan", "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["app_name"], "DelegationHQ Local Mission Cockpit")
+        self.assertTrue(any(surface["id"] == "agent_passports" for surface in data["surfaces"]))
+        self.assertIn("runtime type", data["bring_your_own_agent"]["passport_fields"])
+
     def test_init_command_writes_starter_harnessfile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             harnessfile = Path(tmpdir) / "Harnessfile.yaml"
