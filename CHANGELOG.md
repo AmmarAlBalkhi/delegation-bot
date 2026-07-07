@@ -145,3 +145,5 @@ The project is currently pre-release.
 - Added `delegation app-state` as one read-only state bundle for the future
   local cockpit, combining app plan, doctor, release readiness, mission
   snapshot, evidence bundles, next action, and guardrails.
+- Added `delegation agents` for Agent Passport registry reports across
+  Harnessfile agents and custom Bring Your Own Agent registry files.

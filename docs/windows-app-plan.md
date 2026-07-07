@@ -23,6 +23,7 @@ It should consume the same command-backed data that already works:
 - `delegation demo`
 - `delegation doctor`
 - `delegation app-state --json`
+- `delegation agents --json`
 - `delegation dashboard --json`
 - `delegation evidence --json`
 - `delegation release-check`
@@ -50,7 +51,7 @@ That keeps the app honest. The CLI stays the engine; the app becomes the cockpit
 
    Support Bring Your Own Agent by showing registered custom agents, runtime
    type, capabilities, allowed tools/data, risk level, expected outputs, and
-   promotion evals.
+   promotion evals. The first command-backed source is `delegation agents`.
 
 5. Approval Inbox
 
@@ -109,6 +110,8 @@ Inspect the app-ready state bundle:
 delegation demo --ledger .delegation/demo.jsonl
 delegation app-state --ledger .delegation/demo.jsonl
 delegation app-state --ledger .delegation/demo.jsonl --json
+delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
+delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml --json
 ```
 
 `app-state` is the first backend slice for the local cockpit. It combines the
@@ -122,8 +125,8 @@ work.
 2. `app-state` exists as one read-only JSON feed for the future local cockpit.
 3. The Windows EXE can run `demo`, `doctor`, `dashboard`, `evidence`,
    `app-plan`, and `app-state`.
-4. A local app shell reads app-state JSON.
-5. Agent Passports become a first-class registry.
+4. `agents` shows Harnessfile and custom registry Agent Passports.
+5. A local app shell reads app-state JSON and Agent Passport JSON.
 6. Approval Inbox previews risky actions without live execution.
 7. The app is packaged from a tagged commit with checksums and release rehearsal
    evidence.

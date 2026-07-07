@@ -1,0 +1,14 @@
+version: delegation.agent-registry/v1
+agents:
+  - id: deploy_agent
+    name: Deploy Agent
+    runtime_type: webhook.agent
+    endpoint:
+      type: webhook
+      value: https://example.invalid/agent
+    autonomy_level: deploy
+    risk_level: critical
+    capabilities:
+      - deploy.production
+    allowed_data:
+      - production

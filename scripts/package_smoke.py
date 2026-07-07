@@ -108,7 +108,45 @@ def main() -> int:
             print(app_state.stderr, file=sys.stderr)
             return app_state.returncode or 1
 
-    print("PASS: installed package demo and app-state smoke")
+        registry = tmp / "agent-passports.yaml"
+        registry.write_text(
+            "\n".join(
+                [
+                    "version: delegation.agent-registry/v1",
+                    "agents:",
+                    "  - id: smoke_cli_agent",
+                    "    runtime_type: cli.command",
+                    "    command: delegation demo",
+                    "    autonomy_level: suggest",
+                    "    capabilities:",
+                    "      - read.run_ledger",
+                    "    allowed_data:",
+                    "      - smoke",
+                    "    evidence_requirements:",
+                    "      - command_output",
+                ]
+            ),
+            encoding="utf-8",
+        )
+        agents = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "agents",
+                "--registry",
+                str(registry),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if agents.returncode != 0 or "Agent Passport Registry" not in agents.stdout:
+            print("FAIL: installed package Agent Passport smoke")
+            print(agents.stdout)
+            print(agents.stderr, file=sys.stderr)
+            return agents.returncode or 1
+
+    print("PASS: installed package demo, app-state, and Agent Passport smoke")
     return 0
 
 

@@ -57,6 +57,64 @@ agents:
 This lets the planner say: "Here is the agent, here is its model, here are its
 powers, here is what it may do today."
 
+Inspect Harnessfile passports:
+
+```bash
+python scripts/delegation.py agents examples/ai-harness-control-plane.yaml
+```
+
+## Bring Your Own Agent Registry
+
+Custom agents can also be registered outside the Harnessfile:
+
+```bash
+python scripts/delegation.py agents --registry examples/agent-passports.yaml
+```
+
+A registry entry can describe a LangGraph agent, CRM/RAG agent, coding agent,
+CLI command, MCP workflow, API/webhook agent, or local tool:
+
+```yaml
+version: delegation.agent-registry/v1
+agents:
+  - id: crm_update_agent
+    runtime_type: langgraph.graph
+    endpoint:
+      type: command
+      value: python agents/crm_update_agent.py
+    autonomy_level: draft
+    risk_level: medium
+    capabilities:
+      - read.crm_accounts
+      - draft.crm_updates
+    allowed_tools:
+      - crm.search
+      - crm.draft_update
+    allowed_data:
+      - crm.accounts
+      - sales_notes
+    required_approvals:
+      - crm.write
+    expected_outputs:
+      - crm.update_draft
+      - run_ledger
+    evidence_requirements:
+      - run_ledger
+      - crm_diff_summary
+      - human_confirmation
+    promotion_evals:
+      - crm_updates_need_confirmation
+```
+
+Simple rule:
+
+```text
+The custom agent does the work.
+DelegationHQ controls the mission, powers, approvals, evidence, evals, and autonomy.
+```
+
+The registry schema is `schemas/agent-registry.v1.schema.json`.
+
 ## Capability Packs
 
 Capability packs are reusable bundles of powers.

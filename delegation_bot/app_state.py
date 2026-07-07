@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from delegation_bot import __version__
+from delegation_bot.agent_passports import build_agent_passport_report
 from delegation_bot.app_plan import build_app_plan
 from delegation_bot.dashboard import build_dashboard_snapshot
 from delegation_bot.doctor import DoctorReport, run_doctor
@@ -53,6 +54,7 @@ class AppState:
     doctor: JsonMap
     release: JsonMap
     app_plan: JsonMap
+    agents: JsonMap
     ledger: AppStateLedger
     next_actions: tuple[str, ...]
     guardrails: tuple[str, ...]
@@ -69,6 +71,7 @@ class AppState:
             "doctor": self.doctor,
             "release": self.release,
             "app_plan": self.app_plan,
+            "agents": self.agents,
             "ledger": self.ledger.to_dict(),
             "next_actions": list(self.next_actions),
             "guardrails": list(self.guardrails),
@@ -83,25 +86,37 @@ def build_app_state(
     include_github: bool = False,
     include_github_app: bool = False,
     strict_artifacts: bool = False,
+    agent_registries: T.Sequence[Path] = (),
 ) -> AppState:
     """Build a read-only state bundle for the future local app."""
 
     app_plan = build_app_plan()
     doctor = run_doctor(root, include_github=include_github, include_github_app=include_github_app)
     release = build_release_readiness_report(root, strict_artifacts=strict_artifacts)
-    ledger = _build_ledger_state(ledger_path=ledger_path, harnessfile=harnessfile)
+    manifest, manifest_warnings = _load_optional_manifest(harnessfile)
+    ledger = _build_ledger_state(
+        ledger_path=ledger_path,
+        manifest=manifest,
+        manifest_warnings=manifest_warnings,
+    )
+    agents = build_agent_passport_report(
+        manifest=manifest,
+        manifest_source=str(harnessfile) if harnessfile else None,
+        registry_paths=agent_registries,
+    )
 
     return AppState(
         schema_version="delegation.app-state.v1",
         app_name=app_plan.app_name,
         version=__version__,
         mode="local-read-only",
-        status=_overall_status(doctor, release, ledger),
+        status=_overall_status(doctor, release, ledger, agents.to_dict()),
         read_only=True,
         live_risk="none",
         doctor=doctor.to_dict(),
         release=release.to_dict(),
         app_plan=app_plan.to_dict(),
+        agents=agents.to_dict(),
         ledger=ledger,
         next_actions=_next_actions(doctor, release, ledger),
         guardrails=(
@@ -118,6 +133,7 @@ def render_app_state(state: AppState) -> str:
     dashboard_counts = dashboard.get("counts") if isinstance(dashboard.get("counts"), dict) else {}
     mission = dashboard.get("mission") if isinstance(dashboard.get("mission"), dict) else {}
     evidence = state.ledger.evidence or {}
+    agents = state.agents
 
     lines = [
         "DelegationHQ App State",
@@ -139,6 +155,7 @@ def render_app_state(state: AppState) -> str:
             f"({state.release['ready_count']} ready, "
             f"{state.release['warning_count']} warnings, {state.release['failed_count']} failed)"
         ),
+        f"- Agent passports: {agents.get('status', 'unknown')} ({agents.get('passport_count', 0)} agents)",
         f"- Ledger: {state.ledger.status} ({state.ledger.event_count} events)",
     ]
 
@@ -181,7 +198,12 @@ def render_app_state(state: AppState) -> str:
     return "\n".join(lines)
 
 
-def _build_ledger_state(*, ledger_path: Path | None, harnessfile: Path | None) -> AppStateLedger:
+def _build_ledger_state(
+    *,
+    ledger_path: Path | None,
+    manifest: Manifest | None,
+    manifest_warnings: T.Sequence[str],
+) -> AppStateLedger:
     if ledger_path is None:
         return AppStateLedger(
             path=None,
@@ -202,7 +224,6 @@ def _build_ledger_state(*, ledger_path: Path | None, harnessfile: Path | None) -
     except LedgerError as exc:
         return AppStateLedger(path=str(path), status="error", warnings=(str(exc),))
 
-    manifest, manifest_warnings = _load_optional_manifest(harnessfile)
     dashboard = build_dashboard_snapshot(events, manifest=manifest, source=str(path))
     evidence = build_evidence_report(events, source=str(path))
     return AppStateLedger(
@@ -228,10 +249,14 @@ def _load_optional_manifest(path: Path | None) -> tuple[Manifest | None, list[st
     return manifest, []
 
 
-def _overall_status(doctor: DoctorReport, release: ReleaseReadinessReport, ledger: AppStateLedger) -> str:
+def _overall_status(doctor: DoctorReport, release: ReleaseReadinessReport, ledger: AppStateLedger, agents: JsonMap) -> str:
     if doctor.failed_count:
         return "blocked"
-    if release.failed_count or ledger.status in {"failed", "blocked", "needs_attention", "error"}:
+    if (
+        release.failed_count
+        or ledger.status in {"failed", "blocked", "needs_attention", "error"}
+        or agents.get("status") == "warning"
+    ):
         return "needs_attention"
     if ledger.status == "missing":
         return "usable"

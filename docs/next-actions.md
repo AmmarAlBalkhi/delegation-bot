@@ -34,13 +34,14 @@ Deep only when the user asks for depth.
 
 1. Keep `delegation app-state` aligned as the single read-only backend feed for
    the first visible Windows EXE app slice before building any actual interface.
-2. Run `delegation release-check --strict-artifacts` on a clean Windows release
+2. Wire Agent Passport registry data into future approval and promotion views.
+3. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-3. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+4. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-4. Test the GitHub App issue-write path against a real installed app before
+5. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-5. Decide which `delegation github-app-plan` mode should become the first
+6. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently
@@ -51,6 +52,8 @@ Deep only when the user asks for depth.
 - Added `delegation app-state` as one read-only state bundle for the future
   local cockpit, combining app plan, doctor, release readiness, mission
   snapshot, evidence bundles, next action, and guardrails.
+- Added `delegation agents` for Agent Passport registry reporting across
+  Harnessfile agents and custom Bring Your Own Agent registry files.
 - Added `delegation release-check` for local alpha release-readiness reports
   that do not publish, tag, or call external services.
 - Added `delegation github-app-plan` for local GitHub App permission and

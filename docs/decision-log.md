@@ -1313,3 +1313,25 @@ Guardrails:
 
 Follow-up: Build the first local app shell against `app-state --json` after the
 visual direction is chosen.
+
+## 2026-07-07: Add Agent Passport Registry Reporting
+
+Decision: Add `delegation agents` and an Agent Passport registry schema for
+Bring Your Own Agent support.
+
+Why: DelegationHQ should be the control layer above any agent, not one bundled
+agent. Users need a way to register or inspect LangGraph agents, CRM/RAG
+agents, coding agents, CLI agents, MCP workflows, API/webhook agents, and
+local tools with clear powers before those agents do work.
+
+Guardrails:
+
+- the command reports passports only; it does not execute agents
+- custom agents must declare runtime type, capabilities, data/tool scope,
+  approvals, expected outputs, evidence requirements, and promotion evals
+- risky agents without approvals or evidence get warnings
+- `app-state` can include Agent Passport data for the future cockpit
+- visual/interface design still waits for maintainer approval
+
+Follow-up: Connect Agent Passports to approval previews and promotion reports
+so higher autonomy is earned from ledger evidence.

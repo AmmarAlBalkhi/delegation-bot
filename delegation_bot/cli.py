@@ -10,6 +10,7 @@ import typing as T
 from pathlib import Path
 
 from delegation_bot import __version__
+from delegation_bot.agent_passports import build_agent_passport_report, render_agent_passport_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
 from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts, render_adapter_contracts
@@ -228,6 +229,7 @@ def cmd_app_state(args: argparse.Namespace) -> int:
     state = build_app_state(
         ledger_path=Path(args.ledger) if args.ledger else None,
         harnessfile=Path(args.harnessfile) if args.harnessfile else None,
+        agent_registries=tuple(Path(path) for path in args.agent_registry or ()),
         include_github=args.github_checks,
         include_github_app=args.github_app,
         strict_artifacts=args.strict_artifacts,
@@ -236,6 +238,25 @@ def cmd_app_state(args: argparse.Namespace) -> int:
         print(json.dumps(state.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_app_state(state))
+    return 0
+
+
+def cmd_agents(args: argparse.Namespace) -> int:
+    manifest = None
+    if args.harnessfile:
+        manifest, status = _load_valid_manifest(Path(args.harnessfile))
+        if status != 0 or manifest is None:
+            return status
+
+    report = build_agent_passport_report(
+        manifest=manifest,
+        manifest_source=args.harnessfile,
+        registry_paths=tuple(Path(path) for path in args.registry or ()),
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_agent_passport_report(report))
     return 0
 
 
@@ -1203,6 +1224,11 @@ def build_parser() -> argparse.ArgumentParser:
     app_state.add_argument("--ledger", help="Optional run ledger JSONL path for mission/evidence state.")
     app_state.add_argument("--harnessfile", help="Optional Harnessfile for agent and owner context.")
     app_state.add_argument(
+        "--agent-registry",
+        action="append",
+        help="Optional Agent Passport registry file. Repeatable.",
+    )
+    app_state.add_argument(
         "--github-checks",
         action="store_true",
         help="Include GitHub CLI/auth checks in the doctor section.",
@@ -1219,6 +1245,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     app_state.add_argument("--json", action="store_true", help="Print the app state as JSON.")
     app_state.set_defaults(func=cmd_app_state)
+
+    agents = subparsers.add_parser(
+        "agents",
+        help="Show Agent Passports from a Harnessfile and optional BYOA registry files.",
+    )
+    agents.add_argument("harnessfile", nargs="?", help="Optional Harnessfile with `agents:` declarations.")
+    agents.add_argument(
+        "--registry",
+        action="append",
+        help="Optional Agent Passport registry file. Repeatable.",
+    )
+    agents.add_argument("--json", action="store_true", help="Print Agent Passports as JSON.")
+    agents.set_defaults(func=cmd_agents)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

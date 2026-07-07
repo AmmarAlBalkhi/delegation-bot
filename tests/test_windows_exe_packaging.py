@@ -21,6 +21,9 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("init --goal", text)
         self.assertIn("validate $SmokeHarnessfile", text)
         self.assertIn("app-plan", text)
+        self.assertIn("app-state --ledger", text)
+        self.assertIn("agents \"examples\\ai-harness-control-plane.yaml\"", text)
+        self.assertIn("examples\\agent-passports.yaml", text)
         self.assertIn("artifacts --dist $ResolvedDistPath", text)
         self.assertIn("SHA256SUMS.txt", text)
         self.assertIn("artifacts-manifest.json", text)
@@ -50,6 +53,8 @@ class WindowsExePackagingTests(unittest.TestCase):
         self.assertIn("demo", text)
         self.assertIn("validate", text)
         self.assertIn("app-plan", text)
+        self.assertIn("app-state", text)
+        self.assertIn("agents", text)
         self.assertIn("SHA256SUMS.txt", text)
         self.assertIn("artifacts-manifest.json", text)
 

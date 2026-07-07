@@ -16,6 +16,7 @@ delegation app-plan
 delegation app-plan --json
 delegation app-state --ledger .delegation/demo.jsonl
 delegation app-state --ledger .delegation/demo.jsonl --json
+delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 ```
 
 ## Current State
@@ -63,6 +64,7 @@ dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --out
 dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
 dist\delegation.exe app-plan
 dist\delegation.exe app-state --ledger .delegation\exe-smoke.jsonl
+dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry examples\agent-passports.yaml
 ```
 
 The executable build bundles `examples/`, `playbooks/`, `schemas/`, `LICENSE`,

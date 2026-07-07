@@ -1,0 +1,62 @@
+version: delegation.agent-registry/v1
+agents:
+  - id: crm_update_agent
+    name: Sales CRM Update Agent
+    runtime_type: langgraph.graph
+    endpoint:
+      type: command
+      value: python agents/crm_update_agent.py
+    autonomy_level: draft
+    risk_level: medium
+    capabilities:
+      - read.crm_accounts
+      - draft.crm_updates
+      - retrieve.customer_context
+    allowed_tools:
+      - crm.search
+      - crm.draft_update
+      - rag.retrieve
+    allowed_data:
+      - crm.accounts
+      - crm.activities
+      - sales_notes
+    required_approvals:
+      - crm.write
+      - customer_message.send
+    expected_outputs:
+      - crm.update_draft
+      - evidence_bundle
+      - run_ledger
+    evidence_requirements:
+      - run_ledger
+      - crm_diff_summary
+      - human_confirmation
+    promotion_evals:
+      - crm_updates_need_confirmation
+      - no_unapproved_customer_messages
+
+  - id: repo_cli_agent
+    name: Local Repository CLI Agent
+    runtime_type: cli.command
+    command: delegation demo --ledger .delegation/demo.jsonl
+    autonomy_level: suggest
+    risk_level: low
+    capabilities:
+      - read.repository
+      - read.run_ledger
+      - summarize.evidence
+    allowed_tools:
+      - local.git_status
+      - local.read_files
+    allowed_data:
+      - repository
+      - run_ledger
+    required_approvals: []
+    expected_outputs:
+      - summary
+      - run_ledger
+    evidence_requirements:
+      - run_ledger
+      - command_output
+    promotion_evals:
+      - ledger_is_valid

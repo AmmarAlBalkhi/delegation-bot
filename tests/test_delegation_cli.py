@@ -121,7 +121,18 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["app_plan"]["app_name"], "DelegationHQ Local Mission Cockpit")
         self.assertEqual(data["ledger"]["event_count"], data["ledger"]["dashboard"]["counts"]["events"])
         self.assertEqual(data["ledger"]["evidence"]["bundle_count"], 1)
+        self.assertEqual(data["agents"]["passport_count"], 4)
         self.assertIn("delegation app-state --ledger .delegation/demo.jsonl --json", data["next_actions"])
+
+    def test_app_state_can_include_custom_agent_registry(self) -> None:
+        registry = ROOT / "examples" / "agent-passports.yaml"
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["app-state", "--agent-registry", str(registry), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["agents"]["passport_count"], 2)
+        self.assertTrue(any(passport["id"] == "crm_update_agent" for passport in data["agents"]["passports"]))
 
     def test_app_state_reports_missing_ledger_without_process_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -133,6 +144,28 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(data["ledger"]["status"], "missing")
         self.assertIn("Ledger does not exist", data["ledger"]["warnings"][0])
+
+    def test_agents_command_shows_harnessfile_passports(self) -> None:
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["agents", str(EXAMPLE)])
+
+        self.assertEqual(status, 0)
+        text = output.getvalue()
+        self.assertIn("Agent Passport Registry", text)
+        self.assertIn("Passports: 4", text)
+        self.assertIn("planner: planner", text)
+        self.assertIn("runtime: openai.agents", text)
+
+    def test_agents_command_can_print_custom_registry_json(self) -> None:
+        registry = ROOT / "examples" / "agent-passports.yaml"
+        with redirect_stdout(io.StringIO()) as output:
+            status = main(["agents", "--registry", str(registry), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertEqual(data["passport_count"], 2)
+        self.assertIn("crm_update_agent", [passport["id"] for passport in data["passports"]])
 
     def test_init_command_writes_starter_harnessfile(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -37,6 +37,7 @@ delegation --version
 delegation demo
 delegation app-plan
 delegation app-state --ledger .delegation/demo.jsonl
+delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
@@ -46,6 +47,9 @@ GitHub, call a model, run an agent, or capture files.
 `app-state` gives the future app and a first-time user one compact health view:
 local readiness, release readiness, ledger snapshot, evidence bundles, next
 safe action, and guardrails.
+
+`agents` shows Agent Passports for built-in Harnessfile agents and custom
+Bring Your Own Agent registries.
 
 Want to start your own repo?
 
@@ -133,6 +137,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation demo` | Run the install-safe mission-control demo in one command. |
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
 | `delegation app-state --ledger .delegation/run.jsonl` | Show one read-only app-ready state bundle for the future local cockpit. |
+| `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
 | `delegation release-check` | Check local alpha release readiness without publishing anything. |
@@ -196,6 +201,8 @@ DelegationHQ is pre-release, but the foundation is working:
 - Windows `.exe` build and user-local install scripts for local packaging smoke
   tests
 - `app-state` as a single read-only state bundle for the future local cockpit
+- Agent Passport registry reporting for Harnessfile agents and custom BYOA
+  agents
 
 Live agent execution is intentionally not the default yet. The current focus is
 trustworthy plans, evidence, adapter portability, feedback loops, and a first

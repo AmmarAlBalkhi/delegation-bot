@@ -158,6 +158,17 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "Agent Passport registry",
+            [
+                python,
+                "scripts/delegation.py",
+                "agents",
+                "examples/ai-harness-control-plane.yaml",
+                "--registry",
+                "examples/agent-passports.yaml",
+            ],
+        ),
+        Check(
             "starter Harnessfile init",
             [
                 python,

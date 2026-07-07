@@ -122,6 +122,11 @@ if (-not $SkipSmoke) {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
+
+    & $ExecutablePath agents "examples\ai-harness-control-plane.yaml" --registry "examples\agent-passports.yaml"
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
 }
 
 & $Python $DelegationScript artifacts --dist $ResolvedDistPath
