@@ -221,7 +221,48 @@ python scripts/delegation.py ledger examples/ledgers/feedback-recovery.jsonl --a
 python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
 ```
 
-Next, the live apply path should learn issue comments or close actions, still
-behind explicit approval.
+## Live Feedback Apply
+
+After recovery drafts exist, preview the live GitHub action:
+
+```bash
+python scripts/delegation.py apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl
+```
+
+Preview mode never writes to GitHub. A live comment requires the exact
+confirmation token:
+
+```bash
+GITHUB_TOKEN=... python scripts/delegation.py apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES
+```
+
+With GitHub App issue-write auth configured, use:
+
+```bash
+python scripts/delegation.py apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES \
+  --auth github-app
+```
+
+Closing the issue is a stronger action and uses a different confirmation:
+
+```bash
+GITHUB_TOKEN=... python scripts/delegation.py apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --close \
+  --confirm CLOSE_FEEDBACK_ISSUES
+```
+
+This command comments on the existing live feedback issue with the recovery
+evidence. With `--close`, it closes the issue after the comment succeeds. Both
+paths append ledger events with the comment URL, issue number, marker, and
+feedback lifecycle state.
 
 This keeps the project aligned with its own rule: evidence first, then action.

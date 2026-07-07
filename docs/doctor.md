@@ -34,6 +34,12 @@ For deterministic local or CI checks without GitHub auth probing:
 delegation doctor --skip-github
 ```
 
+For local GitHub App setup diagnostics:
+
+```bash
+delegation doctor --github-app
+```
+
 For tools:
 
 ```bash
@@ -54,9 +60,18 @@ The doctor currently checks:
 - compact ledger fixtures
 - Git worktree status
 - GitHub CLI/auth readiness when not skipped
+- optional GitHub App auth readiness with `--github-app`
 
-GitHub CLI problems are warnings, not failures. They matter for future live
-apply mode, but they should not block safe dry-runs.
+GitHub CLI and GitHub App auth problems are warnings, not failures. They matter
+for future live apply mode, but they should not block safe dry-runs.
+
+`delegation doctor --github-app` does not mint a token, call GitHub, create an
+issue, or print secrets. It checks only local setup:
+
+- required GitHub App env vars are present
+- private key path is readable, if a path is used
+- optional signing dependencies are installed
+- token minting is still left to explicit live apply commands
 
 ## Product Rule
 

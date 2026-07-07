@@ -120,13 +120,97 @@ The future hosted service should:
 The local CLI can continue supporting `GITHUB_TOKEN` for development. The app
 path should be added when the hosted or team workflow needs it.
 
+GitHub installation access tokens are short-lived. The token request can also
+be narrowed to specific repositories and permissions, but it cannot exceed the
+repositories or permissions granted to the app installation.
+
+## Local Issue-Write Auth Boundary
+
+The local CLI can use a GitHub App installation token for live issue writes
+without changing the control loop.
+
+Install the optional auth dependency when you want local GitHub App token
+minting:
+
+```bash
+pip install "delegationhq[github-app]"
+```
+
+Configure the app outside the repository:
+
+```bash
+DELEGATION_GITHUB_APP_CLIENT_ID=<client-or-app-id>
+DELEGATION_GITHUB_APP_INSTALLATION_ID=<installation-id>
+DELEGATION_GITHUB_APP_PRIVATE_KEY_PATH=<path-to-private-key.pem>
+```
+
+You can use `DELEGATION_GITHUB_APP_PRIVATE_KEY` instead of a path when the
+environment can hold multiline secrets safely. Literal `\n` sequences are
+expanded before signing.
+
+Then choose GitHub App auth on live issue commands:
+
+```bash
+delegation apply-issues Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_GITHUB_ISSUES \
+  --auth github-app
+
+delegation apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES \
+  --auth github-app
+```
+
+Before live apply, check local setup without minting a token:
+
+```bash
+delegation doctor --github-app
+```
+
+The token request uses only issue-write permissions and the repositories
+already present in the gated issue drafts. The token is never printed, written
+to the ledger, or stored in the repository. Ledger events record only the auth
+source, such as `github-app`.
+
+Default `--auth auto` keeps development friendly:
+
+- use configured GitHub App auth when it is available
+- otherwise fall back to `GITHUB_TOKEN` or `GH_TOKEN`
+- block instead of falling back if GitHub App env vars are present but incomplete
+- never mint a token in preview mode
+
+## Local Permission Plan
+
+Use the local planner before building live GitHub App auth:
+
+```bash
+delegation github-app-plan --mode read-only
+delegation github-app-plan --mode issue-write --repository AmmarAlBalkhi/delegation-bot
+delegation github-app-plan --mode actions-control --output .delegation/github-app-plan.json
+```
+
+The command does not create a GitHub App, mint a token, call GitHub, or write to
+a repository. It gives maintainers a permission plan and installation-token
+request shape that can be reviewed before implementation.
+
+Modes:
+
+- `read-only`: metadata, contents, issues, pull requests, actions, and checks
+  read access for imported evidence and dashboards.
+- `issue-write`: same read access, with issue write access for approved
+  feedback drafts.
+- `actions-control`: same read access, with actions write access for approved
+  workflow dispatch or cancellation.
+
 ## CLI And Dashboard UX
 
 Possible future commands:
 
 ```bash
-delegation doctor --github-app
-delegation app permissions
+delegation github-app-plan --mode issue-write
 delegation app preview-install
 ```
 

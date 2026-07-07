@@ -500,7 +500,7 @@ def _feedback_resolution_targets(events: T.Sequence[JsonMap]) -> dict[str, Feedb
             entry = ensure(marker, eval_id)
             entry["existing_feedback_events"] += 1
             operation = feedback.get("operation") if isinstance(feedback.get("operation"), str) else ""
-            if operation == "resolve":
+            if operation in {"resolve", "comment", "close"}:
                 entry["last_resolution_sequence"] = _max_sequence(entry["last_resolution_sequence"], sequence)
             else:
                 entry["last_problem_sequence"] = _max_sequence(entry["last_problem_sequence"], sequence)

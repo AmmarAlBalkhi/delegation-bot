@@ -18,6 +18,8 @@ They live in `examples/ledgers/`:
   a later matching failure drafted an update pointing at the same issue
 - `feedback-recovery.jsonl`: a feedback issue later sees a passing eval and
   drafts a recovery update
+- `feedback-recovery-ready.jsonl`: a feedback issue has recovered but the
+  recovery update has not been planned yet, so `apply-feedback` can preview it
 
 ## Why They Exist
 
@@ -73,6 +75,7 @@ python scripts/delegation.py ledger examples/ledgers/feedback-issue-memory.jsonl
 Feedback recovery:
 
 ```bash
+python scripts/delegation.py apply-feedback examples/feedback-recovery-harness.yaml --ledger examples/ledgers/feedback-recovery-ready.jsonl
 python scripts/delegation.py ledger examples/ledgers/feedback-recovery.jsonl --adapter github.issue
 python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
 ```

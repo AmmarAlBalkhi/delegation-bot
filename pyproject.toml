@@ -40,6 +40,9 @@ dependencies = [
 exe = [
   "pyinstaller>=6.0,<7"
 ]
+github-app = [
+  "PyJWT[crypto]>=2.10,<3"
+]
 
 [project.scripts]
 delegation = "delegation_bot.cli:main"

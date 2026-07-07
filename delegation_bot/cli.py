@@ -37,12 +37,30 @@ from delegation_bot.github_actions_apply import (
     build_actions_apply_report,
     render_actions_apply_report,
 )
+from delegation_bot.github_app_plan import (
+    MODE_CHOICES,
+    build_github_app_plan,
+    render_github_app_plan,
+    write_github_app_plan,
+)
+from delegation_bot.github_auth import (
+    AUTH_CHOICES,
+    AUTH_AUTO,
+    AUTH_GITHUB_APP,
+    ISSUE_WRITE_PERMISSIONS,
+    GitHubAuthResolution,
+    render_github_auth_resolution,
+    resolve_github_auth_token,
+)
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
+    apply_feedback_resolution_drafts,
     apply_github_issue_drafts,
     build_apply_report,
+    build_feedback_apply_report,
     github_token_from_env,
     render_apply_report,
+    render_feedback_apply_report,
 )
 from delegation_bot.harness_manifest import ManifestError, load_manifest, summarize_manifest, validate_manifest
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
@@ -479,6 +497,137 @@ def cmd_recover_feedback(args: argparse.Namespace) -> int:
     return 0
 
 
+def _blocked_non_token_gates(report: T.Any) -> list[str]:
+    return [
+        gate.id
+        for gate in getattr(report, "gates", ())
+        if getattr(gate, "status", None) == "blocked" and getattr(gate, "id", "") != "github.token"
+    ]
+
+
+def _issue_report_repositories(report: T.Any) -> list[str]:
+    repositories: list[str] = []
+    for draft in getattr(report, "drafts", ()):
+        repository = getattr(draft, "repository", None)
+        if isinstance(repository, str) and repository.strip():
+            repositories.append(repository)
+            continue
+        adapter_result = getattr(draft, "adapter_result", None)
+        outputs = getattr(adapter_result, "outputs", {}) if adapter_result is not None else {}
+        issue = outputs.get("github.issue") if isinstance(outputs, dict) else {}
+        if isinstance(issue, dict) and isinstance(issue.get("repository"), str) and issue["repository"].strip():
+            repositories.append(issue["repository"])
+    return sorted(set(repositories))
+
+
+def _resolve_issue_auth(args: argparse.Namespace, report: T.Any) -> GitHubAuthResolution:
+    repositories = _issue_report_repositories(report)
+    if not args.apply:
+        return resolve_github_auth_token(
+            mode=args.auth,
+            apply=False,
+            repositories=(),
+            permissions=ISSUE_WRITE_PERMISSIONS,
+        )
+    if not repositories:
+        return GitHubAuthResolution(
+            mode=args.auth,
+            status="preview",
+            message="No GitHub issue write is planned, so no token was minted.",
+        )
+    blocked_non_token = _blocked_non_token_gates(report)
+    if blocked_non_token and args.auth in (AUTH_AUTO, AUTH_GITHUB_APP):
+        return GitHubAuthResolution(
+            mode=args.auth,
+            status="blocked",
+            message="GitHub auth was not resolved because another apply gate is blocked.",
+            next_action=f"Fix blocked gates first: {', '.join(blocked_non_token)}.",
+        )
+    return resolve_github_auth_token(
+        mode=args.auth,
+        apply=True,
+        repositories=repositories,
+        permissions=ISSUE_WRITE_PERMISSIONS,
+    )
+
+
+def _print_report_with_auth(report: T.Any, auth: GitHubAuthResolution, *, json_output: bool, renderer: T.Callable[[T.Any], str]) -> None:
+    if json_output:
+        data = report.to_dict()
+        data["auth"] = auth.to_dict()
+        print(json.dumps(data, indent=2, sort_keys=True))
+        return
+    print(renderer(report))
+    if auth.mode != AUTH_AUTO or auth.status != "preview":
+        print("\n" + render_github_auth_resolution(auth))
+
+
+def cmd_apply_feedback(args: argparse.Namespace) -> int:
+    manifest, status = _load_valid_manifest(Path(args.harnessfile))
+    if status != 0 or manifest is None:
+        return status
+
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    try:
+        report = build_feedback_apply_report(
+            manifest,
+            ledger_events,
+            ledger_source=str(ledger_path),
+            repository=args.repository,
+            apply=args.apply,
+            close=args.close,
+            confirmation=args.confirm,
+            token=None if args.auth == AUTH_GITHUB_APP else github_token_from_env(),
+        )
+    except (LookupError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+    auth = _resolve_issue_auth(args, report)
+    if auth.token_value:
+        report = build_feedback_apply_report(
+            manifest,
+            ledger_events,
+            ledger_source=str(ledger_path),
+            repository=args.repository,
+            apply=args.apply,
+            close=args.close,
+            confirmation=args.confirm,
+            token=auth.token_value,
+        )
+
+    _print_report_with_auth(report, auth, json_output=args.json, renderer=render_feedback_apply_report)
+
+    if report.blocked or auth.blocked:
+        return 1
+    if not args.apply or not report.drafts:
+        return 0
+
+    run_id = str(ledger_events[0].get("run_id")) if ledger_events else "feedback-apply-run"
+    events = apply_feedback_resolution_drafts(
+        report.drafts,
+        client=GitHubIssueClient(auth.token_value or ""),
+        run_id=run_id,
+        start_sequence=len(ledger_events) + 1,
+        close=args.close,
+        auth_source=auth.source,
+    )
+    try:
+        append_jsonl(events, ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if not args.json:
+        print(f"\nFeedback apply events appended: {ledger_path}")
+    return 1 if any(event.status == "failed" for event in events) else 0
+
+
 def cmd_adapters(args: argparse.Namespace) -> int:
     if args.adapter_id:
         contract = get_adapter_contract(args.adapter_id)
@@ -647,7 +796,7 @@ def cmd_catalog(args: argparse.Namespace) -> int:
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
-    report = run_doctor(include_github=not args.skip_github)
+    report = run_doctor(include_github=not args.skip_github, include_github_app=args.github_app)
     if args.json:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
@@ -674,7 +823,6 @@ def cmd_apply_issues(args: argparse.Namespace) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
-    token = github_token_from_env()
     report = build_apply_report(
         manifest,
         plan,
@@ -682,14 +830,23 @@ def cmd_apply_issues(args: argparse.Namespace) -> int:
         ledger_source=str(ledger_path),
         apply=args.apply,
         confirmation=args.confirm,
-        token=token,
+        token=None if args.auth == AUTH_GITHUB_APP else github_token_from_env(),
     )
-    if args.json:
-        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
-    else:
-        print(render_apply_report(report))
+    auth = _resolve_issue_auth(args, report)
+    if auth.token_value:
+        report = build_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=str(ledger_path),
+            apply=args.apply,
+            confirmation=args.confirm,
+            token=auth.token_value,
+        )
 
-    if report.blocked:
+    _print_report_with_auth(report, auth, json_output=args.json, renderer=render_apply_report)
+
+    if report.blocked or auth.blocked:
         return 1
 
     if not args.apply:
@@ -698,9 +855,10 @@ def cmd_apply_issues(args: argparse.Namespace) -> int:
     run_id = str(ledger_events[0].get("run_id")) if ledger_events else f"apply-{plan.id}"
     events = apply_github_issue_drafts(
         report.drafts,
-        client=GitHubIssueClient(token or ""),
+        client=GitHubIssueClient(auth.token_value or ""),
         run_id=run_id,
         start_sequence=len(ledger_events) + 1,
+        auth_source=auth.source,
     )
     try:
         append_jsonl(events, ledger_path)
@@ -812,6 +970,29 @@ def cmd_release_check(args: argparse.Namespace) -> int:
     else:
         print(render_release_readiness_report(report))
     return 1 if report.failed_count else 0
+
+
+def cmd_github_app_plan(args: argparse.Namespace) -> int:
+    try:
+        plan = build_github_app_plan(args.mode, repository=args.repository)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.output:
+        try:
+            write_github_app_plan(plan, Path(args.output))
+        except OSError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+    if args.json:
+        print(json.dumps(plan.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_github_app_plan(plan))
+        if args.output:
+            print(f"\nPlan written: {args.output}")
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1001,6 +1182,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip GitHub CLI/auth checks for deterministic local or CI runs.",
     )
+    doctor.add_argument(
+        "--github-app",
+        action="store_true",
+        help="Include local GitHub App auth diagnostics without minting a token.",
+    )
     doctor.set_defaults(func=cmd_doctor)
 
     release_check = subparsers.add_parser(
@@ -1015,6 +1201,21 @@ def build_parser() -> argparse.ArgumentParser:
     release_check.add_argument("--json", action="store_true", help="Print release readiness as JSON.")
     release_check.set_defaults(func=cmd_release_check)
 
+    github_app_plan = subparsers.add_parser(
+        "github-app-plan",
+        help="Plan GitHub App permissions and installation-token shape without live auth.",
+    )
+    github_app_plan.add_argument(
+        "--mode",
+        choices=MODE_CHOICES,
+        default="read-only",
+        help="Permission mode to plan.",
+    )
+    github_app_plan.add_argument("--repository", help="Optional owner/name repository to scope the token request.")
+    github_app_plan.add_argument("--output", help="Write the permission plan JSON to this path.")
+    github_app_plan.add_argument("--json", action="store_true", help="Print the permission plan as JSON.")
+    github_app_plan.set_defaults(func=cmd_github_app_plan)
+
     apply_issues = subparsers.add_parser(
         "apply-issues",
         help="Preview or live-apply gated GitHub Issue actions from a dry-run ledger.",
@@ -1025,6 +1226,12 @@ def build_parser() -> argparse.ArgumentParser:
     apply_issues.add_argument(
         "--confirm",
         help="Required confirmation token for live apply: LIVE_GITHUB_ISSUES.",
+    )
+    apply_issues.add_argument(
+        "--auth",
+        choices=AUTH_CHOICES,
+        default=AUTH_AUTO,
+        help="Live GitHub auth source: auto, env-token, or github-app.",
     )
     apply_issues.add_argument("--json", action="store_true", help="Print the apply gate report as JSON.")
     apply_issues.set_defaults(func=cmd_apply_issues)
@@ -1110,6 +1317,36 @@ def build_parser() -> argparse.ArgumentParser:
     recover_feedback.add_argument("--json", action="store_true", help="Print feedback recovery drafts as JSON.")
     recover_feedback.add_argument("--write", action="store_true", help="Append planned feedback recovery events.")
     recover_feedback.set_defaults(func=cmd_recover_feedback)
+
+    apply_feedback = subparsers.add_parser(
+        "apply-feedback",
+        help="Preview or live-apply feedback recovery comments to GitHub Issues.",
+    )
+    apply_feedback.add_argument("harnessfile")
+    apply_feedback.add_argument("--ledger", required=True, help="Read and append feedback recovery ledger evidence.")
+    apply_feedback.add_argument("--repository", help="Target repository for planned feedback recovery issues.")
+    apply_feedback.add_argument(
+        "--apply",
+        action="store_true",
+        help="Perform live GitHub feedback issue writes after all gates pass.",
+    )
+    apply_feedback.add_argument(
+        "--close",
+        action="store_true",
+        help="Close the live feedback issue after posting the recovery comment.",
+    )
+    apply_feedback.add_argument(
+        "--confirm",
+        help="Required confirmation token: LIVE_FEEDBACK_ISSUES, or CLOSE_FEEDBACK_ISSUES with --close.",
+    )
+    apply_feedback.add_argument(
+        "--auth",
+        choices=AUTH_CHOICES,
+        default=AUTH_AUTO,
+        help="Live GitHub auth source: auto, env-token, or github-app.",
+    )
+    apply_feedback.add_argument("--json", action="store_true", help="Print the feedback apply gate report as JSON.")
+    apply_feedback.set_defaults(func=cmd_apply_feedback)
 
     promote = subparsers.add_parser("promote", help="Evaluate agent promotion readiness.")
     promote.add_argument("harnessfile")

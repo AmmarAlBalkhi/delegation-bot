@@ -298,6 +298,20 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "github app scoped token plan",
+            [
+                python,
+                "scripts/delegation.py",
+                "github-app-plan",
+                "--mode",
+                "issue-write",
+                "--repository",
+                "AmmarAlBalkhi/delegation-bot",
+                "--output",
+                ".delegation/qa-github-app-plan.json",
+            ],
+        ),
+        Check(
             "MCP tool policy gate",
             [
                 python,

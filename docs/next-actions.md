@@ -36,11 +36,12 @@ Deep only when the user asks for depth.
    host after building the `.exe` and checksum file.
 2. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
-3. Design live feedback issue comments or close actions behind explicit gates.
-4. Sketch the GitHub App installation flow that can provide scoped tokens
-   without forcing users to paste personal tokens.
-5. Add token-scope diagnostics and a dedicated cancel command for
-   `github.actions` live dispatch.
+3. Decide which `delegation github-app-plan` mode should become the first
+   hosted GitHub App implementation target.
+4. Test the GitHub App issue-write path against a real installed app before
+   hosted auth work.
+5. Decide whether a dedicated `github.actions` cancel command belongs in the
+   next public batch.
 
 ## Completed Recently
 
@@ -49,6 +50,14 @@ Deep only when the user asks for depth.
   in ledger evidence, and focused fake-client tests.
 - Added `delegation release-check` for local alpha release-readiness reports
   that do not publish, tag, or call external services.
+- Added `delegation github-app-plan` for local GitHub App permission and
+  scoped installation-token planning before live app auth exists.
+- Added `delegation apply-feedback` for gated feedback recovery comments and
+  optional issue closing with separate confirmation tokens.
+- Added the first GitHub App issue-write auth boundary for live issue commands
+  through `--auth github-app`.
+- Added optional `delegation doctor --github-app` diagnostics for local GitHub
+  App auth setup without minting a token.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

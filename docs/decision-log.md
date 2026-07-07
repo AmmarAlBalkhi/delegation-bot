@@ -1087,3 +1087,104 @@ PATH, and running `doctor --skip-github` as a smoke check.
 
 Follow-up: Run the build and install scripts on a clean Windows release host
 before publishing a public `.exe`.
+
+## 2026-07-07: Add GitHub App Scoped Token Planning
+
+Decision: Add `delegation github-app-plan` for local GitHub App permission and
+installation-token planning.
+
+Why: Real users should not need broad personal tokens for live actions. Before
+DelegationHQ implements hosted GitHub App auth, maintainers need a concrete,
+reviewable plan for read-only, issue-write, and actions-control modes. This
+keeps GitHub auth inside the same control-plane loop: plan first, gate later,
+record everything.
+
+Guardrails:
+
+- the command does not create a GitHub App
+- the command does not mint tokens, call GitHub, or write to repositories
+- issue-write and actions-control stay separate modes
+- a GitHub App token never bypasses dry-runs, policy gates, confirmation
+  tokens, or ledger evidence
+- private keys, webhook secrets, and installation tokens stay outside the
+  repository
+
+Follow-up: Choose the first hosted implementation target, likely read-only or
+issue-write, after the local preview flow feels clear.
+
+## 2026-07-07: Add Gated Feedback Recovery Apply
+
+Decision: Add `delegation apply-feedback` to preview and live-apply feedback
+recovery comments to existing GitHub Issues, with optional issue closing behind
+a stronger confirmation token.
+
+Why: The feedback loop should not stop at drafting issues. DelegationHQ should
+prove that a failure recovered, comment on the same live issue with the
+evidence, and optionally close it, while preserving the core rule:
+plan first, gate first, ledger proof after.
+
+Guardrails:
+
+- preview mode is the default and never writes to GitHub
+- comment-only live apply requires `--apply --confirm LIVE_FEEDBACK_ISSUES`
+- issue closing requires `--apply --close --confirm CLOSE_FEEDBACK_ISSUES`
+- the command targets only recovery drafts with known live issue numbers
+- repository allowlists, approval policy, token gates, and ledger eval gates
+  still apply
+- live comment and close results append ledger evidence with issue and comment
+  URLs when GitHub returns them
+
+Follow-up: Connect this path to the future GitHub App `issue-write` token
+provider so users do not need broad personal access tokens.
+
+## 2026-07-07: Add GitHub App Issue-Write Auth Boundary
+
+Decision: Add a local GitHub App installation-token provider and wire
+`--auth github-app` into `delegation apply-issues` and
+`delegation apply-feedback`.
+
+Why: Live issue writes should not require broad personal tokens forever. The
+first safe step is a narrow auth source for issue-write actions only, while
+keeping the same dry-run, policy, confirmation, and ledger gates.
+
+Guardrails:
+
+- preview mode never mints a GitHub App token
+- the optional `delegationhq[github-app]` dependency is needed only for local
+  JWT signing
+- app private keys, installation ids, and tokens stay in environment variables
+  or local secret files outside the repository
+- installation token requests are scoped to issue-write permissions and the
+  repositories present in the approved issue drafts
+- `--auth auto` blocks on partial GitHub App config instead of silently falling
+  back to a broader environment token
+- token values are never printed, serialized in JSON output, or written to the
+  ledger
+- ledger events may record only the auth source, such as `github-app`
+- GitHub App auth does not bypass approval, repository policy, duplicate
+  marker, eval, or confirmation gates
+
+Follow-up: Add GitHub App auth diagnostics to `delegation doctor`, then test
+the issue-write path against a real installed app before hosted auth work.
+
+## 2026-07-07: Add GitHub App Doctor Diagnostics
+
+Decision: Add optional `delegation doctor --github-app` diagnostics for local
+GitHub App auth setup.
+
+Why: The safer GitHub App path should not feel mysterious. Users need a quick
+way to see whether client/app id, installation id, private key, and optional
+signing dependencies are ready before they attempt a live issue write.
+
+Guardrails:
+
+- the diagnostic is opt-in, so first-run `delegation doctor` stays short
+- it reads local env/config only
+- it does not mint a token, sign a JWT, call GitHub, write issues, or call
+  models
+- missing or partial GitHub App config is a warning, not a failure, because
+  dry-runs and local planning still work
+- private key values and token values are never printed or serialized
+
+Follow-up: Test `--auth github-app` against a real installed app, then decide
+whether hosted auth starts with read-only import or issue-write feedback.

@@ -399,11 +399,11 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Eval blocked: tests_pass_before_pr", output.getvalue())
 
     def test_recover_feedback_drafts_resolution_update(self) -> None:
-        source = ROOT / "examples" / "ledgers" / "feedback-recovery.jsonl"
+        source = ROOT / "examples" / "ledgers" / "feedback-recovery-ready.jsonl"
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "feedback-recovery.jsonl"
             harnessfile = Path(tmpdir) / "feedback-harness.json"
-            ledger.write_text("\n".join(source.read_text(encoding="utf-8").splitlines()[:-1]) + "\n", encoding="utf-8")
+            ledger.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
             harnessfile.write_text(
                 json.dumps(
                     {
@@ -425,6 +425,113 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Feedback issue drafts", output.getvalue())
         self.assertIn("Resolve eval passed: required_adapter_evidence", output.getvalue())
         self.assertIn("operation: resolve", output.getvalue())
+
+    def test_apply_feedback_previews_recovery_comment(self) -> None:
+        source = ROOT / "examples" / "ledgers" / "feedback-recovery-ready.jsonl"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "feedback-recovery.jsonl"
+            harnessfile = Path(tmpdir) / "feedback-harness.json"
+            ledger.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            harnessfile.write_text(
+                json.dumps(
+                    {
+                        "version": "delegation.ai/v1",
+                        "id": "feedback-memory-fixture",
+                        "objective": "Show feedback recovery.",
+                        "triggers": [{"type": "manual"}],
+                        "executors": [{"id": "feedback_issue", "kind": "workflow", "adapter": "github.issue"}],
+                        "outputs": ["github.issue"],
+                        "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["apply-feedback", str(harnessfile), "--ledger", str(ledger)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("GitHub Feedback Apply Gate", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("Rerun with `--apply --confirm LIVE_FEEDBACK_ISSUES`", output.getvalue())
+
+    def test_apply_feedback_github_app_auth_blocks_without_config(self) -> None:
+        source = ROOT / "examples" / "ledgers" / "feedback-recovery-ready.jsonl"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "feedback-recovery.jsonl"
+            harnessfile = Path(tmpdir) / "feedback-harness.json"
+            ledger.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            harnessfile.write_text(
+                json.dumps(
+                    {
+                        "version": "delegation.ai/v1",
+                        "id": "feedback-memory-fixture",
+                        "objective": "Show feedback recovery.",
+                        "triggers": [{"type": "manual"}],
+                        "executors": [{"id": "feedback_issue", "kind": "workflow", "adapter": "github.issue"}],
+                        "outputs": ["github.issue"],
+                        "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.dict("os.environ", {}, clear=True):
+                with redirect_stdout(io.StringIO()) as output:
+                    status = main(
+                        [
+                            "apply-feedback",
+                            str(harnessfile),
+                            "--ledger",
+                            str(ledger),
+                            "--apply",
+                            "--confirm",
+                            "LIVE_FEEDBACK_ISSUES",
+                            "--auth",
+                            "github-app",
+                        ]
+                    )
+
+        self.assertEqual(status, 1)
+        self.assertIn("GitHub App auth is missing", output.getvalue())
+
+    def test_apply_feedback_no_action_does_not_require_github_app_auth(self) -> None:
+        source = ROOT / "examples" / "ledgers" / "feedback-recovery.jsonl"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "feedback-recovery.jsonl"
+            harnessfile = Path(tmpdir) / "feedback-harness.json"
+            ledger.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            harnessfile.write_text(
+                json.dumps(
+                    {
+                        "version": "delegation.ai/v1",
+                        "id": "feedback-memory-fixture",
+                        "objective": "Show feedback recovery.",
+                        "triggers": [{"type": "manual"}],
+                        "executors": [{"id": "feedback_issue", "kind": "workflow", "adapter": "github.issue"}],
+                        "outputs": ["github.issue"],
+                        "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with patch.dict("os.environ", {}, clear=True):
+                with redirect_stdout(io.StringIO()) as output:
+                    status = main(
+                        [
+                            "apply-feedback",
+                            str(harnessfile),
+                            "--ledger",
+                            str(ledger),
+                            "--apply",
+                            "--confirm",
+                            "LIVE_FEEDBACK_ISSUES",
+                            "--auth",
+                            "github-app",
+                        ]
+                    )
+
+        self.assertEqual(status, 0)
+        self.assertIn("Status: no_action", output.getvalue())
+        self.assertIn("no token was minted", output.getvalue())
 
     def test_dashboard_command_builds_read_only_snapshot(self) -> None:
         ledger = ROOT / "examples" / "ledgers" / "feedback-recovery.jsonl"
@@ -576,6 +683,14 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertEqual(data["failed_count"], 0)
         self.assertTrue(any(check["id"] == "suggest_loop" for check in data["checks"]))
+
+    def test_doctor_command_can_include_github_app_diagnostics(self) -> None:
+        with patch.dict("os.environ", {}, clear=True), redirect_stdout(io.StringIO()) as output:
+            status = main(["doctor", "--skip-github", "--github-app"])
+
+        self.assertEqual(status, 0)
+        self.assertIn("GitHub App Auth", output.getvalue())
+        self.assertIn("No DELEGATION_GITHUB_APP_* env vars were found.", output.getvalue())
 
     def test_apply_issues_previews_gated_github_issue_apply(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

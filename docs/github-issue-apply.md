@@ -50,7 +50,7 @@ Live apply requires:
 - repository allowed by policy
 - explicit `--apply`
 - exact confirmation token
-- `GITHUB_TOKEN` or `GH_TOKEN`
+- `GITHUB_TOKEN` or `GH_TOKEN`, or configured GitHub App auth
 
 ```bash
 GITHUB_TOKEN=... delegation apply-issues Harnessfile.yaml \
@@ -58,6 +58,20 @@ GITHUB_TOKEN=... delegation apply-issues Harnessfile.yaml \
   --apply \
   --confirm LIVE_GITHUB_ISSUES
 ```
+
+To use a scoped GitHub App installation token instead of a personal token,
+install `delegationhq[github-app]`, configure the app env vars, then run:
+
+```bash
+delegation apply-issues Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_GITHUB_ISSUES \
+  --auth github-app
+```
+
+Preview mode never mints a GitHub App token. The token is used in memory for
+the live request and is not printed or written to the ledger.
 
 If a matching issue marker already exists in the first 100 repository issues,
 the command updates that issue. Otherwise it creates a new issue.
@@ -92,10 +106,62 @@ Those live issue fields are not just display metadata. The eval feedback loop
 uses them so repeated failures can draft updates to the existing issue instead
 of creating duplicate issue noise.
 
+## Feedback Recovery Apply
+
+When a failed eval later passes, use `recover-feedback` to draft the recovery
+evidence, then use `apply-feedback` to preview the live comment:
+
+```bash
+delegation apply-feedback Harnessfile.yaml --ledger .delegation/latest.jsonl
+```
+
+Comment-only live apply requires:
+
+```bash
+GITHUB_TOKEN=... delegation apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES
+```
+
+GitHub App auth works for feedback comments too:
+
+```bash
+delegation apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES \
+  --auth github-app
+```
+
+To close the issue after the recovery comment succeeds, use the stronger close
+confirmation:
+
+```bash
+GITHUB_TOKEN=... delegation apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --close \
+  --confirm CLOSE_FEEDBACK_ISSUES
+```
+
+`apply-feedback` appends:
+
+- `github.issue.feedback_apply.started`
+- `github.issue.comment.created`
+- `github.issue.closed` when `--close` is used
+- `github.issue.feedback_apply.failed`
+- `github.issue.feedback_apply.completed`
+
+This separates creating feedback issues from resolving them, so a user can
+comment with proof without accidentally closing work.
+
 ## Safety Notes
 
 - Dry-run remains the default.
 - The confirmation string is intentionally loud.
+- `--auth auto` keeps local development compatible with `GITHUB_TOKEN`.
+- `--auth github-app` mints only an issue-write installation token.
 - Unknown adapters are ignored by this command.
 - GitHub token problems block before writing.
 - Repository policy problems block before writing.
