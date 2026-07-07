@@ -1,13 +1,11 @@
-# Roadmap: The Million-Star Plan
+# Roadmap: AI Delegation Control Plane
 
-This project should not chase stars as a vanity metric. Stars matter because
-GitHub uses them for appreciation, recall, discovery, and popularity signals.
-The real target is trust at massive scale: a tool developers keep, share, and
-use because it makes AI work safer and more legible.
+This roadmap keeps DelegationHQ focused on the core product: a trustworthy,
+portable control plane for agentic work.
 
 ## One-Sentence Product
 
-Delegation Bot is the mission control layer for AI work: write one Harnessfile,
+DelegationHQ is the mission control layer for AI work: write one Harnessfile,
 dry-run the plan, route work to any agent harness, enforce policy, and get an
 auditable run ledger with evals.
 
@@ -18,7 +16,7 @@ The trust model is hybrid:
 
 ```text
 AI proposes.
-Delegation Bot verifies.
+DelegationHQ verifies.
 Human approves risky actions.
 Ledger records everything.
 Evals decide whether trust increases.
@@ -55,13 +53,13 @@ Deliverables:
 Current command shape:
 
 ```bash
-python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
+delegation plan examples/ai-harness-control-plane.yaml --ledger .delegation/latest.jsonl
 ```
 
 ### 1. GitHub-Native Control Plane
 
-Goal: A repository can run Delegation Bot as a GitHub Action and use Issues as
-the visible coordination surface.
+Goal: A repository can run DelegationHQ as a GitHub Action and use Issues as the
+visible coordination surface.
 
 Deliverables:
 
@@ -112,7 +110,7 @@ Deliverables:
 - eval result events written back to the run ledger
 - failure-to-issue feedback loop
 
-### 4. Playbook Marketplace
+### 4. Playbook Ecosystem
 
 Goal: Teams can share reusable Harnessfiles for common AI work.
 
@@ -126,8 +124,8 @@ Deliverables:
 
 ### 5. AgentOps Standard Library
 
-Goal: Delegation Bot becomes the default open-source vocabulary for trustworthy
-AI delegation.
+Goal: DelegationHQ becomes a clear open-source vocabulary for trustworthy AI
+delegation.
 
 Deliverables:
 
@@ -159,19 +157,18 @@ Deliverables:
 
 ### Developer Aha Loop
 
-1. Copy a Harnessfile.
-2. Run `delegation plan`.
-3. See a readable execution plan.
-4. Run in dry-run mode.
-5. Inspect the ledger.
-6. Star because the idea is immediately useful even before live execution.
+1. Run `delegation demo`.
+2. Create or copy a Harnessfile.
+3. See a readable dry-run plan.
+4. Inspect the ledger.
+5. Add one playbook, eval, or adapter when ready.
 
 ### Contributor Loop
 
 1. Find a clear good-first issue.
 2. Add one adapter, eval, playbook, or doc example.
 3. Run `python scripts/qa.py`.
-4. See their contribution listed in docs or release notes.
+4. See the contribution listed in docs or release notes.
 5. Return because the contribution surface is small and meaningful.
 
 ### Trust Loop
@@ -182,18 +179,16 @@ Deliverables:
 4. The eval prevents regression.
 5. Users trust the system more because it gets stricter through use.
 
-## Aspirational Star Milestones
+## Adoption Milestones
 
-These are target states, not traction claims. The project is still early; stars
-should be treated as a lagging signal that the product is becoming useful,
-trustworthy, and easy to explain.
+Treat adoption as a lagging signal that the product is becoming useful,
+trustworthy, and easy to explain. The public goal is not hype; it is repeat use.
 
-- 100 stars: README promise is clear, local dry-run demo works.
-- 1,000 stars: GitHub Action flow works, docs are strong, contributors can add evals.
-- 10,000 stars: adapter SDK exists, at least 5 real adapters work.
-- 100,000 stars: playbook ecosystem and run ledger schema become recognizable.
-- 1,000,000 stars: Delegation Bot is the default control plane vocabulary for
-  AI work across repositories and harnesses.
+- clear README promise and local dry-run demo
+- GitHub Action flow and strong contributor docs
+- adapter SDK with real adapter examples
+- recognizable playbook ecosystem and run ledger schema
+- stable vocabulary for AI delegation across repositories and harnesses
 
 ## Rules Of The Game
 
@@ -223,5 +218,5 @@ Current focus:
 5. Add token-scope diagnostics and a dedicated cancel command for
    `github.actions` live dispatch.
 
-The million-star path starts with one quiet miracle: a developer can understand
-what an AI system is about to do before it does it.
+The adoption path starts with one quiet miracle: a developer can understand what
+an AI system is about to do before it does it.

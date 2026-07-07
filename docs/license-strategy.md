@@ -76,12 +76,12 @@ Apache-2.0 supports the open-core direction:
 
 - the local CLI, Harnessfile planner, ledger, evals, and adapter contracts stay
   open
-- paid offerings can still exist around hosting, dashboards, team approvals,
-  private adapters, support, SSO, audit exports, and retention controls
+- future commercial work can exist outside the public repository when it is
+  ready to announce and support
 - contributors and companies can adopt the tool without a copyleft obligation
 
-The money plan stays in `docs/business-model.md` so it does not distract from
-the core engineering loop.
+The public/private boundary lives in `docs/open-core-strategy.md` so the core
+engineering loop stays clear.
 
 ## Current Obligations
 

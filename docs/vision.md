@@ -166,8 +166,8 @@ instead of being either fully blocked or fully trusted.
 - OpenTelemetry gives a standard mental model for traces, spans, and the path of
   work through a system.
 
-The opportunity is to treat those as execution substrates and make Delegation
-Bot the coordination layer above them.
+The opportunity is to treat those as execution substrates and make DelegationHQ
+the coordination layer above them.
 
 ## First Buildable Milestone
 
@@ -181,11 +181,10 @@ The next version should introduce a manifest-first flow:
 
 This keeps the project small while pointing it toward a much larger product.
 
-## Growth Frame
+## Adoption Frame
 
-The ambition is a million-star open-source project, but stars are the result,
-not the method. The method is to build the most trustworthy public vocabulary
-for AI delegation:
+The ambition is broad adoption, but popularity is the result, not the method.
+The method is to build the most trustworthy public vocabulary for AI delegation:
 
 - a Harnessfile people can read and share
 - a dry-run plan people can understand
@@ -194,4 +193,4 @@ for AI delegation:
 - adapters people can contribute
 - agents people can safely promote
 
-See `ROADMAP.md` and `docs/million-star-strategy.md` for the growth plan.
+See `ROADMAP.md` and `docs/adoption-strategy.md` for the adoption plan.

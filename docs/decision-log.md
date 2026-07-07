@@ -57,7 +57,7 @@ Evidence:
 
 - `AGENTS.md`
 
-## 2026-07-03: Frame The Million-Star Roadmap
+## 2026-07-03: Frame The Adoption Roadmap
 
 Decision: Add a public roadmap and deeper strategy document that frame the path
 from task bot to AI delegation control plane.
@@ -69,7 +69,7 @@ target.
 Evidence:
 
 - `ROADMAP.md`
-- `docs/million-star-strategy.md`
+- `docs/adoption-strategy.md`
 
 ## 2026-07-03: Add Dry-Run Plan Compiler And Ledger
 
@@ -354,7 +354,7 @@ Evidence:
 Decision: Add the first reusable Harnessfile playbooks for code review, CI
 repair, and documentation refresh.
 
-Why: The million-star idea needs copyable workflows, not only architecture.
+Why: The adoption strategy needs copyable workflows, not only architecture.
 Playbooks show how the control-plane loop works for real agentic jobs:
 planning, issue coordination, adapter evidence, policy gates, evals, and future
 promotion.
@@ -455,7 +455,7 @@ Evidence:
 
 - `docs/positioning.md`
 - `README.md`
-- `docs/million-star-strategy.md`
+- `docs/adoption-strategy.md`
 
 ## 2026-07-04: Add Flagship Playbooks And Live-Gate Design
 
@@ -631,7 +631,7 @@ Evidence:
 ## 2026-07-04: Clarify Star Milestones As Aspirational
 
 Decision: Rename roadmap star milestones as aspirational target states and add
-a short humility note to the million-star strategy.
+a short humility note to the adoption strategy.
 
 Why: The project should be ambitious without pretending to have traction it does
 not yet have. Stars are a lagging signal of legitimate adoption, not the thing
@@ -640,7 +640,7 @@ to fake or optimize directly.
 Evidence:
 
 - `ROADMAP.md`
-- `docs/million-star-strategy.md`
+- `docs/adoption-strategy.md`
 
 ## 2026-07-04: Add Local Telemetry Export And Provider Fixtures
 

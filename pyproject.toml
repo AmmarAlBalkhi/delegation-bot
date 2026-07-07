@@ -45,10 +45,10 @@ exe = [
 delegation = "delegation_bot.cli:main"
 
 [project.urls]
-Homepage = "https://delegationhq.ai"
-Documentation = "https://delegationhq.dev"
-Repository = "https://github.com/AmmarAlBalkhi/delegationhq"
-Issues = "https://github.com/AmmarAlBalkhi/delegationhq/issues"
+Homepage = "https://github.com/AmmarAlBalkhi/delegation-bot"
+Documentation = "https://github.com/AmmarAlBalkhi/delegation-bot/tree/main/docs"
+Repository = "https://github.com/AmmarAlBalkhi/delegation-bot"
+Issues = "https://github.com/AmmarAlBalkhi/delegation-bot/issues"
 
 [tool.setuptools.packages.find]
 include = ["delegation_bot*"]

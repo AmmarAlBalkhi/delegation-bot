@@ -1,24 +1,14 @@
-# Domain Strategy
+# Domain Notes
 
-A domain should make the project feel like a category, not only a repository.
+DelegationHQ does not need a custom domain to be useful.
 
-Current brand direction:
+Until a domain is owned and configured, public package metadata should point to
+the current GitHub repository. A domain can be added later as a website,
+documentation home, or redirect without changing the CLI.
 
-```text
-DelegationHQ
-```
+## What A Domain Should Do Later
 
-Preferred public domains:
-
-- `delegationhq.ai` for the public/product site
-- `delegationhq.dev` for developer docs or redirects
-
-The CLI should stay `delegation`.
-
-## What The Domain Should Do
-
-The first domain does not need a full SaaS product on day one. It should point
-people to a clear story:
+A future website should make the project feel clear in the first minute:
 
 - what DelegationHQ is
 - why agentic work needs mission control
@@ -32,43 +22,20 @@ Prefer names that are:
 
 - easy to say
 - easy to spell
-- not tied to one vendor
-- broad enough for open source plus a future hosted product
-- available across GitHub, docs, and social handles when possible
+- not tied to one model provider
+- broad enough for open source and future hosted work
+- available across important developer surfaces when possible
 
 Avoid names that imply:
 
 - only GitHub Issues
 - only one agent framework
+- only proof logs
 - only safety or blocking
 - a specific model provider
 
-## Possible Product Structure
+## Current Rule
 
-```text
-domain/
-  docs
-  examples
-  pricing
-  cloud
-  security
-  changelog
-```
-
-## Launch Order
-
-1. Domain redirects to GitHub README.
-2. Static docs page explains Harnessfile, dry-run plan, ledger, evals, adapters.
-3. Waitlist page for hosted Delegation Cloud.
-4. Hosted dashboard prototype.
-5. Paid team and enterprise plans only after real users prove the workflow.
-
-## Naming Position
-
-Use plain language:
-
-```text
-Mission control for agentic work.
-```
-
-The domain should support that sentence.
+Do not let domain urgency interrupt product work. The public repo, package name,
+CLI, demo, and docs matter more than buying a domain before the product is
+ready.

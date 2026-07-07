@@ -107,18 +107,15 @@ Deep only when the user asks for depth.
 2. GitHub App installation flow.
 3. Team approval workflows.
 4. Slack, Linear, Jira, and enterprise adapters.
-5. Domain landing page and waitlist.
-6. Trademark, hosted terms, and privacy-policy planning.
+5. Public website or docs home when a domain is owned.
+6. Trademark, hosted terms, and privacy-policy planning when needed.
 
 ## Parking Lot
 
 These matter, but should not interrupt the core loop:
 
-- pricing
 - domain purchase
 - logo and visual identity
-- hosted billing
-- marketplace strategy
 - long-form launch content
 
-See `docs/business-model.md` and `docs/domain-strategy.md` for those threads.
+See `docs/open-core-strategy.md` for the public/private publishing boundary.
