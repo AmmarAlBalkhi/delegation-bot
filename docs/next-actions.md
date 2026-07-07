@@ -38,9 +38,9 @@ Deep only when the user asks for depth.
    `docs/public-roadmap-issues.md` when maintainers are ready.
 3. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
-4. Add the first GitHub App token provider boundary for `issue-write` mode.
-5. Add token-scope diagnostics for future GitHub App auth and decide whether a
-   dedicated `github.actions` cancel command belongs in the next public batch.
+4. Add GitHub App auth diagnostics to `delegation doctor`.
+5. Decide whether a dedicated `github.actions` cancel command belongs in the
+   next public batch.
 
 ## Completed Recently
 
@@ -53,6 +53,8 @@ Deep only when the user asks for depth.
   scoped installation-token planning before live app auth exists.
 - Added `delegation apply-feedback` for gated feedback recovery comments and
   optional issue closing with separate confirmation tokens.
+- Added the first GitHub App issue-write auth boundary for live issue commands
+  through `--auth github-app`.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

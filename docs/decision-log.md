@@ -1136,3 +1136,33 @@ Guardrails:
 
 Follow-up: Connect this path to the future GitHub App `issue-write` token
 provider so users do not need broad personal access tokens.
+
+## 2026-07-07: Add GitHub App Issue-Write Auth Boundary
+
+Decision: Add a local GitHub App installation-token provider and wire
+`--auth github-app` into `delegation apply-issues` and
+`delegation apply-feedback`.
+
+Why: Live issue writes should not require broad personal tokens forever. The
+first safe step is a narrow auth source for issue-write actions only, while
+keeping the same dry-run, policy, confirmation, and ledger gates.
+
+Guardrails:
+
+- preview mode never mints a GitHub App token
+- the optional `delegationhq[github-app]` dependency is needed only for local
+  JWT signing
+- app private keys, installation ids, and tokens stay in environment variables
+  or local secret files outside the repository
+- installation token requests are scoped to issue-write permissions and the
+  repositories present in the approved issue drafts
+- `--auth auto` blocks on partial GitHub App config instead of silently falling
+  back to a broader environment token
+- token values are never printed, serialized in JSON output, or written to the
+  ledger
+- ledger events may record only the auth source, such as `github-app`
+- GitHub App auth does not bypass approval, repository policy, duplicate
+  marker, eval, or confirmation gates
+
+Follow-up: Add GitHub App auth diagnostics to `delegation doctor`, then test
+the issue-write path against a real installed app before hosted auth work.

@@ -16,6 +16,7 @@ from delegation_bot.evals import (
     eval_no_duplicate_issue_markers,
     eval_required_adapter_evidence,
 )
+from delegation_bot.github_auth import env_token_from_env
 from delegation_bot.harness_manifest import Manifest
 from delegation_bot.harness_plan import ExecutionPlan, LedgerEvent, PlanAction
 
@@ -270,7 +271,7 @@ def build_feedback_apply_report(
             _feedback_policy_gate(manifest, drafts),
             *_feedback_approval_gates(manifest, ledger_events, drafts),
             _feedback_intent_gate(apply, close, confirmation),
-            _token_gate(apply, token),
+            _feedback_token_gate(apply, drafts, token),
         ]
     )
     blocked = any(gate.status == "blocked" for gate in gates)
@@ -390,6 +391,7 @@ def apply_github_issue_drafts(
     client: GitHubIssueClient,
     run_id: str,
     start_sequence: int,
+    auth_source: str | None = None,
     timestamp: str | None = None,
 ) -> list[LedgerEvent]:
     event_time = timestamp or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -419,7 +421,7 @@ def apply_github_issue_drafts(
         "github.issue.apply.started",
         "running",
         "Started live GitHub Issue apply.",
-        details={"draft_count": len(drafts), "adapter": "github.issue"},
+        details={"draft_count": len(drafts), "adapter": "github.issue", "auth_source": auth_source},
     )
     succeeded = 0
     for draft in drafts:
@@ -477,6 +479,7 @@ def apply_feedback_resolution_drafts(
     run_id: str,
     start_sequence: int,
     close: bool = False,
+    auth_source: str | None = None,
     timestamp: str | None = None,
 ) -> list[LedgerEvent]:
     event_time = timestamp or datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -506,7 +509,7 @@ def apply_feedback_resolution_drafts(
         "github.issue.feedback_apply.started",
         "running",
         "Started live feedback issue apply.",
-        details={"draft_count": len(drafts), "adapter": "github.issue", "close": close},
+        details={"draft_count": len(drafts), "adapter": "github.issue", "close": close, "auth_source": auth_source},
     )
     succeeded = 0
     for draft in drafts:
@@ -581,8 +584,8 @@ def apply_feedback_resolution_drafts(
 
 
 def github_token_from_env() -> str | None:
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    return token if isinstance(token, str) and token.strip() else None
+    token = env_token_from_env(os.environ)
+    return token.token if token else None
 
 
 def _github_issue_drafts(
@@ -743,6 +746,16 @@ def _feedback_intent_gate(apply: bool, close: bool, confirmation: str | None) ->
     )
 
 
+def _feedback_token_gate(apply: bool, drafts: T.Sequence[FeedbackIssueDraft], token: str | None) -> ApplyGate:
+    if apply and not drafts:
+        return ApplyGate(
+            "github.token",
+            "passed",
+            "GitHub token is not required because no live feedback write is planned.",
+        )
+    return _token_gate(apply, token)
+
+
 def _ledger_gates(ledger_events: T.Sequence[JsonMap]) -> list[ApplyGate]:
     evals = [
         eval_ledger_is_valid(ledger_events),
@@ -835,8 +848,8 @@ def _token_gate(apply: bool, token: str | None) -> ApplyGate:
     return ApplyGate(
         "github.token",
         "blocked",
-        "GITHUB_TOKEN or GH_TOKEN is required for live apply.",
-        next_action="Set GITHUB_TOKEN before running live apply.",
+        "GITHUB_TOKEN or GH_TOKEN is required for live apply unless GitHub App auth supplies a scoped token.",
+        next_action="Set GITHUB_TOKEN/GH_TOKEN or configure `--auth github-app`.",
     )
 
 

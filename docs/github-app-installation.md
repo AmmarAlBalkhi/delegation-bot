@@ -124,6 +124,58 @@ GitHub installation access tokens are short-lived. The token request can also
 be narrowed to specific repositories and permissions, but it cannot exceed the
 repositories or permissions granted to the app installation.
 
+## Local Issue-Write Auth Boundary
+
+The local CLI can use a GitHub App installation token for live issue writes
+without changing the control loop.
+
+Install the optional auth dependency when you want local GitHub App token
+minting:
+
+```bash
+pip install "delegationhq[github-app]"
+```
+
+Configure the app outside the repository:
+
+```bash
+DELEGATION_GITHUB_APP_CLIENT_ID=<client-or-app-id>
+DELEGATION_GITHUB_APP_INSTALLATION_ID=<installation-id>
+DELEGATION_GITHUB_APP_PRIVATE_KEY_PATH=<path-to-private-key.pem>
+```
+
+You can use `DELEGATION_GITHUB_APP_PRIVATE_KEY` instead of a path when the
+environment can hold multiline secrets safely. Literal `\n` sequences are
+expanded before signing.
+
+Then choose GitHub App auth on live issue commands:
+
+```bash
+delegation apply-issues Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_GITHUB_ISSUES \
+  --auth github-app
+
+delegation apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES \
+  --auth github-app
+```
+
+The token request uses only issue-write permissions and the repositories
+already present in the gated issue drafts. The token is never printed, written
+to the ledger, or stored in the repository. Ledger events record only the auth
+source, such as `github-app`.
+
+Default `--auth auto` keeps development friendly:
+
+- use configured GitHub App auth when it is available
+- otherwise fall back to `GITHUB_TOKEN` or `GH_TOKEN`
+- block instead of falling back if GitHub App env vars are present but incomplete
+- never mint a token in preview mode
+
 ## Local Permission Plan
 
 Use the local planner before building live GitHub App auth:

@@ -240,6 +240,16 @@ GITHUB_TOKEN=... python scripts/delegation.py apply-feedback Harnessfile.yaml \
   --confirm LIVE_FEEDBACK_ISSUES
 ```
 
+With GitHub App issue-write auth configured, use:
+
+```bash
+python scripts/delegation.py apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES \
+  --auth github-app
+```
+
 Closing the issue is a stronger action and uses a different confirmation:
 
 ```bash

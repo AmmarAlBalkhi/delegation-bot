@@ -76,7 +76,7 @@ A live `github.issue` apply should require:
 - no duplicate issue marker failure
 - explicit `--apply` or `APPLY=true`
 - target repository allowed by policy
-- `GITHUB_TOKEN` available
+- `GITHUB_TOKEN`/`GH_TOKEN` or configured GitHub App issue-write auth
 - dry-run issue body includes the ledger or artifact reference
 
 If any required gate is missing, the command should explain what is missing and
@@ -105,6 +105,16 @@ delegation apply-issues Harnessfile.yaml \
   --ledger .delegation/latest.jsonl \
   --apply \
   --confirm LIVE_GITHUB_ISSUES
+```
+
+GitHub App auth can provide a scoped issue-write installation token:
+
+```bash
+delegation apply-issues Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_GITHUB_ISSUES \
+  --auth github-app
 ```
 
 See `docs/github-issue-apply.md` for the user-facing guide.
@@ -147,6 +157,7 @@ Every event should include:
 - issue number or URL when available
 - source dry-run action id
 - approval or apply mode evidence
+- auth source, without the token value
 - sanitized body preview
 
 Live workflow dispatch appends:
