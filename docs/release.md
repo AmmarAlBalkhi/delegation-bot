@@ -24,6 +24,7 @@ Current package facts:
 - optional EXE packaging tools: `python -m pip install -e ".[exe]"`
 - Windows EXE build script: `.\scripts\build-windows-exe.ps1`
 - Windows EXE user-local installer: `.\scripts\install-windows-exe.ps1`
+- release artifact proof command: `delegation artifacts`
 - import namespace: `delegation_bot`
 
 The code is still alpha. The package metadata exists so contributors and early
@@ -64,6 +65,26 @@ For final release rehearsal, require standalone artifacts too:
 delegation release-check --strict-artifacts
 ```
 
+## Artifact Proof
+
+After building standalone artifacts, write checksums and the release manifest:
+
+```bash
+delegation artifacts --dist dist
+delegation artifacts --dist dist --check
+```
+
+The command writes:
+
+```text
+dist/SHA256SUMS.txt
+dist/artifacts-manifest.json
+```
+
+`SHA256SUMS.txt` is the standard user-facing digest file. The JSON manifest is
+for automation: it records artifact paths, sizes, SHA-256 digests, package
+name, package version, and generation time.
+
 ## Release Checklist
 
 Before a public package release:
@@ -73,6 +94,7 @@ Before a public package release:
 - run `python scripts/package_smoke.py`
 - run `delegation release-check --strict-artifacts` after building standalone
   artifacts
+- run `delegation artifacts --dist dist --check`
 - run a source install smoke test
 - confirm `delegation --version` matches `pyproject.toml`
 - confirm `delegation --help` works after install

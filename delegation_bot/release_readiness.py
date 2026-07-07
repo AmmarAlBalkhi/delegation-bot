@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from delegation_bot import __version__
+from delegation_bot.release_artifacts import DEFAULT_CHECKSUMS_NAME, DEFAULT_MANIFEST_NAME, verify_artifact_outputs
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -320,13 +321,21 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
     except OSError as exc:
         return _failed("windows_packaging", "Windows Packaging", "Windows packaging files could not be read.", details=[str(exc)])
     problems: list[str] = []
-    for needle in ("--version", "demo --ledger", "init --goal", "validate $SmokeHarnessfile"):
+    for needle in (
+        "--version",
+        "demo --ledger",
+        "init --goal",
+        "validate $SmokeHarnessfile",
+        "artifacts --dist $ResolvedDistPath",
+        "SHA256SUMS.txt",
+        "artifacts-manifest.json",
+    ):
         if needle not in build_text:
             problems.append(f"build-windows-exe.ps1 missing `{needle}`")
     for needle in ("--version", "doctor --skip-github", "LOCALAPPDATA", "DelegationHQ\\bin"):
         if needle not in install_text:
             problems.append(f"install-windows-exe.ps1 missing `{needle}`")
-    for needle in ("delegation.exe --version", "checksums", "tagged commit"):
+    for needle in ("delegation.exe --version", "checksums", "artifacts-manifest.json", "tagged commit"):
         if needle not in docs_text:
             problems.append(f"windows-exe.md missing `{needle}`")
     if problems:
@@ -357,21 +366,42 @@ def _check_git_state(root: Path) -> ReleaseCheck:
 
 def _check_artifacts(root: Path, *, strict_artifacts: bool) -> ReleaseCheck:
     executable = root / "dist" / "delegation.exe"
-    checksums = root / "dist" / "SHA256SUMS.txt"
+    checksums = root / "dist" / DEFAULT_CHECKSUMS_NAME
+    manifest = root / "dist" / DEFAULT_MANIFEST_NAME
     missing = []
     if not executable.exists():
         missing.append("dist/delegation.exe")
     if not checksums.exists():
-        missing.append("dist/SHA256SUMS.txt")
+        missing.append(f"dist/{DEFAULT_CHECKSUMS_NAME}")
+    if not manifest.exists():
+        missing.append(f"dist/{DEFAULT_MANIFEST_NAME}")
     if not missing:
-        return _ready("release_artifacts", "Release Artifacts", "Windows executable and checksums exist locally.")
+        maker = _failed if strict_artifacts else _warning
+        verification = verify_artifact_outputs(root / "dist")
+        if verification.ready:
+            return _ready(
+                "release_artifacts",
+                "Release Artifacts",
+                "Windows executable, checksums, and manifest verify locally.",
+                details=[artifact.path for artifact in verification.artifacts],
+            )
+        return maker(
+            "release_artifacts",
+            "Release Artifacts",
+            "Standalone release artifacts exist but verification failed.",
+            details=verification.issues,
+            next_action="Rerun `delegation artifacts --dist dist`, then `delegation artifacts --dist dist --check`.",
+        )
     maker = _failed if strict_artifacts else _warning
     return maker(
         "release_artifacts",
         "Release Artifacts",
         "Standalone release artifacts are not built yet.",
         details=missing,
-        next_action="Run the Windows EXE build on a clean release host, then publish checksums next to the artifact.",
+        next_action=(
+            "Run `./scripts/build-windows-exe.ps1 -InstallDependencies`, which writes "
+            "SHA256SUMS.txt and artifacts-manifest.json next to the artifact."
+        ),
     )
 
 

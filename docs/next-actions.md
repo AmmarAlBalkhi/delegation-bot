@@ -33,14 +33,15 @@ Deep only when the user asks for depth.
 ## Now
 
 1. Run `delegation release-check --strict-artifacts` on a clean Windows release
-   host after building the `.exe` and checksum file.
+   host after building the `.exe`, checksum file, and artifact manifest.
 2. Open the first small public roadmap issue set from
    `docs/public-roadmap-issues.md` when maintainers are ready.
 3. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-4. Add release artifact checksum generation to the Windows build path.
-5. Decide which `delegation github-app-plan` mode should become the first
+4. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
+5. Add a release rehearsal note that names the exact artifact files produced
+   by the clean Windows host.
 
 ## Completed Recently
 
@@ -62,6 +63,9 @@ Deep only when the user asks for depth.
   evidence, and fake-client tests.
 - Added ledger-based GitHub Actions dispatch idempotency with stable
   secret-safe dispatch ids and duplicate-dispatch blocking.
+- Added `delegation artifacts` for release checksum and artifact-manifest
+  generation, wired it into the Windows EXE build path, and verified stale
+  checksum detection.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

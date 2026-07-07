@@ -100,6 +100,13 @@ from delegation_bot.playbook_catalog import (
     validate_catalog,
 )
 from delegation_bot.promotion import PromotionError, evaluate_promotions, load_ledger, render_promotion_report
+from delegation_bot.release_artifacts import (
+    ArtifactError,
+    render_artifact_manifest,
+    render_artifact_verification_report,
+    verify_artifact_outputs,
+    write_artifact_outputs,
+)
 from delegation_bot.release_readiness import build_release_readiness_report, render_release_readiness_report
 from delegation_bot.suggest import (
     SUGGESTION_TEMPLATE_IDS,
@@ -1062,6 +1069,29 @@ def cmd_github_app_plan(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_artifacts(args: argparse.Namespace) -> int:
+    dist_path = Path(args.dist)
+    if args.check:
+        report = verify_artifact_outputs(dist_path)
+        if args.json:
+            print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(render_artifact_verification_report(report))
+        return 0 if report.ready else 1
+
+    try:
+        manifest = write_artifact_outputs(dist_path)
+    except ArtifactError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(manifest.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_artifact_manifest(manifest, dist_path=dist_path))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"DelegationHQ {__version__}")
@@ -1282,6 +1312,19 @@ def build_parser() -> argparse.ArgumentParser:
     github_app_plan.add_argument("--output", help="Write the permission plan JSON to this path.")
     github_app_plan.add_argument("--json", action="store_true", help="Print the permission plan as JSON.")
     github_app_plan.set_defaults(func=cmd_github_app_plan)
+
+    artifacts = subparsers.add_parser(
+        "artifacts",
+        help="Write or verify release artifact checksums and manifest files.",
+    )
+    artifacts.add_argument("--dist", default="dist", help="Directory containing built release artifacts.")
+    artifacts.add_argument(
+        "--check",
+        action="store_true",
+        help="Verify existing checksum and manifest files instead of writing them.",
+    )
+    artifacts.add_argument("--json", action="store_true", help="Print artifact output as JSON.")
+    artifacts.set_defaults(func=cmd_artifacts)
 
     apply_issues = subparsers.add_parser(
         "apply-issues",

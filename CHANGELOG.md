@@ -134,3 +134,6 @@ The project is currently pre-release.
   diagnostics, optional ledger evidence, and fake-client coverage.
 - Added secret-safe GitHub Actions dispatch ids and a ledger idempotency gate
   that blocks repeated live dispatches for the same workflow/ref/input shape.
+- Added `delegation artifacts` for release artifact checksums and a structured
+  artifact manifest, and wired checksum verification into the Windows EXE build
+  path.

@@ -1247,3 +1247,25 @@ Guardrails:
 
 Follow-up: For teams, combine ledger idempotency with GitHub App installation
 tokens and hosted/shared ledger storage.
+
+## 2026-07-07: Add Release Artifact Proof
+
+Decision: Add `delegation artifacts` to write and verify `SHA256SUMS.txt` plus
+a structured `artifacts-manifest.json` for release artifacts, then wire that
+proof into the Windows EXE build path.
+
+Why: A release artifact should be easy to trust and easy to audit. The checksum
+file gives users a familiar verification path, while the JSON manifest gives
+future release automation a typed record of artifact names, sizes, package
+version, and SHA-256 digests.
+
+Guardrails:
+
+- generated checksum and manifest files are not themselves rehashed
+- stale checksums fail verification
+- `delegation release-check` warns or fails when artifact proof is missing or
+  stale
+- the build script verifies artifact proof before reporting success
+
+Follow-up: Run the full Windows release rehearsal on a clean host and record
+the exact artifact files before publishing.

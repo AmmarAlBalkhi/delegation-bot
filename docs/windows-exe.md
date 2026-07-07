@@ -40,6 +40,8 @@ The script creates:
 
 ```text
 dist/delegation.exe
+dist/SHA256SUMS.txt
+dist/artifacts-manifest.json
 ```
 
 It also runs this safe smoke test unless `-SkipSmoke` is passed:
@@ -54,6 +56,17 @@ dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
 The executable build bundles `examples/`, `playbooks/`, `schemas/`, `LICENSE`,
 `NOTICE`, and `README.md` so the demo, catalog, fixture, and doctor paths do
 not depend on a full source checkout.
+
+After smoke checks pass, the script runs:
+
+```powershell
+python scripts\delegation.py artifacts --dist dist
+python scripts\delegation.py artifacts --dist dist --check
+```
+
+`SHA256SUMS.txt` gives users a standard checksum file. The structured
+`artifacts-manifest.json` records the package version, artifact names, sizes,
+and SHA-256 digests for release automation.
 
 ## User-Local Install
 
@@ -126,7 +139,8 @@ Do not publish an `.exe` until:
 - the artifact is built from a tagged commit
 - docs explain that live writes remain gated
 - `delegation.exe --version` matches `pyproject.toml`
-- checksums are published next to the artifact
+- `delegation artifacts --dist dist --check` passes
+- checksums and `artifacts-manifest.json` are published next to the artifact
 
 ## Sources Checked
 
