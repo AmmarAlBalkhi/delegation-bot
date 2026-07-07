@@ -9,6 +9,7 @@ from delegation_bot.github_actions_apply import (
     CANCEL_CONFIRMATION,
     FORCE_CANCEL_CONFIRMATION,
     GitHubActionsDispatchResult,
+    GitHubActionsDraft,
     GitHubActionsCancelTarget,
     GitHubActionsCancelResult,
     GitHubTokenDiagnostics,
@@ -58,8 +59,10 @@ class GitHubActionsApplyTests(unittest.TestCase):
         self.assertFalse(report.blocked)
         self.assertEqual(report.status, "ready")
         self.assertEqual(len(report.drafts), 1)
+        self.assertTrue(report.drafts[0].dispatch_id.startswith("gha-"))
         self.assertIn("actions/runs/dryrun-gha", report.drafts[0].workflow_run_url)
         self.assertIn("GitHub Actions Apply Gate", text)
+        self.assertIn("dispatch id: gha-", text)
         self.assertIn("Rerun with `--apply --confirm LIVE_GITHUB_ACTIONS`", text)
 
     def test_live_dispatch_is_ready_with_confirmation_and_token(self) -> None:
@@ -78,6 +81,24 @@ class GitHubActionsApplyTests(unittest.TestCase):
         self.assertFalse(report.blocked)
         self.assertEqual(report.status, "ready_to_dispatch")
         self.assertTrue(report.live_dispatch_supported)
+
+    def test_dispatch_id_does_not_include_sensitive_input_values(self) -> None:
+        first = GitHubActionsDraft(
+            action_id="executor.release",
+            repository="AmmarAlBalkhi/delegation-bot",
+            workflow_ref=".github/workflows/tests.yml",
+            ref="main",
+            inputs={"mode": "smoke", "api_token": "first-secret"},
+        )
+        second = GitHubActionsDraft(
+            action_id="executor.release",
+            repository="AmmarAlBalkhi/delegation-bot",
+            workflow_ref=".github/workflows/tests.yml",
+            ref="main",
+            inputs={"mode": "smoke", "api_token": "second-secret"},
+        )
+
+        self.assertEqual(first.dispatch_id, second.dispatch_id)
 
     def test_cancel_actions_preview_is_ready_without_token(self) -> None:
         report = build_actions_cancel_report("AmmarAlBalkhi/delegation-bot", "123")
@@ -295,12 +316,57 @@ class GitHubActionsApplyTests(unittest.TestCase):
             "github.actions.dispatch.completed",
         ])
         self.assertEqual(events[1].status, "executed")
+        self.assertEqual(events[0].details["dispatch_ids"], [report.drafts[0].dispatch_id])
+        self.assertEqual(events[1].details["dispatch_id"], report.drafts[0].dispatch_id)
         self.assertEqual(events[1].details["workflow_run_id"], "123")
         self.assertEqual(
             events[1].details["cancellation"]["cancel_api_path"],
             "/repos/AmmarAlBalkhi/delegation-bot/actions/runs/123/cancel",
         )
         self.assertEqual(events[-1].status, "passed")
+
+    def test_existing_live_dispatch_id_blocks_repeat_dispatch(self) -> None:
+        manifest, plan, ledger_events = example_manifest_and_ledger()
+        first_report = build_actions_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=".delegation/latest.jsonl",
+        )
+        ledger_events.append(
+            {
+                "run_id": ledger_events[0]["run_id"],
+                "sequence": len(ledger_events) + 1,
+                "timestamp": "2026-07-07T00:00:00+00:00",
+                "type": "github.actions.dispatched",
+                "status": "executed",
+                "message": "GitHub Actions workflow dispatched.",
+                "action_id": first_report.drafts[0].action_id,
+                "details": {
+                    "adapter": "github.actions",
+                    "dispatch_id": first_report.drafts[0].dispatch_id,
+                    "repository": first_report.drafts[0].repository,
+                    "workflow_ref": first_report.drafts[0].workflow_ref,
+                    "ref": first_report.drafts[0].ref,
+                },
+            }
+        )
+
+        repeat_report = build_actions_apply_report(
+            manifest,
+            plan,
+            ledger_events,
+            ledger_source=".delegation/latest.jsonl",
+            apply=True,
+            confirmation=ACTIONS_CONFIRMATION,
+            token="fake-token",
+        )
+
+        self.assertTrue(repeat_report.blocked)
+        self.assertIn(
+            "ledger.dispatch_idempotency",
+            {gate.id for gate in repeat_report.gates if gate.status == "blocked"},
+        )
 
     def test_live_dispatch_blocks_when_preflight_changes_after_report(self) -> None:
         class FakeClient:

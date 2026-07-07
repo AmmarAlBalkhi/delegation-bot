@@ -1125,3 +1125,24 @@ Guardrails:
 
 Follow-up: Prefer GitHub App installation tokens for real users so they do not
 need broad personal tokens.
+
+## 2026-07-07: Add GitHub Actions Dispatch Idempotency
+
+Decision: Add stable dispatch ids and a ledger idempotency gate for
+`github.actions` live dispatch.
+
+Why: A control plane should not press the same high-power workflow button twice
+just because another agent, terminal, or machine reused the same ledger. The
+dispatch id gives humans and tools a compact way to recognize the same
+repository, workflow, ref, and input shape before live execution.
+
+Guardrails:
+
+- dispatch ids appear in previews and live dispatch ledger events
+- repeated live dispatch ids in the same ledger block future dispatch
+- sensitive input values are not included in the fingerprint
+- GitHub API preflight still checks active duplicate workflow runs before
+  dispatch
+
+Follow-up: For teams, combine ledger idempotency with GitHub App installation
+tokens and hosted/shared ledger storage.

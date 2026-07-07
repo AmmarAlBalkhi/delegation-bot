@@ -39,7 +39,7 @@ Deep only when the user asks for depth.
 3. Design live feedback issue comments or close actions behind explicit gates.
 4. Sketch the GitHub App installation flow that can provide scoped tokens
    without forcing users to paste personal tokens.
-5. Add stronger cross-machine idempotency for `github.actions` live dispatch.
+5. Add release artifact checksum generation to the Windows build path.
 
 ## Completed Recently
 
@@ -51,6 +51,8 @@ Deep only when the user asks for depth.
 - Added `delegation cancel-actions` with preview-first GitHub Actions
   cancellation, force-cancel confirmation, token diagnostics, optional ledger
   evidence, and fake-client tests.
+- Added ledger-based GitHub Actions dispatch idempotency with stable
+  secret-safe dispatch ids and duplicate-dispatch blocking.
 - Added `delegation --version`, package/EXE version smoke checks, and clearer
   doctor next steps that start with `delegation demo`.
 - Moved the public/package identity to DelegationHQ while preserving the

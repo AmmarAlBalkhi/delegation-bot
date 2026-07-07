@@ -42,6 +42,7 @@ Preview mode does not call GitHub and does not need a token. It shows:
 - repository
 - workflow file
 - ref, defaulting to `main` when the Harnessfile does not declare one
+- stable dispatch id for duplicate protection
 - workflow input keys and redacted input values
 - dry-run workflow run id
 - dry-run workflow run URL shape
@@ -70,15 +71,22 @@ github.actions.dispatched
 github.actions.dispatch.completed
 ```
 
-Those events include repository, workflow file, ref, input keys, status code,
-workflow run URL when GitHub returns one, and cancellation guidance.
+Those events include repository, workflow file, ref, dispatch id, input keys,
+status code, workflow run URL when GitHub returns one, and cancellation
+guidance.
 
 Before dispatch, live mode also performs a GitHub API preflight:
 
+- block dispatch when the ledger already contains the same live dispatch id
 - fetch workflow metadata and confirm the workflow is active
 - confirm the workflow resolves under `.github/workflows/`
 - list active `workflow_dispatch` runs for the same workflow and ref
 - block dispatch when a queued or in-progress duplicate already exists
+
+The dispatch id is a deterministic fingerprint of repository, workflow file,
+ref, and workflow inputs. Sensitive input values are not included; sensitive
+keys are represented as sensitive placeholders. That makes the id useful for
+duplicate protection without turning secrets into ledger material.
 
 ## Gates
 
@@ -90,6 +98,7 @@ The preview checks:
 - required adapter evidence eval passes
 - each workflow draft has matching ledger evidence
 - each workflow draft has a run URL preview
+- no matching live dispatch id already exists in the ledger
 - repository is allowed by policy
 - workflow approval evidence exists when policy requires `workflow`,
   `github.actions`, `github_actions`, `workflow_dispatch`, or `actions`
@@ -174,7 +183,6 @@ Sources checked on 2026-07-06:
 
 The current client is still intentionally small. Future hardening should add:
 
-- stronger idempotency keys that survive across machines
 - GitHub App installation tokens so users do not need broad personal tokens
 
 The correct behavior remains boring and safe: preview first, prove gates, then

@@ -165,10 +165,12 @@ Every event should include:
 - repository
 - workflow file or id
 - ref
+- dispatch id for duplicate protection
 - input keys, with sensitive values omitted
 - workflow run id and URL when GitHub returns them
 - source dry-run action id
 - live preflight gates for workflow metadata and duplicate active runs
+- ledger idempotency gate for previous live dispatch evidence
 - cancellation API paths after dispatch
 
 ## Policy Behavior
@@ -217,6 +219,7 @@ The workflow dispatch preview is useful when:
 - repository policy is checked before future dispatch
 - approval policy can require `approval.granted` evidence for workflow actions
 - live dispatch requires `--apply --confirm LIVE_GITHUB_ACTIONS` and a token
+- ledger idempotency blocks a repeated live dispatch with the same dispatch id
 - live preflight confirms workflow metadata before dispatch
 - active duplicate `workflow_dispatch` runs on the same ref block dispatch
 

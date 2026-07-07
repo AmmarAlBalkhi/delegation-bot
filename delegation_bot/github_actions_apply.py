@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import typing as T
 from dataclasses import dataclass, field
@@ -60,12 +62,17 @@ class GitHubActionsDraft:
     def input_keys(self) -> tuple[str, ...]:
         return tuple(sorted(str(key) for key in self.inputs))
 
+    @property
+    def dispatch_id(self) -> str:
+        return _dispatch_id(self)
+
     def to_dict(self) -> JsonMap:
         return {
             "action_id": self.action_id,
             "repository": self.repository,
             "workflow_ref": self.workflow_ref,
             "ref": self.ref,
+            "dispatch_id": self.dispatch_id,
             "input_keys": list(self.input_keys),
             "inputs": _redacted_inputs(self.inputs),
             "workflow_run_id": self.workflow_run_id,
@@ -400,6 +407,7 @@ def build_actions_apply_report(
             *_workflow_shape_gates(drafts),
             *_ledger_gates(ledger_events),
             _ledger_action_gate(drafts, ledger_events),
+            _idempotency_gate(drafts, ledger_events),
             *_policy_gates(manifest, drafts),
             *_approval_gates(manifest, ledger_events, drafts),
             _apply_intent_gate(apply, confirmation),
@@ -592,6 +600,7 @@ def render_actions_apply_report(report: GitHubActionsApplyReport) -> str:
             inputs = _format_inputs(draft.inputs)
             lines.append(f"- {draft.repository}: {draft.workflow_ref} @ {draft.ref}{approval}")
             lines.append(f"  action: {draft.action_id}")
+            lines.append(f"  dispatch id: {draft.dispatch_id}")
             lines.append(f"  run: {draft.workflow_run_url}")
             lines.append(f"  inputs: {inputs}")
     else:
@@ -642,7 +651,11 @@ def apply_github_actions_drafts(
         "github.actions.dispatch.started",
         "executed",
         "Started live GitHub Actions workflow dispatch.",
-        details={"draft_count": len(drafts), "adapter": "github.actions"},
+        details={
+            "draft_count": len(drafts),
+            "dispatch_ids": [draft.dispatch_id for draft in drafts],
+            "adapter": "github.actions",
+        },
     )
     succeeded = 0
     for draft in drafts:
@@ -651,6 +664,7 @@ def apply_github_actions_drafts(
             "repository": draft.repository,
             "workflow_ref": draft.workflow_ref,
             "ref": draft.ref,
+            "dispatch_id": draft.dispatch_id,
             "input_keys": list(draft.input_keys),
         }
         try:
@@ -935,6 +949,29 @@ def _ledger_action_gate(
     )
 
 
+def _idempotency_gate(
+    drafts: T.Sequence[GitHubActionsDraft],
+    ledger_events: T.Sequence[JsonMap],
+) -> GitHubActionsGate:
+    if not drafts:
+        return GitHubActionsGate("ledger.dispatch_idempotency", "passed", "No workflow dispatch ids to check.")
+    existing = _existing_dispatch_ids(ledger_events)
+    duplicates = [draft for draft in drafts if draft.dispatch_id in existing]
+    if duplicates:
+        details = ", ".join(f"{draft.action_id}={draft.dispatch_id}" for draft in duplicates)
+        return GitHubActionsGate(
+            "ledger.dispatch_idempotency",
+            "blocked",
+            f"Ledger already contains live dispatch evidence for: {details}.",
+            next_action="Inspect the existing run, cancel it if needed, or start a fresh ledger before dispatching again.",
+        )
+    return GitHubActionsGate(
+        "ledger.dispatch_idempotency",
+        "passed",
+        "No matching live dispatch id exists in the ledger.",
+    )
+
+
 def _policy_gates(manifest: Manifest, drafts: T.Sequence[GitHubActionsDraft]) -> list[GitHubActionsGate]:
     if not drafts:
         return [GitHubActionsGate("policy.allowed_repositories", "passed", "No workflow repositories to check.")]
@@ -1149,6 +1186,18 @@ def _workflow_evidence_by_action(events: T.Sequence[JsonMap]) -> dict[str, JsonM
     return evidence_by_action
 
 
+def _existing_dispatch_ids(events: T.Sequence[JsonMap]) -> set[str]:
+    dispatch_ids: set[str] = set()
+    for event in events:
+        if event.get("type") != "github.actions.dispatched" or event.get("status") != "executed":
+            continue
+        details = event.get("details") if isinstance(event.get("details"), dict) else {}
+        dispatch_id = details.get("dispatch_id")
+        if isinstance(dispatch_id, str) and dispatch_id.strip():
+            dispatch_ids.add(dispatch_id)
+    return dispatch_ids
+
+
 def _allowed_repositories(manifest: Manifest) -> set[str]:
     policies = manifest.get("policies") if isinstance(manifest.get("policies"), dict) else {}
     permissions = policies.get("permissions") if isinstance(policies.get("permissions"), dict) else {}
@@ -1188,6 +1237,37 @@ def _format_inputs(inputs: JsonMap) -> str:
     if not redacted:
         return "none"
     return ", ".join(f"{key}={redacted[key]!r}" for key in sorted(redacted))
+
+
+def _dispatch_id(draft: GitHubActionsDraft) -> str:
+    payload = {
+        "repository": draft.repository,
+        "workflow_ref": draft.workflow_ref,
+        "ref": draft.ref,
+        "inputs": _idempotency_inputs(draft.inputs),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return "gha-" + hashlib.sha256(encoded).hexdigest()[:16]
+
+
+def _idempotency_inputs(inputs: JsonMap) -> JsonMap:
+    safe: JsonMap = {}
+    for key, value in inputs.items():
+        key_text = str(key)
+        safe[key_text] = "[sensitive]" if _SENSITIVE_INPUT_RE.search(key_text) else _json_stable_value(value)
+    return {key: safe[key] for key in sorted(safe)}
+
+
+def _json_stable_value(value: T.Any) -> T.Any:
+    if isinstance(value, dict):
+        return {str(key): _json_stable_value(item) for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))}
+    if isinstance(value, list):
+        return [_json_stable_value(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_stable_value(item) for item in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
 
 
 def _workflow_run_summary(run: JsonMap) -> GitHubWorkflowRunSummary:
