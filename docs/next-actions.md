@@ -42,8 +42,8 @@ Human = final yes/no for danger.
 
 ## Now
 
-1. Connect `agent-audit` to real RunPrint recorded events once RunPrint can
-   append live recording evidence, not only planned bundles.
+1. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
+   repo stabilizes.
 2. Add the next approval loop slice: optional reviewer notes, expiration, and
    decision history summaries for repeated agent actions.
 3. Keep `app-state` aligned as the first cockpit backend without designing UI
@@ -65,6 +65,9 @@ Human = final yes/no for danger.
 - Added `delegation approval-inbox` and `delegation approval-decision` so Agent
   Gate receipts become simple human approve/block cards backed by ledger
   evidence.
+- Added `delegation runprint-ingest` so external RunPrint recording evidence
+  can be attached to the exact Agent Gate receipt and make audits say
+  `recorded`.
 - Added `delegation agent-gate` for Agent Passport action previews. It returns
   `allow`, `warn`, `approval_required`, or `block`, supports Harnessfile and
   custom registry agents, and feeds gate-ready JSON into `app-state`.

@@ -20,6 +20,7 @@ delegation agents examples/ai-harness-control-plane.yaml --registry examples/age
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
 delegation approval-inbox --ledger .delegation/demo.jsonl
 delegation approval-decision --ledger .delegation/demo.jsonl --action-id agent_gate.implementer.create_pull_request --decision approve --approver Ammar
+delegation runprint-ingest --ledger .delegation/demo.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-demo --bundle-id bundle-demo --artifact run-ledger:jsonl:.delegation/demo.jsonl
 delegation agent-audit --ledger .delegation/demo.jsonl
 ```
 
@@ -72,6 +73,7 @@ dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry exa
 dist\delegation.exe agent-gate examples\ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation\exe-smoke.jsonl --write
 dist\delegation.exe approval-inbox --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe approval-decision --ledger .delegation\exe-smoke.jsonl --action-id agent_gate.implementer.create_pull_request --decision approve --approver exe-smoke
+dist\delegation.exe runprint-ingest --ledger .delegation\exe-smoke.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-exe-smoke --bundle-id bundle-exe-smoke --artifact run-ledger:jsonl:.delegation\exe-smoke.jsonl
 dist\delegation.exe agent-audit --ledger .delegation\exe-smoke.jsonl
 ```
 

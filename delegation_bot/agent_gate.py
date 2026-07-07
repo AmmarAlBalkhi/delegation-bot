@@ -426,8 +426,8 @@ def build_agent_gate_audit_report(
     gate_events = tuple(_agent_gate_events(ledger_events))
     evidence = build_evidence_report(ledger_events, source=ledger_source)
     recorded_events = tuple(_runprint_recorded_events(ledger_events))
+    recorded_action_ids = _recorded_action_ids(recorded_events)
     approval_decisions = _approval_decisions_by_action(ledger_events)
-    evidence_status = _evidence_status(evidence.bundle_count, len(recorded_events))
 
     if not gate_events:
         return AgentGateAuditReport(
@@ -440,7 +440,14 @@ def build_agent_gate_audit_report(
             warnings=("No Agent Gate preview events were found in this ledger.",),
         )
 
-    items = tuple(_audit_item(event, evidence_status, approval_decisions.get(_event_action_id(event))) for event in gate_events)
+    items = tuple(
+        _audit_item(
+            event,
+            _evidence_status(evidence.bundle_count, 1 if _event_action_id(event) in recorded_action_ids else 0),
+            approval_decisions.get(_event_action_id(event)),
+        )
+        for event in gate_events
+    )
     status = _audit_status(items)
     warnings = tuple(evidence.warnings)
     return AgentGateAuditReport(
@@ -642,6 +649,16 @@ def _runprint_recorded_events(events: T.Sequence[JsonMap]) -> T.Iterator[JsonMap
         if event_type.endswith(".planned") or status == "planned":
             continue
         yield event
+
+
+def _recorded_action_ids(events: T.Sequence[JsonMap]) -> set[str]:
+    action_ids: set[str] = set()
+    for event in events:
+        details = event.get("details") if isinstance(event.get("details"), dict) else {}
+        for value in (details.get("target_action_id"), details.get("gate_action_id"), event.get("action_id")):
+            if isinstance(value, str) and value.strip():
+                action_ids.add(value.strip())
+    return action_ids
 
 
 def _approval_decisions_by_action(events: T.Sequence[JsonMap]) -> dict[str, str]:

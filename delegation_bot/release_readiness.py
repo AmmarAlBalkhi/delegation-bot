@@ -313,11 +313,13 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "agent-audit",
             "approval-inbox",
             "approval-decision",
+            "runprint-ingest",
             "Agent Passport Registry",
             "Agent Gate",
             "Agent Gate Evidence Audit",
             "Approval Inbox",
             "Approval Decision",
+            "RunPrint Recording Ingest",
             "Status: ready",
         )
         if needle not in text
@@ -332,7 +334,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, demo, app state, Agent Passports, Agent Gate, approvals, and Agent Gate audit.",
+        "Installed package smoke checks version, demo, app state, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -355,6 +357,7 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "agent-audit --ledger",
         "approval-inbox --ledger",
         "approval-decision --ledger",
+        "runprint-ingest --ledger",
         "examples\\agent-passports.yaml",
         "artifacts --dist $ResolvedDistPath",
         "SHA256SUMS.txt",

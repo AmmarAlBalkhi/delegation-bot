@@ -114,12 +114,13 @@ delegation agents examples/ai-harness-control-plane.yaml --registry examples/age
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml --json
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
 delegation approval-inbox --ledger .delegation/demo.jsonl --json
+delegation runprint-ingest --ledger .delegation/demo.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-demo --bundle-id bundle-demo --artifact run-ledger:jsonl:.delegation/demo.jsonl --json
 ```
 
 `app-state` is the first backend slice for the local cockpit. It combines the
 app plan, doctor report, release readiness, mission dashboard, evidence bundle
-summary, approval inbox summary, next safe action, and guardrails without
-launching a UI or doing live work.
+summary, approval inbox summary, recorded-evidence receipts, next safe action,
+and guardrails without launching a UI or doing live work.
 
 ## Milestones
 
@@ -133,7 +134,8 @@ launching a UI or doing live work.
 6. A local app shell reads app-state JSON, Agent Passport JSON, and Agent Gate
    preview JSON.
 7. Approval Inbox previews risky actions without live execution.
-8. The app is packaged from a tagged commit with checksums and release rehearsal
+8. RunPrint ingest attaches recorded evidence to approval cards.
+9. The app is packaged from a tagged commit with checksums and release rehearsal
    evidence.
 
 ## Design Boundary

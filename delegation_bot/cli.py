@@ -128,6 +128,13 @@ from delegation_bot.release_artifacts import (
 )
 from delegation_bot.release_rehearsal import build_release_rehearsal, render_release_rehearsal_report
 from delegation_bot.release_readiness import build_release_readiness_report, render_release_readiness_report
+from delegation_bot.runprint_ingest import (
+    artifacts_from_values,
+    build_runprint_ingest_receipt,
+    build_runprint_recording_events,
+    load_runprint_bundle,
+    render_runprint_ingest_receipt,
+)
 from delegation_bot.suggest import (
     SUGGESTION_TEMPLATE_IDS,
     HarnessSuggestion,
@@ -385,6 +392,35 @@ def cmd_approval_decision(args: argparse.Namespace) -> int:
     else:
         print(render_approval_decision_receipt(receipt))
         print(f"\nApproval decision appended: {ledger_path}")
+    return 0
+
+
+def cmd_runprint_ingest(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+        bundle = load_runprint_bundle(Path(args.bundle)) if args.bundle else None
+        events = build_runprint_recording_events(
+            ledger_events,
+            action_id=args.action_id,
+            recording_id=args.recording_id,
+            evidence_bundle_id=args.bundle_id,
+            artifacts=artifacts_from_values(tuple(args.artifact or ())),
+            summary=args.summary or "",
+            source=args.source or (str(args.bundle) if args.bundle else ""),
+            bundle=bundle,
+        )
+        append_jsonl(events, ledger_path)
+    except (EvalError, OSError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    receipt = build_runprint_ingest_receipt(events[0], ledger_source=str(ledger_path))
+    if args.json:
+        print(json.dumps(receipt.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_runprint_ingest_receipt(receipt))
+        print(f"\nRunPrint evidence appended: {ledger_path}")
     return 0
 
 
@@ -1484,6 +1520,25 @@ def build_parser() -> argparse.ArgumentParser:
     approval_decision.add_argument("--reason", help="Optional short reason for the decision.")
     approval_decision.add_argument("--json", action="store_true", help="Print the approval decision receipt as JSON.")
     approval_decision.set_defaults(func=cmd_approval_decision)
+
+    runprint_ingest = subparsers.add_parser(
+        "runprint-ingest",
+        help="Append external RunPrint recording evidence for an Agent Gate receipt.",
+    )
+    runprint_ingest.add_argument("--ledger", required=True, help="Append RunPrint evidence to this run ledger JSONL file.")
+    runprint_ingest.add_argument("--action-id", help="Agent Gate action_id this recording proves.")
+    runprint_ingest.add_argument("--recording-id", help="RunPrint recording id.")
+    runprint_ingest.add_argument("--bundle-id", help="RunPrint evidence bundle id.")
+    runprint_ingest.add_argument(
+        "--artifact",
+        action="append",
+        help="Recorded artifact. Use PATH or id:kind:path. Repeatable.",
+    )
+    runprint_ingest.add_argument("--summary", help="Short summary of what RunPrint recorded.")
+    runprint_ingest.add_argument("--source", help="Path, URL, or note identifying the RunPrint evidence source.")
+    runprint_ingest.add_argument("--bundle", help="Optional RunPrint JSON bundle file with action/recording/artifact fields.")
+    runprint_ingest.add_argument("--json", action="store_true", help="Print the RunPrint ingest receipt as JSON.")
+    runprint_ingest.set_defaults(func=cmd_runprint_ingest)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

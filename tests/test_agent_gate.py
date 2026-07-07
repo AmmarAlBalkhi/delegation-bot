@@ -188,6 +188,7 @@ class AgentGateTests(unittest.TestCase):
             provided_approvals=("pull_request",),
         )
         ledger.extend(event.to_dict() for event in build_agent_gate_events(gate, run_id="run-1", start_sequence=len(ledger) + 1))
+        action_id = ledger[-1]["action_id"]
         ledger.append(
             {
                 "run_id": "run-1",
@@ -196,8 +197,8 @@ class AgentGateTests(unittest.TestCase):
                 "type": "runprint.recording.completed",
                 "status": "completed",
                 "message": "RunPrint recorded execution evidence.",
-                "action_id": "evidence_recorder",
-                "details": {"recording_id": "recording-1"},
+                "action_id": action_id,
+                "details": {"recording_id": "recording-1", "target_action_id": action_id},
             }
         )
 

@@ -359,14 +359,14 @@ def _item_status(gate_decision: str, decision: ApprovalDecision | None, audit_ou
         return "blocked_by_human"
     if gate_decision == "block" or audit_outcome == "blocked_by_gate":
         return "blocked_by_gate"
+    if audit_outcome == "recorded":
+        return "recorded"
     if decision and decision.decision == "approve":
         return "approved"
     if gate_decision == "approval_required" or audit_outcome == "waiting_for_approval":
         return "pending_approval"
     if audit_outcome == "evidence_missing":
         return "needs_evidence"
-    if audit_outcome == "recorded":
-        return "recorded"
     if audit_outcome == "recording_planned":
         return "ready_for_recording"
     if gate_decision == "warn" or audit_outcome == "review_warning":

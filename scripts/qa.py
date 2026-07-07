@@ -226,6 +226,36 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "RunPrint recording ingest",
+            [
+                python,
+                "scripts/delegation.py",
+                "runprint-ingest",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+                "--action-id",
+                "agent_gate.implementer.create_pull_request",
+                "--recording-id",
+                "rec-qa-demo",
+                "--bundle-id",
+                "bundle-qa-demo",
+                "--artifact",
+                "run-ledger:jsonl:.delegation/qa-demo.jsonl",
+                "--summary",
+                "QA smoke recorded evidence.",
+            ],
+        ),
+        Check(
+            "Agent Gate recorded evidence audit",
+            [
+                python,
+                "scripts/delegation.py",
+                "agent-audit",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+            ],
+        ),
+        Check(
             "starter Harnessfile init",
             [
                 python,

@@ -41,6 +41,7 @@ delegation agents examples/ai-harness-control-plane.yaml --registry examples/age
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
 delegation approval-inbox --ledger .delegation/demo.jsonl
+delegation runprint-ingest --ledger .delegation/demo.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-demo --bundle-id bundle-demo --artifact run-ledger:jsonl:.delegation/demo.jsonl
 delegation agent-audit --ledger .delegation/demo.jsonl
 ```
 
@@ -65,6 +66,10 @@ keeps both together.
 
 `approval-inbox` turns those receipts into simple cards. `approval-decision`
 records a local human approve/block receipt without executing anything.
+
+`runprint-ingest` appends external RunPrint recording evidence to the same
+ledger. Simple version: the camera receipt lands, and `agent-audit` can say
+`recorded`.
 
 Want to start your own repo?
 
@@ -156,6 +161,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
 | `delegation approval-inbox --ledger .delegation/run.jsonl` | Show simple approval cards from Agent Gate receipts. |
 | `delegation approval-decision --ledger .delegation/run.jsonl --action-id ID --decision approve --approver NAME` | Record a local human approve/block receipt. |
+| `delegation runprint-ingest --ledger .delegation/run.jsonl --action-id ID --recording-id REC --bundle-id BUNDLE --artifact PATH` | Append external RunPrint recording evidence. |
 | `delegation agent-audit --ledger .delegation/run.jsonl` | Compare Agent Gate intent receipts with RunPrint evidence. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
@@ -212,6 +218,7 @@ DelegationHQ is pre-release, but the foundation is working:
 - dry-run RunPrint recorder evidence bundle planning
 - Agent Gate receipts and `agent-audit` for intent-vs-evidence checks
 - `approval-inbox` and `approval-decision` for simple human review receipts
+- `runprint-ingest` for attaching external RunPrint recording evidence to a gate receipt
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
 - `explain-policy` for low-friction classifier explanations that do not grant authority

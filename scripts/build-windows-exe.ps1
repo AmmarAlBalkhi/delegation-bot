@@ -143,6 +143,11 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    & $ExecutablePath runprint-ingest --ledger (Join-Path $SmokeDir "exe-smoke.jsonl") --action-id agent_gate.implementer.create_pull_request --recording-id rec-exe-smoke --bundle-id bundle-exe-smoke --artifact "run-ledger:jsonl:.delegation\exe-smoke.jsonl" --summary "EXE smoke recorded evidence."
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath agent-audit --ledger (Join-Path $SmokeDir "exe-smoke.jsonl")
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

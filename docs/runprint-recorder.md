@@ -62,6 +62,46 @@ delegation agent-audit --ledger .delegation/demo.jsonl
 Today that usually means "gate approved, RunPrint evidence bundle planned."
 Later live RunPrint events will let the same audit say what actually happened.
 
+## Ingest Recorded Evidence
+
+When RunPrint or another recorder has produced a proof bundle, append it to the
+DelegationHQ ledger:
+
+```bash
+delegation runprint-ingest \
+  --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.implementer.create_pull_request \
+  --recording-id rec-demo \
+  --bundle-id bundle-demo \
+  --artifact run-ledger:jsonl:.delegation/demo.jsonl \
+  --summary "Recorded ledger and approval evidence."
+```
+
+Then verify:
+
+```bash
+delegation agent-audit --ledger .delegation/demo.jsonl
+delegation approval-inbox --ledger .delegation/demo.jsonl
+```
+
+Simple version:
+
+```text
+Agent Gate receipt = what was allowed.
+Approval receipt = who said yes/no.
+RunPrint ingest = what was recorded.
+Agent audit = compare them.
+```
+
+`runprint-ingest` can also read a JSON bundle:
+
+```bash
+delegation runprint-ingest --ledger .delegation/demo.jsonl --bundle runprint-bundle.json
+```
+
+The bundle should include `action_id`, `recording_id`, `evidence_bundle_id`,
+and `artifacts` or `artifact_manifest`.
+
 ## Harnessfile Example
 
 ```yaml

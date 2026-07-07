@@ -30,6 +30,17 @@ delegation approval-decision \
   --approver Ammar
 ```
 
+Attach recorded evidence after the recorder runs:
+
+```bash
+delegation runprint-ingest \
+  --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.implementer.create_pull_request \
+  --recording-id rec-demo \
+  --bundle-id bundle-demo \
+  --artifact run-ledger:jsonl:.delegation/demo.jsonl
+```
+
 Block instead:
 
 ```bash
@@ -52,7 +63,7 @@ grant new powers. They only write local ledger evidence.
 - `blocked_by_gate`: Agent Gate blocked the intent
 - `needs_evidence`: gate passed, but recorder evidence is missing
 - `ready_for_recording`: gate and evidence plan are ready
-- `recorded`: RunPrint recorded execution evidence
+- `recorded`: RunPrint recorded execution evidence for this card
 - `warning`: review before increasing autonomy
 
 ## Why It Matters

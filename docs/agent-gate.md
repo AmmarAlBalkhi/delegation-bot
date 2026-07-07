@@ -74,6 +74,11 @@ delegation approval-decision --ledger .delegation/demo.jsonl \
   --action-id agent_gate.implementer.create_pull_request \
   --decision approve \
   --approver Ammar
+delegation runprint-ingest --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.implementer.create_pull_request \
+  --recording-id rec-demo \
+  --bundle-id bundle-demo \
+  --artifact run-ledger:jsonl:.delegation/demo.jsonl
 ```
 
 Simple version:

@@ -77,6 +77,8 @@ The project is currently pre-release.
   approved intent with planned or recorded RunPrint evidence.
 - Added `delegation approval-inbox` and `delegation approval-decision` for
   local human approve/block receipts over Agent Gate cards.
+- Added `delegation runprint-ingest` for attaching external RunPrint recording
+  evidence to exact Agent Gate receipts.
 - Added playbook catalog filtering by tag and adapter.
 - Added hosted dashboard wireframe notes.
 - Added contributor license and DCO policy notes.

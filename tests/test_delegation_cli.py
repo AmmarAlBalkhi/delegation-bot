@@ -391,6 +391,64 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["approved_count"], 1)
         self.assertEqual(data["items"][0]["latest_decision"]["approver"], "Ammar")
 
+    def test_runprint_ingest_marks_gate_audit_recorded(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            action_id = "agent_gate.implementer.create_pull_request"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-gate",
+                            str(EXAMPLE),
+                            "implementer",
+                            "--action",
+                            "create_pull_request",
+                            "--target",
+                            "repository",
+                            "--approval",
+                            "pull_request",
+                            "--ledger",
+                            str(ledger),
+                            "--write",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as ingest_output:
+                ingest_status = main(
+                    [
+                        "runprint-ingest",
+                        "--ledger",
+                        str(ledger),
+                        "--action-id",
+                        action_id,
+                        "--recording-id",
+                        "rec-cli",
+                        "--bundle-id",
+                        "bundle-cli",
+                        "--artifact",
+                        "run-ledger:jsonl:.delegation/demo.jsonl",
+                        "--summary",
+                        "Recorded CLI smoke evidence.",
+                    ]
+                )
+            with redirect_stdout(io.StringIO()) as audit_output:
+                audit_status = main(["agent-audit", "--ledger", str(ledger), "--json"])
+            with redirect_stdout(io.StringIO()) as inbox_output:
+                inbox_status = main(["approval-inbox", "--ledger", str(ledger), "--json"])
+        audit = json.loads(audit_output.getvalue())
+        inbox = json.loads(inbox_output.getvalue())
+
+        self.assertEqual(ingest_status, 0)
+        self.assertIn("RunPrint evidence appended", ingest_output.getvalue())
+        self.assertEqual(audit_status, 0)
+        self.assertEqual(audit["status"], "recorded")
+        self.assertEqual(audit["items"][0]["evidence_status"], "recorded")
+        self.assertEqual(inbox_status, 0)
+        self.assertEqual(inbox["items"][0]["status"], "recorded")
+
     def test_app_state_can_include_agent_gate_preview(self) -> None:
         with redirect_stdout(io.StringIO()) as output:
             status = main(

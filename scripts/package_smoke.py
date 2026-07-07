@@ -214,6 +214,34 @@ def main() -> int:
             print(approval_decision.stderr, file=sys.stderr)
             return approval_decision.returncode or 1
 
+        runprint_ingest = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "runprint-ingest",
+                "--ledger",
+                str(ledger),
+                "--action-id",
+                "agent_gate.smoke_cli_agent.read_run_ledger",
+                "--recording-id",
+                "rec-package-smoke",
+                "--bundle-id",
+                "bundle-package-smoke",
+                "--artifact",
+                "run-ledger:jsonl:demo.jsonl",
+                "--summary",
+                "Installed package smoke recorded evidence.",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if runprint_ingest.returncode != 0 or "RunPrint Recording Ingest" not in runprint_ingest.stdout:
+            print("FAIL: installed package RunPrint ingest smoke")
+            print(runprint_ingest.stdout)
+            print(runprint_ingest.stderr, file=sys.stderr)
+            return runprint_ingest.returncode or 1
+
         agent_audit = _run(
             [
                 sys.executable,
@@ -229,7 +257,7 @@ def main() -> int:
         if (
             agent_audit.returncode != 0
             or "Agent Gate Evidence Audit" not in agent_audit.stdout
-            or "Status: ready_for_recording" not in agent_audit.stdout
+            or "Status: recorded" not in agent_audit.stdout
         ):
             print("FAIL: installed package Agent Gate audit smoke")
             print(agent_audit.stdout)
@@ -237,7 +265,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package demo, app-state, Agent Passport, Agent Gate, approval inbox, approval decision, and Agent Gate audit smoke"
+        "PASS: installed package demo, app-state, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 
