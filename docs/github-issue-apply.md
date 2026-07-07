@@ -92,6 +92,46 @@ Those live issue fields are not just display metadata. The eval feedback loop
 uses them so repeated failures can draft updates to the existing issue instead
 of creating duplicate issue noise.
 
+## Feedback Recovery Apply
+
+When a failed eval later passes, use `recover-feedback` to draft the recovery
+evidence, then use `apply-feedback` to preview the live comment:
+
+```bash
+delegation apply-feedback Harnessfile.yaml --ledger .delegation/latest.jsonl
+```
+
+Comment-only live apply requires:
+
+```bash
+GITHUB_TOKEN=... delegation apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --confirm LIVE_FEEDBACK_ISSUES
+```
+
+To close the issue after the recovery comment succeeds, use the stronger close
+confirmation:
+
+```bash
+GITHUB_TOKEN=... delegation apply-feedback Harnessfile.yaml \
+  --ledger .delegation/latest.jsonl \
+  --apply \
+  --close \
+  --confirm CLOSE_FEEDBACK_ISSUES
+```
+
+`apply-feedback` appends:
+
+- `github.issue.feedback_apply.started`
+- `github.issue.comment.created`
+- `github.issue.closed` when `--close` is used
+- `github.issue.feedback_apply.failed`
+- `github.issue.feedback_apply.completed`
+
+This separates creating feedback issues from resolving them, so a user can
+comment with proof without accidentally closing work.
+
 ## Safety Notes
 
 - Dry-run remains the default.

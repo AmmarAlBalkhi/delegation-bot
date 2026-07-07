@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from delegation_bot.eval_feedback import build_feedback_issue_drafts, render_feedback_report
+from delegation_bot.eval_feedback import build_feedback_issue_drafts, build_feedback_resolution_drafts, render_feedback_report
 from delegation_bot.evals import (
     eval_ledger_is_valid,
     eval_mcp_tool_risk_review,
@@ -119,6 +119,26 @@ class LedgerFixtureTests(unittest.TestCase):
         self.assertEqual(view.total_events, 8)
         self.assertIn("feedback.resolve.required_adapter_evidence", text)
         self.assertIn("live_issue_number=321", text)
+
+    def test_feedback_recovery_ready_fixture_drafts_resolution(self) -> None:
+        events = load_ledger_events(FIXTURES / "feedback-recovery-ready.jsonl")
+        manifest = {
+            "id": "feedback-memory-fixture",
+            "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+        }
+
+        drafts = build_feedback_resolution_drafts(
+            manifest,
+            events,
+            repository="AmmarAlBalkhi/delegation-bot",
+            ledger_source="examples/ledgers/feedback-recovery-ready.jsonl",
+        )
+
+        self.assertEqual(eval_ledger_is_valid(events).status, "passed")
+        self.assertEqual(eval_no_duplicate_issue_markers(events).status, "passed")
+        self.assertEqual(len(drafts), 1)
+        self.assertEqual(drafts[0].operation, "resolve")
+        self.assertEqual(drafts[0].live_issue_number, 321)
 
 
 if __name__ == "__main__":

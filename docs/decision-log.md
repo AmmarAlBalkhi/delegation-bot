@@ -1111,3 +1111,28 @@ Guardrails:
 
 Follow-up: Choose the first hosted implementation target, likely read-only or
 issue-write, after the local preview flow feels clear.
+
+## 2026-07-07: Add Gated Feedback Recovery Apply
+
+Decision: Add `delegation apply-feedback` to preview and live-apply feedback
+recovery comments to existing GitHub Issues, with optional issue closing behind
+a stronger confirmation token.
+
+Why: The feedback loop should not stop at drafting issues. DelegationHQ should
+prove that a failure recovered, comment on the same live issue with the
+evidence, and optionally close it, while preserving the core rule:
+plan first, gate first, ledger proof after.
+
+Guardrails:
+
+- preview mode is the default and never writes to GitHub
+- comment-only live apply requires `--apply --confirm LIVE_FEEDBACK_ISSUES`
+- issue closing requires `--apply --close --confirm CLOSE_FEEDBACK_ISSUES`
+- the command targets only recovery drafts with known live issue numbers
+- repository allowlists, approval policy, token gates, and ledger eval gates
+  still apply
+- live comment and close results append ledger evidence with issue and comment
+  URLs when GitHub returns them
+
+Follow-up: Connect this path to the future GitHub App `issue-write` token
+provider so users do not need broad personal access tokens.

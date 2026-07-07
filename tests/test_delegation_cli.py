@@ -399,11 +399,11 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Eval blocked: tests_pass_before_pr", output.getvalue())
 
     def test_recover_feedback_drafts_resolution_update(self) -> None:
-        source = ROOT / "examples" / "ledgers" / "feedback-recovery.jsonl"
+        source = ROOT / "examples" / "ledgers" / "feedback-recovery-ready.jsonl"
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "feedback-recovery.jsonl"
             harnessfile = Path(tmpdir) / "feedback-harness.json"
-            ledger.write_text("\n".join(source.read_text(encoding="utf-8").splitlines()[:-1]) + "\n", encoding="utf-8")
+            ledger.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
             harnessfile.write_text(
                 json.dumps(
                     {
@@ -425,6 +425,34 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Feedback issue drafts", output.getvalue())
         self.assertIn("Resolve eval passed: required_adapter_evidence", output.getvalue())
         self.assertIn("operation: resolve", output.getvalue())
+
+    def test_apply_feedback_previews_recovery_comment(self) -> None:
+        source = ROOT / "examples" / "ledgers" / "feedback-recovery-ready.jsonl"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "feedback-recovery.jsonl"
+            harnessfile = Path(tmpdir) / "feedback-harness.json"
+            ledger.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+            harnessfile.write_text(
+                json.dumps(
+                    {
+                        "version": "delegation.ai/v1",
+                        "id": "feedback-memory-fixture",
+                        "objective": "Show feedback recovery.",
+                        "triggers": [{"type": "manual"}],
+                        "executors": [{"id": "feedback_issue", "kind": "workflow", "adapter": "github.issue"}],
+                        "outputs": ["github.issue"],
+                        "policies": {"permissions": {"allowed_repositories": ["AmmarAlBalkhi/delegation-bot"]}},
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["apply-feedback", str(harnessfile), "--ledger", str(ledger)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("GitHub Feedback Apply Gate", output.getvalue())
+        self.assertIn("Status: ready", output.getvalue())
+        self.assertIn("Rerun with `--apply --confirm LIVE_FEEDBACK_ISSUES`", output.getvalue())
 
     def test_dashboard_command_builds_read_only_snapshot(self) -> None:
         ledger = ROOT / "examples" / "ledgers" / "feedback-recovery.jsonl"

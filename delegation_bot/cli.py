@@ -45,10 +45,13 @@ from delegation_bot.github_app_plan import (
 )
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
+    apply_feedback_resolution_drafts,
     apply_github_issue_drafts,
     build_apply_report,
+    build_feedback_apply_report,
     github_token_from_env,
     render_apply_report,
+    render_feedback_apply_report,
 )
 from delegation_bot.harness_manifest import ManifestError, load_manifest, summarize_manifest, validate_manifest
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
@@ -483,6 +486,63 @@ def cmd_recover_feedback(args: argparse.Namespace) -> int:
             return 1
         print(f"\nFeedback recovery events appended: {ledger_path}")
     return 0
+
+
+def cmd_apply_feedback(args: argparse.Namespace) -> int:
+    manifest, status = _load_valid_manifest(Path(args.harnessfile))
+    if status != 0 or manifest is None:
+        return status
+
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    token = github_token_from_env()
+    try:
+        report = build_feedback_apply_report(
+            manifest,
+            ledger_events,
+            ledger_source=str(ledger_path),
+            repository=args.repository,
+            apply=args.apply,
+            close=args.close,
+            confirmation=args.confirm,
+            token=token,
+        )
+    except (LookupError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_feedback_apply_report(report))
+
+    if report.blocked:
+        return 1
+    if not args.apply or not report.drafts:
+        return 0
+
+    run_id = str(ledger_events[0].get("run_id")) if ledger_events else "feedback-apply-run"
+    events = apply_feedback_resolution_drafts(
+        report.drafts,
+        client=GitHubIssueClient(token or ""),
+        run_id=run_id,
+        start_sequence=len(ledger_events) + 1,
+        close=args.close,
+    )
+    try:
+        append_jsonl(events, ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if not args.json:
+        print(f"\nFeedback apply events appended: {ledger_path}")
+    return 1 if any(event.status == "failed" for event in events) else 0
 
 
 def cmd_adapters(args: argparse.Namespace) -> int:
@@ -1154,6 +1214,30 @@ def build_parser() -> argparse.ArgumentParser:
     recover_feedback.add_argument("--json", action="store_true", help="Print feedback recovery drafts as JSON.")
     recover_feedback.add_argument("--write", action="store_true", help="Append planned feedback recovery events.")
     recover_feedback.set_defaults(func=cmd_recover_feedback)
+
+    apply_feedback = subparsers.add_parser(
+        "apply-feedback",
+        help="Preview or live-apply feedback recovery comments to GitHub Issues.",
+    )
+    apply_feedback.add_argument("harnessfile")
+    apply_feedback.add_argument("--ledger", required=True, help="Read and append feedback recovery ledger evidence.")
+    apply_feedback.add_argument("--repository", help="Target repository for planned feedback recovery issues.")
+    apply_feedback.add_argument(
+        "--apply",
+        action="store_true",
+        help="Perform live GitHub feedback issue writes after all gates pass.",
+    )
+    apply_feedback.add_argument(
+        "--close",
+        action="store_true",
+        help="Close the live feedback issue after posting the recovery comment.",
+    )
+    apply_feedback.add_argument(
+        "--confirm",
+        help="Required confirmation token: LIVE_FEEDBACK_ISSUES, or CLOSE_FEEDBACK_ISSUES with --close.",
+    )
+    apply_feedback.add_argument("--json", action="store_true", help="Print the feedback apply gate report as JSON.")
+    apply_feedback.set_defaults(func=cmd_apply_feedback)
 
     promote = subparsers.add_parser("promote", help="Evaluate agent promotion readiness.")
     promote.add_argument("harnessfile")

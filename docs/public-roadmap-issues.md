@@ -59,12 +59,12 @@ small low, medium, high, and blocked examples without running a full mission.
 - Docs explain "model explains, gates decide" in simple language.
 ```
 
-## Draft 2: Add Live Feedback Issue Comments Behind Approval
+## Draft 2: Polish Feedback Recovery Apply UX
 
 Suggested title:
 
 ```text
-Add gated comments for feedback issue recovery
+Polish gated feedback recovery comments
 ```
 
 Suggested labels:
@@ -78,27 +78,27 @@ Body:
 ```markdown
 ## Goal
 
-When an eval that previously failed starts passing, allow DelegationHQ to add
-an approved recovery comment to the existing feedback issue.
+Make the `recover-feedback` -> `apply-feedback` flow easy to understand for a
+new maintainer reviewing an eval recovery.
 
 ## Why
 
-The preview recovery draft exists. The next step is a live path that is still
-explicit, approved, and auditable.
+The live gate exists. The next step is to make the path feel obvious without
+adding ceremony.
 
 ## Scope
 
-- Add a `github.issue.comment` or equivalent approved live action design.
-- Require explicit confirmation and repository policy checks.
-- Record issue comment URL or id in the ledger.
+- Add a short fixture walkthrough for comment-only recovery.
+- Add a short fixture walkthrough for comment-and-close recovery.
+- Improve command output if no recovery action is needed.
 - Keep issue closing separate from comment creation.
 
 ## Acceptance criteria
 
-- Preview shows the exact comment before writing.
-- Live mode requires explicit confirmation and token.
-- Ledger records the resulting comment id or URL.
-- Tests cover preview, blocked, and fake-client live paths.
+- A new user can understand the recovery path from one doc page.
+- Preview still shows the target issue before writing.
+- Live mode still requires explicit confirmation and token.
+- Tests cover no-action output and fake-client close behavior.
 ```
 
 ## Draft 3: Design The GitHub App Installation Flow

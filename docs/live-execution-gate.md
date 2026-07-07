@@ -171,6 +171,20 @@ Every event should include:
 - live preflight gates for workflow metadata and duplicate active runs
 - cancellation API paths after dispatch
 
+Live feedback recovery apply appends:
+
+```text
+github.issue.feedback_apply.started
+github.issue.comment.created
+github.issue.closed
+github.issue.feedback_apply.failed
+github.issue.feedback_apply.completed
+```
+
+Comment-only recovery apply requires `--apply --confirm
+LIVE_FEEDBACK_ISSUES`. Closing a feedback issue after the recovery comment
+requires `--apply --close --confirm CLOSE_FEEDBACK_ISSUES`.
+
 ## Policy Behavior
 
 The policy engine should treat issue creation as lower risk than agent

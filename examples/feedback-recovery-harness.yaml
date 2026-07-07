@@ -1,0 +1,28 @@
+version: delegation.ai/v1
+id: feedback-memory-fixture
+name: Feedback Recovery Fixture
+objective: Show a recovered eval becoming a gated GitHub issue comment.
+
+triggers:
+  - type: manual
+
+owners:
+  accountable: AmmarAlBalkhi
+
+executors:
+  - id: feedback_issue
+    kind: workflow
+    adapter: github.issue
+    purpose: Comment on recovered eval feedback issues after gates pass.
+    inputs:
+      repository: AmmarAlBalkhi/delegation-bot
+      issue_title: "Feedback recovery fixture"
+      issue_body: "Recovery comments are generated from ledger evidence."
+
+outputs:
+  - github.issue
+
+policies:
+  permissions:
+    allowed_repositories:
+      - AmmarAlBalkhi/delegation-bot

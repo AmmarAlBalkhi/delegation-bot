@@ -71,6 +71,8 @@ That is the product: powerful AI work with visible control before power is used.
 - `apply-actions` previews workflow dispatch by default and can dispatch only with explicit live gates.
 - `explain-policy` turns classifier evidence into plain language without giving the model authority.
 - Evals explain what passed and what still needs real execution evidence.
+- Feedback recovery can preview a GitHub comment or close action only after the
+  ledger proves the eval recovered.
 
 ## The Product Promise
 
@@ -90,6 +92,7 @@ Quick examples:
 python scripts/delegation.py ledger examples/ledgers/github-actions-preview.jsonl --adapter github.actions
 python scripts/delegation.py ledger examples/ledgers/mcp-tool-risk.jsonl --adapter mcp.tool
 python scripts/delegation.py dashboard examples/ledgers/feedback-recovery.jsonl
+python scripts/delegation.py apply-feedback examples/feedback-recovery-harness.yaml --ledger examples/ledgers/feedback-recovery-ready.jsonl
 ```
 
 These fixtures show the control plane without network calls.
