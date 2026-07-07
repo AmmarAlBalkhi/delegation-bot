@@ -85,15 +85,47 @@ dist/artifacts-manifest.json
 for automation: it records artifact paths, sizes, SHA-256 digests, package
 name, package version, and generation time.
 
+## Release Rehearsal Evidence
+
+Create a local evidence bundle before a release:
+
+```bash
+delegation release-rehearse --output .delegation/release-rehearsal
+```
+
+For final executable rehearsal, require standalone artifacts:
+
+```bash
+delegation release-rehearse --strict-artifacts --output .delegation/release-rehearsal
+```
+
+The command writes local files such as:
+
+```text
+release-readiness.txt
+release-readiness.json
+artifact-verification.txt
+artifact-verification.json
+git-status.txt
+metadata.json
+next-steps.md
+rehearsal-report.json
+```
+
+It does not tag, upload, publish, dispatch workflows, or call live services.
+
 ## Release Checklist
 
 Before a public package release:
 
 - run `delegation release-check`
+- run `delegation release-rehearse --output .delegation/release-rehearsal`
 - run `python scripts/qa.py`
 - run `python scripts/package_smoke.py`
 - run `delegation release-check --strict-artifacts` after building standalone
   artifacts
+- run `delegation release-rehearse --strict-artifacts` after building
+  standalone artifacts
 - run `delegation artifacts --dist dist --check`
 - run a source install smoke test
 - confirm `delegation --version` matches `pyproject.toml`

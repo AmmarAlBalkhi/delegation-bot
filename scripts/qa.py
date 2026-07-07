@@ -128,6 +128,16 @@ def build_checks(python: str) -> list[Check]:
             [python, "scripts/delegation.py", "release-check"],
         ),
         Check(
+            "release rehearsal evidence bundle",
+            [
+                python,
+                "scripts/delegation.py",
+                "release-rehearse",
+                "--output",
+                ".delegation/qa-release-rehearsal",
+            ],
+        ),
+        Check(
             "first-run demo",
             [python, "scripts/delegation.py", "demo", "--ledger", ".delegation/qa-demo.jsonl"],
         ),

@@ -129,3 +129,6 @@ The project is currently pre-release.
 - Added `delegation artifacts` for release artifact checksums and a structured
   artifact manifest, and wired checksum verification into the Windows EXE build
   path.
+- Added `delegation release-rehearse` for local release evidence bundles that
+  collect release readiness, artifact verification, git state, metadata, and
+  next steps without publishing anything.

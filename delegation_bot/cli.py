@@ -83,6 +83,7 @@ from delegation_bot.release_artifacts import (
     verify_artifact_outputs,
     write_artifact_outputs,
 )
+from delegation_bot.release_rehearsal import build_release_rehearsal, render_release_rehearsal_report
 from delegation_bot.release_readiness import build_release_readiness_report, render_release_readiness_report
 from delegation_bot.suggest import (
     SUGGESTION_TEMPLATE_IDS,
@@ -844,6 +845,19 @@ def cmd_artifacts(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_release_rehearse(args: argparse.Namespace) -> int:
+    report = build_release_rehearsal(
+        output_dir=Path(args.output),
+        dist_path=Path(args.dist),
+        strict_artifacts=args.strict_artifacts,
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_release_rehearsal_report(report))
+    return 1 if report.failed else 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--version", action="version", version=f"DelegationHQ {__version__}")
@@ -1057,6 +1071,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     artifacts.add_argument("--json", action="store_true", help="Print artifact output as JSON.")
     artifacts.set_defaults(func=cmd_artifacts)
+
+    release_rehearse = subparsers.add_parser(
+        "release-rehearse",
+        help="Write a local release rehearsal evidence bundle without publishing.",
+    )
+    release_rehearse.add_argument(
+        "--output",
+        default=".delegation/release-rehearsal",
+        help="Directory to write the local evidence bundle.",
+    )
+    release_rehearse.add_argument("--dist", default="dist", help="Directory containing built release artifacts.")
+    release_rehearse.add_argument(
+        "--strict-artifacts",
+        action="store_true",
+        help="Fail the rehearsal when standalone release artifacts or checksums are missing.",
+    )
+    release_rehearse.add_argument("--json", action="store_true", help="Print release rehearsal summary as JSON.")
+    release_rehearse.set_defaults(func=cmd_release_rehearse)
 
     apply_issues = subparsers.add_parser(
         "apply-issues",
