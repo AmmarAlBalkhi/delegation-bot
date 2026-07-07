@@ -139,10 +139,13 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation promote Harnessfile.yaml --ledger .delegation/run.jsonl` | Check whether agents can earn more autonomy. |
 | `delegation apply-issues Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview live GitHub Issue writes. |
 | `delegation apply-actions Harnessfile.yaml --ledger .delegation/run.jsonl` | Preview or live-dispatch gated GitHub Actions workflows. |
+| `delegation cancel-actions OWNER/REPO RUN_ID` | Preview or live-cancel a GitHub Actions workflow run. |
 
 Live actions stay behind explicit gates. GitHub Issues require
 `--apply --confirm LIVE_GITHUB_ISSUES`; GitHub Actions require
-`--apply --confirm LIVE_GITHUB_ACTIONS`. Both need `GITHUB_TOKEN` or `GH_TOKEN`.
+`--apply --confirm LIVE_GITHUB_ACTIONS`; GitHub Actions cancellation requires
+`--apply --confirm CANCEL_GITHUB_ACTIONS`. Live modes need `GITHUB_TOKEN` or
+`GH_TOKEN`.
 
 ## Try Fixtures
 

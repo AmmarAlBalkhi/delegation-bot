@@ -32,10 +32,16 @@ from delegation_bot.first_run import (
     write_init_harnessfile,
 )
 from delegation_bot.github_actions_apply import (
+    CANCEL_CONFIRMATION,
+    FORCE_CANCEL_CONFIRMATION,
     GitHubActionsClient,
+    GitHubTokenDiagnostics,
     apply_github_actions_drafts,
     build_actions_apply_report,
+    build_actions_cancel_report,
+    cancel_github_actions_run,
     render_actions_apply_report,
+    render_actions_cancel_report,
 )
 from delegation_bot.github_issue_apply import (
     GitHubIssueClient,
@@ -773,6 +779,67 @@ def cmd_apply_actions(args: argparse.Namespace) -> int:
     return 1 if any(event.status == "failed" for event in events) else 0
 
 
+def cmd_cancel_actions(args: argparse.Namespace) -> int:
+    token = github_token_from_env()
+    actions_client = GitHubActionsClient(token) if args.apply and token else None
+    token_diagnostics: GitHubTokenDiagnostics | None = None
+    required_confirmation = FORCE_CANCEL_CONFIRMATION if args.force else CANCEL_CONFIRMATION
+    if args.apply and actions_client and args.confirm == required_confirmation:
+        try:
+            token_diagnostics = actions_client.inspect_token()
+        except Exception as exc:  # pragma: no cover - network failures are environment-specific
+            token_diagnostics = GitHubTokenDiagnostics(available=False, note=str(exc))
+
+    report = build_actions_cancel_report(
+        args.repository,
+        args.run_id,
+        apply=args.apply,
+        force=args.force,
+        confirmation=args.confirm,
+        token=token,
+        token_diagnostics=token_diagnostics,
+    )
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_actions_cancel_report(report))
+
+    if report.blocked:
+        return 1
+
+    if not args.apply:
+        return 0
+
+    existing_events: list[dict[str, T.Any]] = []
+    ledger_path = Path(args.ledger) if args.ledger else None
+    if ledger_path and ledger_path.exists():
+        try:
+            existing_events = load_jsonl(ledger_path)
+        except EvalError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
+    ledger_run_id = str(existing_events[0].get("run_id")) if existing_events else f"github-actions-cancel-{args.run_id}"
+    events = cancel_github_actions_run(
+        report.target,
+        client=actions_client or GitHubActionsClient(token or ""),
+        run_id=ledger_run_id,
+        start_sequence=len(existing_events) + 1,
+    )
+    if ledger_path:
+        try:
+            ledger_path.parent.mkdir(parents=True, exist_ok=True)
+            append_jsonl(events, ledger_path)
+        except (EvalError, OSError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+        if not args.json:
+            print(f"\nCancel events appended: {ledger_path}")
+    elif not args.json:
+        print("\nCancel events were not appended because no --ledger path was provided.")
+    return 1 if any(event.status == "failed" for event in events) else 0
+
+
 def cmd_mcp_gate(args: argparse.Namespace) -> int:
     path = Path(args.harnessfile)
     manifest, status = _load_valid_manifest(path)
@@ -1046,6 +1113,30 @@ def build_parser() -> argparse.ArgumentParser:
     )
     apply_actions.add_argument("--json", action="store_true", help="Print the apply gate report as JSON.")
     apply_actions.set_defaults(func=cmd_apply_actions)
+
+    cancel_actions = subparsers.add_parser(
+        "cancel-actions",
+        help="Preview or live-cancel a GitHub Actions workflow run.",
+    )
+    cancel_actions.add_argument("repository", help="Repository in owner/name form.")
+    cancel_actions.add_argument("run_id", help="Numeric GitHub Actions workflow run id.")
+    cancel_actions.add_argument(
+        "--apply",
+        action="store_true",
+        help="Perform live GitHub Actions workflow cancellation after all gates pass.",
+    )
+    cancel_actions.add_argument(
+        "--confirm",
+        help="Required confirmation token: CANCEL_GITHUB_ACTIONS, or FORCE_CANCEL_GITHUB_ACTIONS with --force.",
+    )
+    cancel_actions.add_argument(
+        "--force",
+        action="store_true",
+        help="Use GitHub's force-cancel endpoint when normal cancellation is not enough.",
+    )
+    cancel_actions.add_argument("--ledger", help="Append cancellation evidence to this JSONL ledger.")
+    cancel_actions.add_argument("--json", action="store_true", help="Print the cancel gate report as JSON.")
+    cancel_actions.set_defaults(func=cmd_cancel_actions)
 
     mcp_gate = subparsers.add_parser(
         "mcp-gate",

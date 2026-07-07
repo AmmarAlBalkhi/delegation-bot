@@ -1087,3 +1087,41 @@ PATH, and running `doctor --skip-github` as a smoke check.
 
 Follow-up: Run the build and install scripts on a clean Windows release host
 before publishing a public `.exe`.
+
+## 2026-07-07: Add Local Release Readiness Check
+
+Decision: Add `delegation release-check` as a local, dry-run release readiness
+report.
+
+Why: Before the project publishes packages or executable artifacts, maintainers
+need one simple command that answers: is the repo ready enough to release, and
+what still needs attention? This keeps release discipline visible without
+turning the README into a long checklist.
+
+Guardrails:
+
+- the command does not tag, upload, publish, or call external services
+- warnings are allowed during local development
+- failed checks return a nonzero exit code
+- `--strict-artifacts` makes missing standalone artifacts fail for final
+  release rehearsal
+
+## 2026-07-07: Add GitHub Actions Cancel Gate
+
+Decision: Add `delegation cancel-actions` for preview-first GitHub Actions
+workflow cancellation.
+
+Why: If DelegationHQ can dispatch a workflow, it must also give users an
+auditable way to stop one. Cancellation is control, not automation for its own
+sake.
+
+Guardrails:
+
+- preview remains the default and does not call GitHub
+- live cancel requires `--apply --confirm CANCEL_GITHUB_ACTIONS`
+- force-cancel requires `--force --apply --confirm FORCE_CANCEL_GITHUB_ACTIONS`
+- token diagnostics only run after the exact live confirmation is provided
+- optional ledger evidence records cancellation attempts and results
+
+Follow-up: Prefer GitHub App installation tokens for real users so they do not
+need broad personal tokens.

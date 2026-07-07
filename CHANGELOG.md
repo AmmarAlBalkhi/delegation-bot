@@ -126,3 +126,6 @@ The project is currently pre-release.
 - Added `delegation release-check` for local alpha release-readiness reports
   across package metadata, docs, legal files, QA evidence, Windows packaging,
   git state, and standalone artifacts.
+- Added `delegation cancel-actions` for preview-first GitHub Actions
+  cancellation, with exact confirmation, force-cancel gating, token
+  diagnostics, optional ledger evidence, and fake-client coverage.
