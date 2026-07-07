@@ -131,6 +131,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation suggest "goal" --plan --ledger .delegation/run.jsonl` | Draft a Harnessfile from plain language and dry-run it. |
 | `delegation plan Harnessfile.yaml --ledger .delegation/run.jsonl` | Compile a Harnessfile into a dry-run ledger. |
 | `delegation ledger .delegation/run.jsonl` | Inspect run evidence. |
+| `delegation evidence --ledger .delegation/run.jsonl` | Summarize planned recorder evidence bundles. |
 | `delegation explain-policy --ledger .delegation/run.jsonl` | Explain classifier policy evidence in plain language. |
 | `delegation dashboard .delegation/run.jsonl` | Build a read-only mission snapshot for future UI/cockpit work. |
 | `delegation mcp-gate Harnessfile.yaml --ledger .delegation/run.jsonl` | Check MCP tool allowlists and risk evidence. |
@@ -157,6 +158,7 @@ delegation ledger examples/ledgers/adapter-blocked.jsonl --status blocked
 delegation ledger examples/ledgers/github-issue-applied.jsonl --adapter github.issue
 delegation ledger examples/ledgers/github-actions-preview.jsonl --adapter github.actions
 delegation ledger examples/ledgers/mcp-tool-risk.jsonl --adapter mcp.tool
+delegation evidence --ledger .delegation/demo.jsonl
 delegation ledger examples/ledgers/feedback-issue-memory.jsonl --adapter github.issue
 delegation dashboard examples/ledgers/feedback-recovery.jsonl
 ```

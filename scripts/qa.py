@@ -275,6 +275,16 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "example evidence bundle report",
+            [
+                python,
+                "scripts/delegation.py",
+                "evidence",
+                "--ledger",
+                ".delegation/qa-latest.jsonl",
+            ],
+        ),
+        Check(
             "example OpenTelemetry export",
             [
                 python,

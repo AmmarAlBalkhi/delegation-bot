@@ -37,6 +37,7 @@ For the larger example Harnessfile:
 ```bash
 python scripts/delegation.py plan examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 python scripts/delegation.py ledger .delegation/demo.jsonl --limit 6
+python scripts/delegation.py evidence --ledger .delegation/demo.jsonl
 python scripts/delegation.py mcp-gate examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 python scripts/delegation.py apply-actions examples/ai-harness-control-plane.yaml --ledger .delegation/demo.jsonl
 python scripts/delegation.py explain-policy --ledger .delegation/demo.jsonl
@@ -69,6 +70,7 @@ That is the product: powerful AI work with visible control before power is used.
 - The plan shows agents, models, workflows, tools, policies, outputs, and evals.
 - The ledger records evidence without running live agents or tools.
 - The recorder step plans the proof bundle before any evidence capture happens.
+- `evidence` summarizes planned proof bundles without reading raw JSONL.
 - `mcp-gate` checks MCP server/tool allowlists and tool risk evidence.
 - `apply-actions` previews workflow dispatch by default and can dispatch only with explicit live gates.
 - `explain-policy` turns classifier evidence into plain language without giving the model authority.

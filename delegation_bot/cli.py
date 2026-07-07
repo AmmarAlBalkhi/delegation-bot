@@ -14,6 +14,7 @@ from delegation_bot.adapters import get_adapter_contract, list_adapter_contracts
 from delegation_bot.dashboard import build_dashboard_snapshot, render_dashboard_snapshot
 from delegation_bot.doctor import render_doctor_report, run_doctor
 from delegation_bot.evals import EvalError, append_jsonl, eval_results_to_events, load_jsonl, render_eval_report, run_declared_evals
+from delegation_bot.evidence_report import build_evidence_report, render_evidence_report
 from delegation_bot.eval_feedback import (
     append_feedback_events,
     build_feedback_issue_drafts,
@@ -681,6 +682,22 @@ def cmd_ledger(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_evidence(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        events = load_ledger_events(ledger_path)
+    except LedgerError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    report = build_evidence_report(events, source=str(ledger_path))
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_evidence_report(report))
+    return 0
+
+
 def cmd_explain_policy(args: argparse.Namespace) -> int:
     ledger_path = Path(args.ledger)
     try:
@@ -1219,6 +1236,14 @@ def build_parser() -> argparse.ArgumentParser:
     ledger.add_argument("--adapter", help="Only show recent events for this adapter id.")
     ledger.add_argument("--limit", type=int, default=12, help="Number of recent matching events to show; 0 shows all.")
     ledger.set_defaults(func=cmd_ledger)
+
+    evidence = subparsers.add_parser(
+        "evidence",
+        help="Summarize planned recorder evidence bundles from a run ledger.",
+    )
+    evidence.add_argument("--ledger", required=True, help="Path to a run ledger JSONL file.")
+    evidence.add_argument("--json", action="store_true", help="Print the evidence report as JSON.")
+    evidence.set_defaults(func=cmd_evidence)
 
     explain_policy = subparsers.add_parser(
         "explain-policy",

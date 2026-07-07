@@ -572,6 +572,34 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(data["adapter_evidence"])
         self.assertEqual(data["shown_event_count"], 2)
 
+    def test_evidence_command_summarizes_runprint_bundles(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["evidence", "--ledger", str(ledger)])
+
+        self.assertEqual(status, 0)
+        self.assertIn("Evidence Bundle Report", output.getvalue())
+        self.assertIn("Bundles: 1", output.getvalue())
+        self.assertIn("executor.evidence_recorder", output.getvalue())
+        self.assertIn("run-ledger", output.getvalue())
+
+    def test_evidence_command_can_print_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["evidence", "--ledger", str(ledger), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["bundle_count"], 1)
+        self.assertEqual(data["bundle_plans"][0]["action_id"], "executor.evidence_recorder")
+        self.assertEqual(data["bundle_plans"][0]["artifacts"][0]["id"], "run-ledger")
+
     def test_explain_policy_command_summarizes_classifier_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"

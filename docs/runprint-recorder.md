@@ -38,6 +38,15 @@ Required evidence:
 - `evidence_bundle_id`
 - `artifact_manifest`
 
+Inspect planned evidence bundles:
+
+```bash
+delegation evidence --ledger .delegation/demo.jsonl
+```
+
+This report is intentionally read-only. It summarizes the recorder plan already
+written to the ledger.
+
 ## Harnessfile Example
 
 ```yaml
