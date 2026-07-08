@@ -14,7 +14,10 @@ from urllib.parse import parse_qs, urlparse
 
 from delegation_bot.app_dashboard import build_app_dashboard_report
 from delegation_bot.app_state import build_app_state
+from delegation_bot.approval_inbox import build_approval_decision_events, build_approval_inbox_report
 from delegation_bot.approval_preview import ApprovalPreviewReport, build_approval_preview_report
+from delegation_bot.evals import append_jsonl, load_jsonl
+from delegation_bot.local_workspace import DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
 from delegation_bot.mission_timeline import build_timeline_report_from_paths
 
 
@@ -22,6 +25,8 @@ JsonMap = dict[str, T.Any]
 DEFAULT_APP_DIR = ".delegation/cockpit"
 DEFAULT_APP_HOST = "127.0.0.1"
 DEFAULT_APP_PORT = 8765
+LOCAL_APP_WRITE_CONFIRMATION = "LOCAL_APP_WRITE"
+LOCAL_APP_ACTION_SCHEMA_VERSION = "delegation.local-app-action.v1"
 
 
 @dataclass(frozen=True)
@@ -36,6 +41,7 @@ class LocalAppReport:
     approval_preview_json: str | None
     url: str | None
     preview_agent: str | None
+    actions_enabled: bool = False
     warnings: tuple[str, ...] = ()
 
     def to_dict(self) -> JsonMap:
@@ -50,6 +56,7 @@ class LocalAppReport:
             "approval_preview_json": self.approval_preview_json,
             "url": self.url,
             "preview_agent": self.preview_agent,
+            "actions_enabled": self.actions_enabled,
             "warnings": list(self.warnings),
             "next_actions": list(self.next_actions),
         }
@@ -64,7 +71,54 @@ class LocalAppReport:
         actions.append(f"delegation app-state --workspace {self.workspace} --json")
         if self.preview_agent:
             actions.append(f"delegation approval-preview {self.preview_agent} --workspace {self.workspace}")
+        if not self.actions_enabled:
+            actions.append(
+                "Start with `delegation app-serve --workspace . --allow-actions` "
+                "only when you want guarded local approval writes."
+            )
         return tuple(actions)
+
+
+@dataclass(frozen=True)
+class LocalAppActionReport:
+    schema_version: str
+    status: str
+    action: str
+    workspace: str
+    ledger: str
+    action_id: str
+    decision: str
+    approver: str
+    wrote_ledger: bool
+    message: str
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def next_actions(self) -> tuple[str, ...]:
+        if self.status == "recorded" and self.decision == "approve":
+            return (
+                f"delegation request-run --ledger {self.ledger} --action-id {self.action_id} --confirm LOCAL_AGENT_EXECUTION",
+                f"delegation request-status --ledger {self.ledger} --action-id {self.action_id}",
+            )
+        if self.status == "recorded":
+            return (f"delegation request-status --ledger {self.ledger} --action-id {self.action_id}",)
+        return ("Refresh `/api/dashboard` and review the active request.",)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "schema_version": self.schema_version,
+            "status": self.status,
+            "action": self.action,
+            "workspace": self.workspace,
+            "ledger": self.ledger,
+            "action_id": self.action_id,
+            "decision": self.decision,
+            "approver": self.approver,
+            "wrote_ledger": self.wrote_ledger,
+            "message": self.message,
+            "warnings": list(self.warnings),
+            "next_actions": list(self.next_actions),
+        }
 
 
 def export_local_app(
@@ -125,6 +179,179 @@ def export_local_app(
     )
 
 
+def build_local_app_approval_decision(
+    *,
+    workspace_root: Path,
+    actions_enabled: bool,
+    action_id: str | None = None,
+    decision: str = "",
+    approver: str = "",
+    reason: str = "",
+    confirm: str | None = None,
+) -> LocalAppActionReport:
+    """Record a guarded local approval decision for the active request."""
+
+    workspace = workspace_root.resolve()
+    ledger = workspace / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+    clean_action_id = _clean(action_id)
+    clean_decision = _clean(decision).lower()
+    clean_approver = _clean(approver)
+    clean_reason = _clean(reason)
+    if not actions_enabled:
+        return _local_app_action_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            status="disabled",
+            message="Local app actions are disabled. Restart with --allow-actions to enable guarded approval writes.",
+        )
+    if confirm != LOCAL_APP_WRITE_CONFIRMATION:
+        return _local_app_action_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            status="blocked",
+            message=f"Approval writes require confirmation token {LOCAL_APP_WRITE_CONFIRMATION}.",
+        )
+    if clean_decision not in {"approve", "block"}:
+        return _local_app_action_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            status="blocked",
+            message="Decision must be `approve` or `block`.",
+        )
+    if not clean_approver:
+        return _local_app_action_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            status="blocked",
+            message="Approver is required.",
+        )
+    if not ledger.exists():
+        return _local_app_action_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            status="missing",
+            message="No workspace request ledger exists yet.",
+        )
+
+    events = load_jsonl(ledger)
+    selected_action_id = clean_action_id or _active_request_action_id(events, ledger_source=str(ledger))
+    if not selected_action_id:
+        return _local_app_action_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            status="missing",
+            message="No active request card is available for approval.",
+        )
+
+    try:
+        decision_events = build_approval_decision_events(
+            events,
+            action_id=selected_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            reason=clean_reason,
+        )
+    except ValueError as exc:
+        return _local_app_action_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=selected_action_id,
+            decision=clean_decision,
+            approver=clean_approver,
+            status="blocked",
+            message=str(exc),
+        )
+    append_jsonl(decision_events, ledger)
+    return LocalAppActionReport(
+        schema_version=LOCAL_APP_ACTION_SCHEMA_VERSION,
+        status="recorded",
+        action="approval-decision",
+        workspace=str(workspace),
+        ledger=str(ledger),
+        action_id=selected_action_id,
+        decision=clean_decision,
+        approver=clean_approver,
+        wrote_ledger=True,
+        message=f"Human decision `{clean_decision}` recorded for `{selected_action_id}`.",
+    )
+
+
+def _local_app_action_refused(
+    *,
+    workspace: Path,
+    ledger: Path,
+    action_id: str,
+    decision: str,
+    approver: str,
+    status: str,
+    message: str,
+    warnings: tuple[str, ...] = (),
+) -> LocalAppActionReport:
+    return LocalAppActionReport(
+        schema_version=LOCAL_APP_ACTION_SCHEMA_VERSION,
+        status=status,
+        action="approval-decision",
+        workspace=str(workspace),
+        ledger=str(ledger),
+        action_id=action_id,
+        decision=decision,
+        approver=approver,
+        wrote_ledger=False,
+        message=message,
+        warnings=warnings,
+    )
+
+
+def _active_request_action_id(events: list[JsonMap], *, ledger_source: str) -> str | None:
+    inbox = build_approval_inbox_report(events, ledger_source=ledger_source)
+    priority = {
+        "pending_approval": 0,
+        "warning": 1,
+        "approved": 2,
+        "needs_evidence": 3,
+        "ready_for_recording": 4,
+        "blocked_by_human": 5,
+        "blocked_by_gate": 6,
+        "recorded": 7,
+    }
+    candidates = [
+        item
+        for item in inbox.items
+        if isinstance(item.action_id, str) and item.action_id.strip()
+    ]
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda item: (
+            priority.get(item.status, 99),
+            item.sequence if item.sequence is not None else 999999,
+        )
+    )
+    return candidates[0].action_id.strip()
+
+
+def _clean(value: T.Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
 def serve_local_app(
     *,
     workspace_root: Path,
@@ -135,6 +362,7 @@ def serve_local_app(
     preview_target: str = "workspace",
     preview_note: str | None = None,
     preview_expires_at: str | None = None,
+    allow_actions: bool = False,
 ) -> None:
     """Serve the local cockpit until interrupted."""
 
@@ -203,9 +431,27 @@ def serve_local_app(
                 self._send_json(preview.to_dict())
                 return
             if parsed.path == "/api/health":
-                self._send_json({"status": "ready", "workspace": str(workspace)})
+                self._send_json({"status": "ready", "workspace": str(workspace), "actions_enabled": allow_actions})
                 return
             self._send_json({"status": "missing", "path": parsed.path}, status=404)
+
+        def do_POST(self) -> None:  # noqa: N802 - stdlib handler API.
+            parsed = urlparse(self.path)
+            if parsed.path != "/api/approval-decision":
+                self._send_json({"status": "missing", "path": parsed.path}, status=404)
+                return
+            payload = self._read_json()
+            report = build_local_app_approval_decision(
+                workspace_root=workspace,
+                actions_enabled=allow_actions,
+                action_id=_clean(payload.get("action_id")),
+                decision=_clean(payload.get("decision")),
+                approver=_clean(payload.get("approver")),
+                reason=_clean(payload.get("reason")),
+                confirm=_clean(payload.get("confirm")),
+            )
+            status = 200 if report.status == "recorded" else 403 if report.status == "disabled" else 400
+            self._send_json(report.to_dict(), status=status)
 
         def log_message(self, format: str, *args: T.Any) -> None:  # noqa: A002 - stdlib signature.
             return
@@ -221,11 +467,32 @@ def serve_local_app(
         def _send_json(self, value: JsonMap, *, status: int = 200) -> None:
             self._send_text(json.dumps(value, indent=2, sort_keys=True) + "\n", "application/json", status=status)
 
+        def _read_json(self) -> JsonMap:
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = 0
+            if length <= 0:
+                return {}
+            if length > 65536:
+                return {"error": "request too large"}
+            try:
+                payload = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                return {}
+            return payload if isinstance(payload, dict) else {}
+
     server = ThreadingHTTPServer((host, port), Handler)
     server.serve_forever()
 
 
-def app_server_report(*, workspace_root: Path, host: str = DEFAULT_APP_HOST, port: int = DEFAULT_APP_PORT) -> LocalAppReport:
+def app_server_report(
+    *,
+    workspace_root: Path,
+    host: str = DEFAULT_APP_HOST,
+    port: int = DEFAULT_APP_PORT,
+    actions_enabled: bool = False,
+) -> LocalAppReport:
     workspace = workspace_root.resolve()
     return LocalAppReport(
         status="ready",
@@ -238,6 +505,7 @@ def app_server_report(*, workspace_root: Path, host: str = DEFAULT_APP_HOST, por
         approval_preview_json=None,
         url=f"http://{host}:{port}/",
         preview_agent=_first_agent_id(build_app_state(workspace_root=workspace).to_dict()),
+        actions_enabled=actions_enabled,
     )
 
 
@@ -264,10 +532,20 @@ def render_local_app_report(report: LocalAppReport) -> str:
         lines.append(f"URL: {report.url}")
     if report.preview_agent:
         lines.append(f"Preview agent: {report.preview_agent}")
+    lines.append(f"Actions enabled: {str(report.actions_enabled).lower()}")
     if report.warnings:
         lines.extend(["", "Warnings:"])
         lines.extend(f"- {warning}" for warning in report.warnings)
-    lines.extend(["", "Plain language:", "- This is a local app shell over the DelegationHQ control plane.", "- It reads workspace state and approval previews; live actions still use guarded commands."])
+    lines.extend(
+        [
+            "",
+            "Plain language:",
+            "- This is a local app shell over the DelegationHQ control plane.",
+            "- It is read-only by default.",
+            f"- Approval writes require `--allow-actions` and `{LOCAL_APP_WRITE_CONFIRMATION}`.",
+            "- Agent execution still requires the separate `LOCAL_AGENT_EXECUTION` confirmation.",
+        ]
+    )
     lines.extend(["", "Next:"])
     lines.extend(f"- {action}" for action in report.next_actions)
     return "\n".join(lines)

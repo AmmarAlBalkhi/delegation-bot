@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from delegation_bot.cli import main
+from delegation_bot.local_app import LOCAL_APP_WRITE_CONFIRMATION, build_local_app_approval_decision
 from delegation_bot.model_suggest_fixtures import ModelSuggestionDraft
 from delegation_bot.suggest import build_suggestion
 
@@ -878,12 +879,105 @@ class DelegationCliTests(unittest.TestCase):
                 self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
             with redirect_stdout(io.StringIO()) as output:
                 status = main(["app-serve", "--workspace", tmpdir, "--dry-run", "--json"])
+            with redirect_stdout(io.StringIO()) as actions_output:
+                actions_status = main(["app-serve", "--workspace", tmpdir, "--dry-run", "--allow-actions", "--json"])
         data = json.loads(output.getvalue())
+        actions_data = json.loads(actions_output.getvalue())
 
         self.assertEqual(status, 0)
         self.assertEqual(data["status"], "ready")
         self.assertEqual(data["url"], "http://127.0.0.1:8765/")
         self.assertEqual(data["workspace"], str(Path(tmpdir).resolve()))
+        self.assertFalse(data["actions_enabled"])
+        self.assertEqual(actions_status, 0)
+        self.assertTrue(actions_data["actions_enabled"])
+
+    def test_local_app_guarded_approval_action_records_decision(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "app_action_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('local app action ok')\"",
+                            "--capability",
+                            "write.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--approval",
+                            "write.workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as request_output:
+                self.assertEqual(
+                    main(
+                        [
+                            "action-request",
+                            "app_action_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--action",
+                            "write.workspace",
+                            "--target",
+                            "workspace",
+                            "--summary",
+                            "Local app action runner wants to update the workspace.",
+                            "--json",
+                        ]
+                    ),
+                    0,
+                )
+            action_id = json.loads(request_output.getvalue())["action_id"]
+
+            disabled = build_local_app_approval_decision(
+                workspace_root=Path(tmpdir),
+                actions_enabled=False,
+                action_id=action_id,
+                decision="approve",
+                approver="Ammar",
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            wrong_token = build_local_app_approval_decision(
+                workspace_root=Path(tmpdir),
+                actions_enabled=True,
+                action_id=action_id,
+                decision="approve",
+                approver="Ammar",
+                confirm="wrong",
+            )
+            recorded = build_local_app_approval_decision(
+                workspace_root=Path(tmpdir),
+                actions_enabled=True,
+                action_id=action_id,
+                decision="approve",
+                approver="Ammar",
+                reason="Reviewed in local app.",
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            with redirect_stdout(io.StringIO()) as status_output:
+                status_code = main(["request-status", "--workspace", tmpdir, "--action-id", action_id, "--json"])
+            status_data = json.loads(status_output.getvalue())
+
+        self.assertEqual(disabled.status, "disabled")
+        self.assertFalse(disabled.wrote_ledger)
+        self.assertEqual(wrong_token.status, "blocked")
+        self.assertFalse(wrong_token.wrote_ledger)
+        self.assertEqual(recorded.status, "recorded")
+        self.assertTrue(recorded.wrote_ledger)
+        self.assertEqual(recorded.action_id, action_id)
+        self.assertEqual(status_code, 0)
+        self.assertEqual(status_data["status"], "approved")
+        self.assertTrue(status_data["ready_to_run"])
 
     def test_app_state_reports_missing_ledger_without_process_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

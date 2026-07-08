@@ -430,6 +430,30 @@ def main() -> int:
             print(app_serve.stdout)
             print(app_serve.stderr, file=sys.stderr)
             return app_serve.returncode or 1
+        app_serve_actions = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "app-serve",
+                "--workspace",
+                str(workspace),
+                "--dry-run",
+                "--allow-actions",
+                "--json",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if (
+            app_serve_actions.returncode != 0
+            or '"actions_enabled": true' not in app_serve_actions.stdout
+            or "http://127.0.0.1:8765/" not in app_serve_actions.stdout
+        ):
+            print("FAIL: installed package guarded app actions smoke")
+            print(app_serve_actions.stdout)
+            print(app_serve_actions.stderr, file=sys.stderr)
+            return app_serve_actions.returncode or 1
 
         agents = _run(
             [
@@ -738,7 +762,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
         print(
-            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, active request dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, active request dashboard, approval-preview, app-export, app-serve, guarded app actions, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
         )
     return 0
 

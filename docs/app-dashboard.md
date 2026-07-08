@@ -32,6 +32,16 @@ When a workspace already has submitted action requests, `app-dashboard` focuses
 the active request automatically. Use `--preview-agent` only when you want to
 inspect a specific agent before it has submitted a real request.
 
+The local app server can use that same active request to record a guarded
+approve/block receipt when it is started with:
+
+```bash
+delegation app-serve --workspace . --allow-actions
+```
+
+That write path is still only an approval receipt. It does not execute the
+agent, call GitHub, or call models.
+
 Simple version:
 
 ```text
@@ -73,7 +83,8 @@ Top-level fields:
 ## Boundary
 
 This command is read-only. It does not execute agents, call GitHub, call models,
-or write approval decisions.
+or write approval decisions. The separate `app-serve --allow-actions` mode can
+record guarded local approval receipts for the active request.
 
 Design can change later. The important product contract is the data shape.
 RunPrint is currently one evidence tool; the dashboard should keep saying

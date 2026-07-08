@@ -112,6 +112,8 @@ must return.
 `app-export` writes a local browser cockpit bundle with `dashboard.json`,
 `state.json`, `timeline.json`, and approval preview data. `app-serve` serves the
 same workspace state at `http://127.0.0.1:8765/` for the future desktop app path.
+It is read-only by default; `--allow-actions` only enables guarded local
+approve/block receipt writes, not agent execution.
 
 `agents` shows Agent Passports for built-in Harnessfile agents and custom
 Bring Your Own Agent registries.
@@ -259,6 +261,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation approval-preview AGENT --workspace .` | Show the human approval card for one agent action. |
 | `delegation app-export --workspace . --preview-agent AGENT` | Write a local browser cockpit bundle. |
 | `delegation app-serve --workspace .` | Serve the local cockpit on `127.0.0.1` for app testing. |
+| `delegation app-serve --workspace . --allow-actions` | Serve the cockpit with guarded local approve/block receipt writes. |
 | `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
 | `delegation action-request AGENT --workspace . --action ACTION --target TARGET` | Submit an agent request, gate it, and create an approval card without execution. |

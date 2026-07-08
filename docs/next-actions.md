@@ -63,6 +63,10 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added guarded local app approval writes: `app-serve` stays read-only by
+  default, `--allow-actions` enables only approve/block receipt recording with
+  `LOCAL_APP_WRITE`, and actual agent execution still needs
+  `LOCAL_AGENT_EXECUTION`.
 - Made `app-dashboard` and the exported cockpit focus the active real action
   request from the workspace ledger, so Approval Inbox, preview, commands, and
   timeline follow actual work instead of a generic demo preview.

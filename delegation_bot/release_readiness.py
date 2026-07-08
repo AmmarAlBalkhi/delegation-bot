@@ -322,6 +322,8 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "approval-preview",
             "app-export",
             "app-serve",
+            "guarded app actions",
+            "--allow-actions",
             "workspace-init",
             "workspace-status",
             "agent-add",
@@ -371,7 +373,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, workspace-flow, workspace-demo, app dashboard, active request dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, action-request, request-status, request-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, workspace-flow, workspace-demo, app dashboard, active request dashboard, approval preview, app export, app serve, guarded app actions, local workspace init/status, agent-add, agent-run, action-request, request-status, request-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 

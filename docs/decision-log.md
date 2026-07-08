@@ -1582,3 +1582,24 @@ Guardrails:
 
 Follow-up: Let the future app shell approve/block from a guarded local action
 endpoint only after the command-backed flow is fully covered.
+
+## 2026-07-08: Add Guarded Local App Approval Writes
+
+Decision: Add a guarded local approval write path to `app-serve`.
+
+Why: The local cockpit should start becoming the product experience, not just a
+read-only mirror. A user should be able to review an active agent request and
+record approve/block evidence from the app backend, while keeping actual agent
+execution behind a separate confirmation.
+
+Guardrails:
+
+- `app-serve` remains read-only by default
+- approval writes require `--allow-actions`
+- each approval write requires the exact `LOCAL_APP_WRITE` confirmation token
+- the endpoint only records approve/block receipts for workspace requests
+- agent execution still requires `LOCAL_AGENT_EXECUTION` through `request-run`
+- no GitHub, model, or external service call is made by this local app action
+
+Follow-up: Add a small first-run approval inbox UI over this endpoint after the
+functional contract is stable and the visual direction is approved.

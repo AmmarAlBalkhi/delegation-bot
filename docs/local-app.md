@@ -20,6 +20,7 @@ delegation app-dashboard --workspace .
 delegation timeline --workspace .
 delegation app-export --workspace .
 delegation app-serve --workspace . --dry-run
+delegation app-serve --workspace . --allow-actions
 ```
 
 Open the exported file:
@@ -39,6 +40,18 @@ Then open:
 ```text
 http://127.0.0.1:8765/
 ```
+
+By default the server is read-only. If you want the local app backend to record
+an approve/block decision for the active request, start it deliberately:
+
+```bash
+delegation app-serve --workspace . --allow-actions
+```
+
+The browser-facing approval endpoint still requires the exact confirmation token
+`LOCAL_APP_WRITE`. This only records the human approval receipt. Agent execution
+still requires the separate `LOCAL_AGENT_EXECUTION` confirmation through the
+controlled request-run path.
 
 ## What It Shows
 
@@ -63,6 +76,7 @@ http://127.0.0.1:8765/
   preview commands
 - local data links for generated JSON files in Settings
 - next safe actions
+- guarded local approval writes when the server is started with `--allow-actions`
 
 Simple version:
 
@@ -82,8 +96,11 @@ Settings keeps maintenance details out of the main loop.
 ## Boundaries
 
 - `app-export` writes static files only.
-- `app-serve` serves local state only.
-- Neither command executes agents.
+- `app-serve` is read-only unless started with `--allow-actions`.
+- `--allow-actions` can record a local approve/block receipt only when the
+  request includes `LOCAL_APP_WRITE`.
+- Agent execution still requires `LOCAL_AGENT_EXECUTION`.
+- Neither app command executes agents.
 - Neither command writes to GitHub.
 - RunPrint is the current recorder path, not the whole product. Future evidence
   tools should fit behind the same Evidence area.

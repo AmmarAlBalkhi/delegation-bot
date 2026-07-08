@@ -60,12 +60,16 @@ The QA command currently checks:
 - installed package `app-dashboard`, `timeline`, `approval-preview`,
   `app-export`, and `app-serve --dry-run`
   smoke tests
+- installed package guarded `app-serve --allow-actions` smoke test so approval
+  writes are covered without executing agents
 - installed package `action-request` smoke test for the agent asks -> gate ->
   approval card path
 - installed package `request-status` and `request-run` smoke tests for the
   approved request -> controlled execution -> evidence path
 - local app regression coverage that `app-dashboard` and `app-export` focus the
   active real request from the workspace ledger
+- local app regression coverage for disabled action mode, wrong confirmation
+  token blocking, and guarded approval receipt recording
 - approval preview regression coverage for request context, resource scope,
   evidence status, repeated-action history, reviewer notes, and expiration
 - local app operator UX regression coverage for full timelines, copy buttons,

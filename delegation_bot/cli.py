@@ -514,7 +514,12 @@ def cmd_app_export(args: argparse.Namespace) -> int:
 
 
 def cmd_app_serve(args: argparse.Namespace) -> int:
-    report = app_server_report(workspace_root=Path(args.workspace), host=args.host, port=args.port)
+    report = app_server_report(
+        workspace_root=Path(args.workspace),
+        host=args.host,
+        port=args.port,
+        actions_enabled=args.allow_actions,
+    )
     if args.dry_run:
         if args.json:
             print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
@@ -535,6 +540,7 @@ def cmd_app_serve(args: argparse.Namespace) -> int:
             preview_target=args.preview_target,
             preview_note=args.preview_note,
             preview_expires_at=args.preview_expires_at,
+            allow_actions=args.allow_actions,
         )
     except KeyboardInterrupt:
         print("\nStopped DelegationHQ local app server.")
@@ -2163,6 +2169,11 @@ def build_parser() -> argparse.ArgumentParser:
     app_serve.add_argument("--preview-target", default="workspace", help="Approval preview target. Defaults to workspace.")
     app_serve.add_argument("--preview-note", help="Optional reviewer note to include in the approval preview packet.")
     app_serve.add_argument("--preview-expires-at", help="Optional ISO timestamp after which the preview should be regenerated.")
+    app_serve.add_argument(
+        "--allow-actions",
+        action="store_true",
+        help="Enable guarded local approval writes through POST /api/approval-decision.",
+    )
     app_serve.add_argument("--dry-run", action="store_true", help="Print the local app URL without starting the server.")
     app_serve.add_argument("--json", action="store_true", help="Print the server report as JSON.")
     app_serve.set_defaults(func=cmd_app_serve)
