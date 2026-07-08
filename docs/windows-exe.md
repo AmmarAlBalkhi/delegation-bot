@@ -19,6 +19,7 @@ delegation app-state --ledger .delegation/demo.jsonl --json
 delegation workspace-init --path . --plan
 delegation workspace-status --path .
 delegation agent-add local_cli_agent --command "python agent.py" --capability read.workspace --allowed-data workspace --evidence command_output
+delegation agent-run local_cli_agent --registry .delegation/agents.yaml --ledger .delegation/agent-run.jsonl --action read.workspace --target workspace --execute --confirm LOCAL_AGENT_EXECUTION
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
 delegation approval-inbox --ledger .delegation/demo.jsonl
@@ -72,7 +73,8 @@ dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --out
 dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
 dist\delegation.exe workspace-init --path .delegation\exe-local-workspace --owner exe-smoke --plan --force
 dist\delegation.exe workspace-status --path .delegation\exe-local-workspace
-dist\delegation.exe agent-add exe_cli_agent --registry .delegation\exe-local-workspace\.delegation\agents.yaml --command "delegation demo" --capability read.workspace --allowed-data workspace --evidence command_output --force
+dist\delegation.exe agent-add exe_cli_agent --registry .delegation\exe-local-workspace\.delegation\agents.yaml --command "dist\delegation.exe --version" --capability read.workspace --allowed-data workspace --evidence command_output --force
+dist\delegation.exe agent-run exe_cli_agent --registry .delegation\exe-local-workspace\.delegation\agents.yaml --ledger .delegation\exe-local-workspace\.delegation\agent-run.jsonl --action read.workspace --target workspace --execute --confirm LOCAL_AGENT_EXECUTION
 dist\delegation.exe app-plan
 dist\delegation.exe app-state --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry examples\agent-passports.yaml

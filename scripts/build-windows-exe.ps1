@@ -125,7 +125,12 @@ if (-not $SkipSmoke) {
     }
 
     $SmokeRegistry = Join-Path $SmokeWorkspace ".delegation\agents.yaml"
-    & $ExecutablePath agent-add exe_cli_agent --registry $SmokeRegistry --command "delegation demo" --capability read.workspace --allowed-data workspace --evidence command_output --force
+    & $ExecutablePath agent-add exe_cli_agent --registry $SmokeRegistry --command "$ExecutablePath --version" --capability read.workspace --allowed-data workspace --evidence command_output --force
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & $ExecutablePath agent-run exe_cli_agent --registry $SmokeRegistry --ledger (Join-Path $SmokeWorkspace ".delegation\agent-run.jsonl") --action read.workspace --target workspace --execute --confirm LOCAL_AGENT_EXECUTION --cwd $RepoRoot
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }

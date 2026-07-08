@@ -77,6 +77,8 @@ The project is currently pre-release.
   local folder can become a no-GitHub DelegationHQ workspace.
 - Added `delegation agent-add` so users can register custom agent passports
   without hand-editing registry YAML.
+- Added `delegation agent-run` to gate, execute, and record command-backed
+  custom agents with local ledger and RunPrint-style evidence.
 - Added Agent Gate ledger receipts and `delegation agent-audit` for comparing
   approved intent with planned or recorded RunPrint evidence.
 - Added `delegation approval-inbox` and `delegation approval-decision` for

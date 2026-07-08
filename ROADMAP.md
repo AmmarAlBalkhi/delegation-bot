@@ -94,6 +94,7 @@ Deliverables:
 - Agent Passport registry for Bring Your Own Agent
 - local workspace init/status so GitHub is optional instead of required
 - custom agent registration without hand-editing large YAML files
+- controlled command-backed agent execution with local evidence capture
 - agent gate previews for requested actions
 - mission status over the plan/gate/approval/proof loop
 - agent packets for custom agent handoff

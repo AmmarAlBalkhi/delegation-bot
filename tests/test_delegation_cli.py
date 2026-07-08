@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import io
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -327,6 +328,118 @@ class DelegationCliTests(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertIn("already exists", error.getvalue())
+
+    def test_agent_run_executes_command_agent_and_records_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = Path(tmpdir) / ".delegation" / "agents.yaml"
+            ledger = Path(tmpdir) / ".delegation" / "agent-run.jsonl"
+            command = f"{sys.executable} -c \"print('agent ok')\""
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "runner_agent",
+                            "--registry",
+                            str(registry),
+                            "--command",
+                            command,
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "agent-run",
+                        "runner_agent",
+                        "--registry",
+                        str(registry),
+                        "--ledger",
+                        str(ledger),
+                        "--action",
+                        "read.workspace",
+                        "--target",
+                        "workspace",
+                        "--execute",
+                        "--confirm",
+                        "LOCAL_AGENT_EXECUTION",
+                        "--cwd",
+                        tmpdir,
+                        "--json",
+                    ]
+                )
+            data = json.loads(output.getvalue())
+            events = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+            event_types = [event["type"] for event in events]
+            artifact_path = Path(data["output_artifact"])
+            artifact_exists = artifact_path.exists()
+            with redirect_stdout(io.StringIO()) as audit_output:
+                audit_status = main(["agent-audit", "--ledger", str(ledger), "--json"])
+            audit_data = json.loads(audit_output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "recorded")
+        self.assertTrue(data["executed"])
+        self.assertEqual(data["returncode"], 0)
+        self.assertIn("agent ok", data["stdout_tail"])
+        self.assertTrue(artifact_exists)
+        self.assertIn("agent.gate.previewed", event_types)
+        self.assertIn("agent.execution.completed", event_types)
+        self.assertIn("runprint.recording.completed", event_types)
+        self.assertEqual(audit_status, 0)
+        self.assertEqual(audit_data["status"], "recorded")
+
+    def test_agent_run_requires_exact_confirmation_for_execution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = Path(tmpdir) / "agents.yaml"
+            ledger = Path(tmpdir) / "agent-run.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "runner_agent",
+                            "--registry",
+                            str(registry),
+                            "--command",
+                            f"{sys.executable} -c \"print('nope')\"",
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stderr(io.StringIO()) as error:
+                status = main(
+                    [
+                        "agent-run",
+                        "runner_agent",
+                        "--registry",
+                        str(registry),
+                        "--ledger",
+                        str(ledger),
+                        "--action",
+                        "read.workspace",
+                        "--target",
+                        "workspace",
+                        "--execute",
+                    ]
+                )
+
+        self.assertEqual(status, 1)
+        self.assertIn("LOCAL_AGENT_EXECUTION", error.getvalue())
+        self.assertFalse(ledger.exists())
 
     def test_agent_gate_command_previews_harnessfile_agent(self) -> None:
         with redirect_stdout(io.StringIO()) as output:

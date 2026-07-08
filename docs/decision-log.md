@@ -1358,3 +1358,26 @@ Guardrails:
 
 Follow-up: Feed local workspace status into `app-state` so the future Windows
 EXE can open on a real workspace overview.
+
+## 2026-07-08: Add Controlled Command-Backed Agent Run
+
+Decision: Add `delegation agent-run` as the first local execution slice for
+Bring Your Own Agent.
+
+Why: Registering an Agent Passport is not enough. DelegationHQ needs to prove
+the core loop on a real worker: gate the agent, execute only when allowed and
+explicitly confirmed, capture output, write ledger evidence, and make
+`agent-audit` verify that evidence.
+
+Guardrails:
+
+- execution is limited to command-backed passports
+- `--execute` requires the exact `LOCAL_AGENT_EXECUTION` confirmation token
+- Agent Gate must return `allow` before a command runs
+- stdout, stderr, exit code, duration, and command metadata are written to a
+  local evidence JSON file
+- the ledger receives Agent Gate, execution, and RunPrint-style evidence events
+- non-command adapters remain future adapter work, not hidden execution
+
+Follow-up: Feed `agent-run` status into `app-state`, then design the future app
+approval/run surface with maintainer-approved visuals.

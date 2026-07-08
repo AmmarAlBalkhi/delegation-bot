@@ -24,6 +24,12 @@ from delegation_bot.agent_registry_writer import (
     add_agent_to_registry,
     render_agent_add_report,
 )
+from delegation_bot.agent_run import (
+    DEFAULT_TIMEOUT_SECONDS as AGENT_RUN_DEFAULT_TIMEOUT_SECONDS,
+    LOCAL_AGENT_EXECUTION_CONFIRMATION,
+    render_agent_run_report,
+    run_agent_under_control,
+)
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
 from delegation_bot.approval_inbox import (
@@ -384,6 +390,42 @@ def cmd_agent_add(args: argparse.Namespace) -> int:
     else:
         print(render_agent_add_report(report))
     return 0
+
+
+def cmd_agent_run(args: argparse.Namespace) -> int:
+    manifest = None
+    if args.harnessfile:
+        manifest, status = _load_valid_manifest(Path(args.harnessfile))
+        if status != 0 or manifest is None:
+            return status
+
+    try:
+        report = run_agent_under_control(
+            agent_id=args.agent_id,
+            action=args.action,
+            target=args.target,
+            ledger_path=Path(args.ledger),
+            registry_paths=tuple(Path(path) for path in args.registry or ()),
+            manifest=manifest,
+            manifest_source=args.harnessfile,
+            requested_risk=args.risk,
+            approvals=tuple(args.approval or ()),
+            evidence=tuple(args.evidence or ()),
+            execute=args.execute,
+            confirm=args.confirm,
+            cwd=Path(args.cwd) if args.cwd else None,
+            output_dir=Path(args.output_dir) if args.output_dir else None,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except (OSError, ValueError, json.JSONDecodeError, PlanError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_agent_run_report(report))
+    return 1 if report.blocked else 0
 
 
 def cmd_agent_gate(args: argparse.Namespace) -> int:
@@ -1663,6 +1705,47 @@ def build_parser() -> argparse.ArgumentParser:
     agent_add.add_argument("--force", action="store_true", help="Replace an existing agent with the same id.")
     agent_add.add_argument("--json", action="store_true", help="Print the added agent report as JSON.")
     agent_add.set_defaults(func=cmd_agent_add)
+
+    agent_run = subparsers.add_parser(
+        "agent-run",
+        help="Gate and optionally execute a command-backed custom agent with ledger evidence.",
+    )
+    agent_run.add_argument("agent_id", help="Agent id from a Harnessfile or Agent Passport registry.")
+    agent_run.add_argument("--harnessfile", help="Optional Harnessfile with `agents:` declarations.")
+    agent_run.add_argument(
+        "--registry",
+        action="append",
+        help="Optional Agent Passport registry file. Repeatable.",
+    )
+    agent_run.add_argument("--ledger", required=True, help="Read and append run ledger JSONL evidence.")
+    agent_run.add_argument("--action", required=True, help="Requested action, such as read.workspace.")
+    agent_run.add_argument("--target", required=True, help="Target resource, file, tool, or data scope.")
+    agent_run.add_argument(
+        "--risk",
+        choices=("low", "medium", "high", "critical"),
+        help="Optional requested risk override.",
+    )
+    agent_run.add_argument("--approval", action="append", help="Approval evidence already present. Repeatable.")
+    agent_run.add_argument("--evidence", action="append", help="Evidence already present. Repeatable.")
+    agent_run.add_argument(
+        "--execute",
+        action="store_true",
+        help="Actually run a command-backed agent after the gate allows it.",
+    )
+    agent_run.add_argument(
+        "--confirm",
+        help=f"Required exact token for --execute: {LOCAL_AGENT_EXECUTION_CONFIRMATION}.",
+    )
+    agent_run.add_argument("--cwd", help="Working directory for command execution. Defaults to current folder.")
+    agent_run.add_argument("--output-dir", help="Directory for command output evidence JSON.")
+    agent_run.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=AGENT_RUN_DEFAULT_TIMEOUT_SECONDS,
+        help="Maximum command runtime in seconds.",
+    )
+    agent_run.add_argument("--json", action="store_true", help="Print the agent run report as JSON.")
+    agent_run.set_defaults(func=cmd_agent_run)
 
     agent_gate = subparsers.add_parser(
         "agent-gate",

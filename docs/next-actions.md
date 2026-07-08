@@ -68,6 +68,8 @@ Human = final yes/no for danger.
   Agent Passport registry, and optional dry-run ledger.
 - Added `delegation agent-add` so users can register CLI/API/webhook/MCP-style
   custom agents without hand-editing a large YAML file.
+- Added `delegation agent-run` so command-backed custom agents can be gated,
+  executed after exact confirmation, and recorded with local evidence.
 - Added `delegation demo --control-loop` so one install-safe command now shows
   the plan -> gate -> approval -> RunPrint recording -> audit path.
 - Added `delegation mission-status` for a plain operator view over one ledger:

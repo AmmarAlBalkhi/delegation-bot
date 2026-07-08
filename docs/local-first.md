@@ -46,6 +46,13 @@ Preview what it may do:
 delegation agent-gate --registry .delegation/agents.yaml research_agent --action read.workspace --target workspace
 ```
 
+Run it under control:
+
+```bash
+delegation agent-run research_agent --registry .delegation/agents.yaml --ledger .delegation/agent-run.jsonl --action read.workspace --target workspace --execute --confirm LOCAL_AGENT_EXECUTION
+delegation agent-audit --ledger .delegation/agent-run.jsonl
+```
+
 The custom agent does the work. DelegationHQ controls:
 
 - identity
@@ -55,6 +62,10 @@ The custom agent does the work. DelegationHQ controls:
 - approvals
 - required evidence
 - evals for promotion
+
+`agent-run` only executes command-backed agents after the exact confirmation
+token. It records the gate receipt, command output, exit code, duration, and a
+RunPrint-style evidence receipt in the ledger.
 
 ## Why This Matters
 

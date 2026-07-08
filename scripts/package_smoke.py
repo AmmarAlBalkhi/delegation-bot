@@ -198,7 +198,7 @@ def main() -> int:
                 "--registry",
                 str(registry),
                 "--command",
-                "delegation demo",
+                f"{sys.executable} -c \"print('package agent ok')\"",
                 "--capability",
                 "read.run_ledger",
                 "--allowed-data",
@@ -215,6 +215,35 @@ def main() -> int:
             print(agent_add.stdout)
             print(agent_add.stderr, file=sys.stderr)
             return agent_add.returncode or 1
+
+        agent_run_ledger = workspace / ".delegation" / "agent-run.jsonl"
+        agent_run = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "agent-run",
+                "smoke_cli_agent",
+                "--registry",
+                str(registry),
+                "--ledger",
+                str(agent_run_ledger),
+                "--action",
+                "read.run_ledger",
+                "--target",
+                "run_ledger",
+                "--execute",
+                "--confirm",
+                "LOCAL_AGENT_EXECUTION",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if agent_run.returncode != 0 or "Agent Run" not in agent_run.stdout or "package agent ok" not in agent_run.stdout:
+            print("FAIL: installed package agent-run smoke")
+            print(agent_run.stdout)
+            print(agent_run.stderr, file=sys.stderr)
+            return agent_run.returncode or 1
 
         agents = _run(
             [
@@ -353,7 +382,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, local workspace, agent-add, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 

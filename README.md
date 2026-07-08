@@ -40,6 +40,8 @@ delegation mission-status --ledger .delegation/demo.jsonl
 delegation agent-packet --ledger .delegation/demo.jsonl --action-id agent_gate.planner.write_issue_draft
 delegation workspace-init --path . --plan
 delegation workspace-status --path .
+delegation agent-add hello_agent --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
+delegation agent-run hello_agent --registry .delegation/agents.yaml --ledger .delegation/agent-run.jsonl --action read.workspace --target workspace --execute --confirm LOCAL_AGENT_EXECUTION
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
@@ -67,6 +69,7 @@ Add a custom agent without writing YAML:
 ```bash
 delegation agent-add research_agent --command "python agents/research_agent.py" --capability read.workspace --allowed-data workspace --evidence command_output
 delegation agent-gate --registry .delegation/agents.yaml research_agent --action read.workspace --target workspace
+delegation agent-run research_agent --registry .delegation/agents.yaml --ledger .delegation/agent-run.jsonl --action read.workspace --target workspace --execute --confirm LOCAL_AGENT_EXECUTION
 ```
 
 `app-state` gives the future app and a first-time user one compact health view:
@@ -187,6 +190,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation workspace-init --path . --plan` | Turn any folder into a no-GitHub DelegationHQ workspace. |
 | `delegation workspace-status --path .` | Show local workspace health, registry status, and ledger status. |
 | `delegation agent-add AGENT --command "python agent.py"` | Register a custom agent passport without hand-editing YAML. |
+| `delegation agent-run AGENT --ledger .delegation/run.jsonl --execute --confirm LOCAL_AGENT_EXECUTION` | Gate, execute, and record a command-backed custom agent. |
 | `delegation mission-status --ledger .delegation/run.jsonl` | Explain one ledger as plan, gate, approval, proof, and next step. |
 | `delegation agent-packet --ledger .delegation/run.jsonl --action-id ID` | Export a BYOA packet for a custom agent. |
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
