@@ -300,20 +300,127 @@ class DelegationCliTests(unittest.TestCase):
                 )
             data = json.loads(output.getvalue())
             index_html = Path(data["index_html"])
+            dashboard_json = Path(data["dashboard_json"])
             state_json = Path(data["state_json"])
+            timeline_json = Path(data["timeline_json"])
             preview_json = Path(data["approval_preview_json"])
             html_text = index_html.read_text(encoding="utf-8")
             index_exists = index_html.exists()
+            dashboard_exists = dashboard_json.exists()
             state_exists = state_json.exists()
+            timeline_exists = timeline_json.exists()
             preview_exists = preview_json.exists()
 
         self.assertEqual(status, 0)
         self.assertEqual(data["status"], "ready")
         self.assertTrue(index_exists)
+        self.assertTrue(dashboard_exists)
         self.assertTrue(state_exists)
+        self.assertTrue(timeline_exists)
         self.assertTrue(preview_exists)
         self.assertIn("DelegationHQ Local App", html_text)
+        self.assertIn("Command Center", html_text)
         self.assertIn("Approval Preview", html_text)
+        self.assertIn("Timeline", html_text)
+
+    def test_app_dashboard_combines_state_preview_and_timeline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "dashboard_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('dashboard ok')\"",
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-run",
+                            "dashboard_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--execute",
+                            "--confirm",
+                            "LOCAL_AGENT_EXECUTION",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["app-dashboard", "--workspace", tmpdir, "--preview-agent", "dashboard_runner", "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["schema_version"], "delegation.app-dashboard.v1")
+        self.assertEqual(data["state"]["workspace"]["status"], "ready")
+        self.assertEqual(data["approval_preview"]["agent_id"], "dashboard_runner")
+        self.assertTrue(data["command_center"])
+        self.assertGreaterEqual(data["timeline"]["stage_counts"]["gate"], 1)
+        self.assertGreaterEqual(data["timeline"]["stage_counts"]["record"], 1)
+
+    def test_timeline_command_uses_workspace_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "timeline_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('timeline ok')\"",
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-run",
+                            "timeline_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--execute",
+                            "--confirm",
+                            "LOCAL_AGENT_EXECUTION",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["timeline", "--workspace", tmpdir, "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["schema_version"], "delegation.mission-timeline.v1")
+        self.assertEqual(data["status"], "recorded")
+        self.assertGreaterEqual(data["stage_counts"]["gate"], 1)
+        self.assertGreaterEqual(data["stage_counts"]["execute"], 2)
+        self.assertGreaterEqual(data["stage_counts"]["record"], 1)
 
     def test_app_serve_dry_run_reports_local_url(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -42,19 +42,19 @@ Human = final yes/no for danger.
 
 ## Now
 
-1. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
+1. Add reviewer notes, expiration, and decision history summaries to the
+   approval loop so repeated agent actions feel controlled but not heavy.
+2. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
    examples for CLI agents, webhook agents, MCP workflows, and CRM agents.
-2. Improve the local app shell after visual direction is approved: agent list,
+3. Improve the local app shell after visual direction is approved: agent list,
    approval cards, mission timeline, and evidence details should feel fast and
-   obvious.
-3. Expand Agent Approval Preview with proposed file/resource diffs, command
+   obvious without exposing internal complexity.
+4. Expand Agent Approval Preview with proposed file/resource diffs, command
    intent, reviewer notes, expiration, and repeated-action history.
-4. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
+5. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
    repo stabilizes.
-5. Add the next approval loop slice: optional reviewer notes, expiration, and
-   decision history summaries for repeated agent actions.
-6. Keep `app-state` aligned as the first cockpit backend without designing UI
-   until the visual direction is approved.
+6. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
+   designing UI until the visual direction is approved.
 7. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
 8. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
@@ -66,6 +66,15 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added `delegation app-dashboard` as the one-screen app brain: workspace
+  state, Agent Passports, approval preview, command center, timeline, and next
+  safe actions together.
+- Added `delegation timeline` so a workspace ledger reads as plan -> gate ->
+  approval -> execution -> RunPrint proof -> eval -> feedback -> promotion.
+- Upgraded `app-export` and `app-serve` to expose `dashboard.json`,
+  `timeline.json`, `/api/dashboard`, and `/api/timeline` for the future EXE UI.
+- Upgraded approval preview cards with safe next steps and exact approve,
+  block, or execute commands.
 - Added `delegation workspace-init` and `delegation workspace-status` so any
   local folder can become a no-GitHub DelegationHQ workspace with a Harnessfile,
   Agent Passport registry, and optional dry-run ledger.

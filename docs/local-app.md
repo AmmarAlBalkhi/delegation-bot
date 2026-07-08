@@ -12,6 +12,8 @@ read a workspace, show agents, show approval previews, and stay local-first.
 delegation workspace-init --path . --plan
 delegation agent-add local_cli_agent --workspace . --command "python agent.py" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation approval-preview local_cli_agent --workspace .
+delegation app-dashboard --workspace . --preview-agent local_cli_agent
+delegation timeline --workspace .
 delegation app-export --workspace . --preview-agent local_cli_agent
 delegation app-serve --workspace . --dry-run
 ```
@@ -41,6 +43,8 @@ http://127.0.0.1:8765/
 - registered Agent Passports
 - release readiness
 - a human approval preview card
+- a command center with safe next commands
+- a mission timeline
 - next safe actions
 
 Simple version:
@@ -50,6 +54,7 @@ Folder is workspace.
 Agents have ID cards.
 App shows current state.
 Approval card says allow, ask human, or block.
+Timeline shows what happened.
 Live actions still need guarded commands.
 ```
 
@@ -59,5 +64,7 @@ Live actions still need guarded commands.
 - `app-serve` serves local state only.
 - Neither command executes agents.
 - Neither command writes to GitHub.
+- Visual design can change later because the app reads `dashboard.json`,
+  `state.json`, `timeline.json`, and approval preview JSON.
 - Final visual/interface design should be approved before styling this into the
   futuristic product UI.

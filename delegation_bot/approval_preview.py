@@ -77,6 +77,56 @@ class ApprovalPreviewReport:
         actions.append("Keep RunPrint/evidence recording attached to this action.")
         return tuple(_dedupe(actions))
 
+    @property
+    def safe_next_step(self) -> str:
+        if self.gate.decision == "allow":
+            return "Run under DelegationHQ control with the exact execution confirmation token."
+        if self.gate.decision == "approval_required":
+            return "Record a human approve/block decision before live action."
+        if self.gate.decision == "block":
+            return "Change the request, passport, target, or risk before trying again."
+        return "Review the warning and request more evidence before increasing autonomy."
+
+    @property
+    def decision_commands(self) -> tuple[JsonMap, ...]:
+        commands: list[JsonMap] = []
+        if self.gate.decision == "approval_required" and self.ledger:
+            commands.extend(
+                [
+                    {
+                        "id": "approve",
+                        "label": "Approve",
+                        "command": (
+                            f"delegation approval-decision --ledger {self.ledger} --action-id {self.action_id} "
+                            "--decision approve --approver YOUR_NAME"
+                        ),
+                        "writes_ledger": True,
+                    },
+                    {
+                        "id": "block",
+                        "label": "Block",
+                        "command": (
+                            f"delegation approval-decision --ledger {self.ledger} --action-id {self.action_id} "
+                            "--decision block --approver YOUR_NAME"
+                        ),
+                        "writes_ledger": True,
+                    },
+                ]
+            )
+        if self.gate.decision == "allow" and self.workspace:
+            commands.append(
+                {
+                    "id": "execute",
+                    "label": "Execute",
+                    "command": (
+                        f"delegation agent-run {self.agent_id} --workspace {self.workspace} --action {self.action} "
+                        f"--target {self.target} --execute --confirm LOCAL_AGENT_EXECUTION"
+                    ),
+                    "writes_ledger": True,
+                }
+            )
+        return tuple(commands)
+
     def to_dict(self) -> JsonMap:
         return {
             "schema_version": APPROVAL_PREVIEW_SCHEMA_VERSION,
@@ -92,6 +142,8 @@ class ApprovalPreviewReport:
             "summary": self.summary,
             "can_execute": self.can_execute,
             "command": self.command,
+            "safe_next_step": self.safe_next_step,
+            "decision_commands": list(self.decision_commands),
             "required_approvals": list(self.required_approvals),
             "missing_approvals": list(self.missing_approvals),
             "required_evidence": list(self.gate.required_evidence),
@@ -187,6 +239,7 @@ def render_approval_preview_report(report: ApprovalPreviewReport) -> str:
         lines.append(f"Command: {report.command}")
 
     lines.extend(["", "Plain language:", f"- {report.summary}"])
+    lines.append(f"- Safe next step: {report.safe_next_step}")
     if report.gate.passport:
         lines.append(f"- Runtime: {report.gate.passport.runtime_type}; autonomy: {report.gate.passport.autonomy_level}.")
 
@@ -209,6 +262,11 @@ def render_approval_preview_report(report: ApprovalPreviewReport) -> str:
     if report.warnings:
         lines.extend(["", "Warnings:"])
         lines.extend(f"- {warning}" for warning in report.warnings)
+
+    if report.decision_commands:
+        lines.extend(["", "Decision commands:"])
+        for command in report.decision_commands:
+            lines.append(f"- {command['label']}: {command['command']}")
 
     lines.extend(["", "Next:"])
     lines.extend(f"- {action}" for action in report.next_actions)

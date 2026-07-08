@@ -311,9 +311,11 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "demo",
             "--control-loop",
             "mission-status",
+            "timeline",
             "agent-packet",
             "app-state",
             "cockpit",
+            "app-dashboard",
             "approval-preview",
             "app-export",
             "app-serve",
@@ -354,7 +356,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, agent packet, workspace-aware app state, cockpit, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -377,6 +379,8 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "agent-run exe_cli_agent --workspace $SmokeWorkspace",
         "app-state --workspace $SmokeWorkspace",
         "cockpit --workspace $SmokeWorkspace",
+        "app-dashboard --workspace $SmokeWorkspace",
+        "timeline --workspace $SmokeWorkspace",
         "approval-preview exe_cli_agent --workspace $SmokeWorkspace",
         "app-export --workspace $SmokeWorkspace",
         "app-serve --workspace $SmokeWorkspace --dry-run",

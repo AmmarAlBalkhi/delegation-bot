@@ -20,6 +20,8 @@ delegation agent-add local_cli_agent --workspace . --command "python agent.py" -
 delegation agent-run local_cli_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation app-state --workspace .
 delegation cockpit --workspace .
+delegation app-dashboard --workspace . --preview-agent local_cli_agent
+delegation timeline --workspace .
 delegation approval-preview local_cli_agent --workspace .
 delegation app-export --workspace . --preview-agent local_cli_agent
 delegation app-serve --workspace . --dry-run
@@ -81,6 +83,8 @@ dist\delegation.exe agent-run exe_cli_agent --workspace .delegation\exe-local-wo
 dist\delegation.exe app-plan
 dist\delegation.exe app-state --workspace .delegation\exe-local-workspace
 dist\delegation.exe cockpit --workspace .delegation\exe-local-workspace
+dist\delegation.exe app-dashboard --workspace .delegation\exe-local-workspace --preview-agent exe_cli_agent
+dist\delegation.exe timeline --workspace .delegation\exe-local-workspace
 dist\delegation.exe approval-preview exe_cli_agent --workspace .delegation\exe-local-workspace
 dist\delegation.exe app-export --workspace .delegation\exe-local-workspace --output .delegation\exe-local-workspace\.delegation\cockpit --preview-agent exe_cli_agent
 dist\delegation.exe app-serve --workspace .delegation\exe-local-workspace --dry-run

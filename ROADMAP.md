@@ -94,10 +94,13 @@ Deliverables:
 - Agent Passport registry for Bring Your Own Agent
 - local workspace init/status so GitHub is optional instead of required
 - workspace-aware app state and local cockpit backend
+- one-screen app dashboard bundle with command center and approval preview
+- mission timeline over plan/gate/approval/execution/proof/eval events
 - custom agent registration without hand-editing large YAML files
 - controlled command-backed agent execution with local evidence capture
 - human approval preview cards for agent requests
 - static local app export and local app server dry-run
+- local app JSON feeds for dashboard, state, timeline, and approval preview
 - agent gate previews for requested actions
 - mission status over the plan/gate/approval/proof loop
 - agent packets for custom agent handoff

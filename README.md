@@ -23,7 +23,8 @@ The main workflow is intentionally short:
 delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
-delegation cockpit --workspace .
+delegation app-dashboard --workspace . --preview-agent hello_agent
+delegation timeline --workspace .
 delegation app-export --workspace . --preview-agent hello_agent
 ```
 
@@ -41,14 +42,17 @@ delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation cockpit --workspace .
+delegation app-dashboard --workspace . --preview-agent hello_agent
+delegation timeline --workspace .
 delegation approval-preview hello_agent --workspace .
 delegation app-export --workspace . --preview-agent hello_agent
 ```
 
 That makes the current folder a local AI workspace, registers a command-backed
 custom agent, gates it, runs it only after the exact confirmation token, records
-evidence, shows one cockpit-ready state view, and writes a local browser app
-bundle under `.delegation/cockpit/`. GitHub is not required.
+evidence, shows a dashboard-ready control view, prints a mission timeline, and
+writes a local browser app bundle under `.delegation/cockpit/`. GitHub is not
+required.
 
 Simple version:
 
@@ -81,11 +85,19 @@ safe action, and guardrails.
 defaults and prints the same app-ready state without making users remember
 internal ledger or registry paths.
 
-`approval-preview` is the human card: this agent wants this action, here is
-the risk, here is the approval/evidence needed, and here is the safe next step.
+`app-dashboard` is the one-screen app brain: workspace state, Agent Passports,
+approval preview, command center, timeline, and next safe actions in one bundle.
 
-`app-export` writes a local browser cockpit bundle. `app-serve` serves the same
-workspace state at `http://127.0.0.1:8765/` for the future desktop app path.
+`timeline` shows the mission in order: plan, gate, approve, execute, record,
+eval, feedback, and promotion.
+
+`approval-preview` is the human card: this agent wants this action, here is
+the risk, here is the approval/evidence needed, here are the approve/block/run
+commands, and here is the safe next step.
+
+`app-export` writes a local browser cockpit bundle with `dashboard.json`,
+`state.json`, `timeline.json`, and approval preview data. `app-serve` serves the
+same workspace state at `http://127.0.0.1:8765/` for the future desktop app path.
 
 `agents` shows Agent Passports for built-in Harnessfile agents and custom
 Bring Your Own Agent registries.
@@ -207,6 +219,8 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
 | `delegation app-state --workspace .` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation cockpit --workspace .` | Show the local cockpit state with workspace defaults. |
+| `delegation app-dashboard --workspace . --preview-agent AGENT` | Show the combined local app brain: state, approval preview, timeline, commands. |
+| `delegation timeline --workspace .` | Show mission history as plan, gate, approval, execution, proof, eval, feedback, and promotion. |
 | `delegation approval-preview AGENT --workspace .` | Show the human approval card for one agent action. |
 | `delegation app-export --workspace . --preview-agent AGENT` | Write a local browser cockpit bundle. |
 | `delegation app-serve --workspace .` | Serve the local cockpit on `127.0.0.1` for app testing. |
@@ -305,6 +319,8 @@ Start here:
 - [Roadmap](ROADMAP.md)
 - [Next actions](docs/next-actions.md)
 - [Local app shell](docs/local-app.md)
+- [App dashboard](docs/app-dashboard.md)
+- [Mission timeline](docs/mission-timeline.md)
 
 Build here:
 

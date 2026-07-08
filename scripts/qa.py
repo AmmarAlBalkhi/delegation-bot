@@ -248,6 +248,28 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "local app dashboard",
+            [
+                python,
+                "scripts/delegation.py",
+                "app-dashboard",
+                "--workspace",
+                ".delegation/qa-local-workspace",
+                "--preview-agent",
+                "qa_cli_agent",
+            ],
+        ),
+        Check(
+            "mission timeline",
+            [
+                python,
+                "scripts/delegation.py",
+                "timeline",
+                "--workspace",
+                ".delegation/qa-local-workspace",
+            ],
+        ),
+        Check(
             "agent approval preview",
             [
                 python,

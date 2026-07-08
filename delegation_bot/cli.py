@@ -30,6 +30,7 @@ from delegation_bot.agent_run import (
     render_agent_run_report,
     run_agent_under_control,
 )
+from delegation_bot.app_dashboard import build_app_dashboard_report, render_app_dashboard_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
 from delegation_bot.approval_preview import build_approval_preview_report, render_approval_preview_report
@@ -123,6 +124,7 @@ from delegation_bot.local_app import (
     serve_local_app,
 )
 from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_policy_report
+from delegation_bot.mission_timeline import build_timeline_report_from_paths, render_timeline_report
 from delegation_bot.mission_status import build_mission_status_report, render_mission_status_report
 from delegation_bot.model_suggest_fixtures import (
     FIXTURE_PROVIDERS,
@@ -363,6 +365,26 @@ def cmd_cockpit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_app_dashboard(args: argparse.Namespace) -> int:
+    try:
+        report = build_app_dashboard_report(
+            workspace_root=Path(args.workspace),
+            preview_agent=args.preview_agent,
+            preview_action=args.preview_action,
+            preview_target=args.preview_target,
+            preview_risk=args.preview_risk,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_app_dashboard_report(report))
+    return 0
+
+
 def cmd_approval_preview(args: argparse.Namespace) -> int:
     try:
         report = build_approval_preview_report(
@@ -386,6 +408,24 @@ def cmd_approval_preview(args: argparse.Namespace) -> int:
     else:
         print(render_approval_preview_report(report))
     return 1 if report.gate.blocked else 0
+
+
+def cmd_timeline(args: argparse.Namespace) -> int:
+    try:
+        report = build_timeline_report_from_paths(
+            ledger_path=Path(args.ledger) if args.ledger else None,
+            workspace_root=Path(args.workspace) if args.workspace else None,
+            limit=args.limit,
+        )
+    except (OSError, ValueError, LedgerError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_timeline_report(report))
+    return 0
 
 
 def cmd_app_export(args: argparse.Namespace) -> int:
@@ -1791,6 +1831,22 @@ def build_parser() -> argparse.ArgumentParser:
     cockpit.add_argument("--json", action="store_true", help="Print the cockpit state as JSON.")
     cockpit.set_defaults(func=cmd_cockpit)
 
+    app_dashboard = subparsers.add_parser(
+        "app-dashboard",
+        help="Show the combined local app dashboard bundle for a workspace.",
+    )
+    app_dashboard.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
+    app_dashboard.add_argument("--preview-agent", help="Agent id to show in the approval preview card.")
+    app_dashboard.add_argument("--preview-action", default="read.workspace", help="Approval preview action. Defaults to read.workspace.")
+    app_dashboard.add_argument("--preview-target", default="workspace", help="Approval preview target. Defaults to workspace.")
+    app_dashboard.add_argument(
+        "--preview-risk",
+        choices=("low", "medium", "high", "critical"),
+        help="Optional approval preview risk override.",
+    )
+    app_dashboard.add_argument("--json", action="store_true", help="Print the dashboard bundle as JSON.")
+    app_dashboard.set_defaults(func=cmd_app_dashboard)
+
     app_export = subparsers.add_parser(
         "app-export",
         help="Write a static local browser cockpit bundle for a workspace.",
@@ -1841,6 +1897,16 @@ def build_parser() -> argparse.ArgumentParser:
     approval_preview.add_argument("--evidence", action="append", help="Evidence already present. Repeatable.")
     approval_preview.add_argument("--json", action="store_true", help="Print the approval preview as JSON.")
     approval_preview.set_defaults(func=cmd_approval_preview)
+
+    timeline = subparsers.add_parser(
+        "timeline",
+        help="Show mission history as plan, gate, approval, execution, proof, eval, and promotion steps.",
+    )
+    timeline.add_argument("--workspace", help="Optional local workspace folder. Defaults ledger path from .delegation.")
+    timeline.add_argument("--ledger", help="Optional run ledger JSONL path.")
+    timeline.add_argument("--limit", type=int, default=20, help="Number of recent timeline items to show; 0 shows all.")
+    timeline.add_argument("--json", action="store_true", help="Print the timeline as JSON.")
+    timeline.set_defaults(func=cmd_timeline)
 
     agents = subparsers.add_parser(
         "agents",

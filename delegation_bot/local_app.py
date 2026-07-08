@@ -11,8 +11,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from delegation_bot.app_dashboard import build_app_dashboard_report
 from delegation_bot.app_state import build_app_state
 from delegation_bot.approval_preview import ApprovalPreviewReport, build_approval_preview_report
+from delegation_bot.mission_timeline import build_timeline_report_from_paths
 
 
 JsonMap = dict[str, T.Any]
@@ -27,7 +29,9 @@ class LocalAppReport:
     workspace: str
     output_dir: str | None
     index_html: str | None
+    dashboard_json: str | None
     state_json: str | None
+    timeline_json: str | None
     approval_preview_json: str | None
     url: str | None
     preview_agent: str | None
@@ -39,7 +43,9 @@ class LocalAppReport:
             "workspace": self.workspace,
             "output_dir": self.output_dir,
             "index_html": self.index_html,
+            "dashboard_json": self.dashboard_json,
             "state_json": self.state_json,
+            "timeline_json": self.timeline_json,
             "approval_preview_json": self.approval_preview_json,
             "url": self.url,
             "preview_agent": self.preview_agent,
@@ -73,34 +79,40 @@ def export_local_app(
     workspace = workspace_root.resolve()
     target_dir = (output_dir or workspace / DEFAULT_APP_DIR).resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
-    state = build_app_state(workspace_root=workspace)
-    state_data = state.to_dict()
-    preview = _build_default_preview(
-        state_data,
+    dashboard = build_app_dashboard_report(
         workspace_root=workspace,
         preview_agent=preview_agent,
         preview_action=preview_action,
         preview_target=preview_target,
     )
-    preview_data = preview.to_dict() if preview else None
+    dashboard_data = dashboard.to_dict()
+    state_data = dashboard_data["state"]
+    preview_data = dashboard_data.get("approval_preview")
+    timeline_data = dashboard_data["timeline"]
 
+    dashboard_path = target_dir / "dashboard.json"
     state_path = target_dir / "state.json"
+    timeline_path = target_dir / "timeline.json"
     preview_path = target_dir / "approval-preview.json"
     index_path = target_dir / "index.html"
+    dashboard_path.write_text(json.dumps(dashboard_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     state_path.write_text(json.dumps(state_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    timeline_path.write_text(json.dumps(timeline_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if preview_data:
         preview_path.write_text(json.dumps(preview_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    index_path.write_text(_render_app_html(state_data, preview_data), encoding="utf-8")
+    index_path.write_text(_render_app_html(dashboard_data), encoding="utf-8")
 
     return LocalAppReport(
         status="ready",
         workspace=str(workspace),
         output_dir=str(target_dir),
         index_html=str(index_path),
+        dashboard_json=str(dashboard_path),
         state_json=str(state_path),
+        timeline_json=str(timeline_path),
         approval_preview_json=str(preview_path) if preview_data else None,
         url=index_path.as_uri(),
-        preview_agent=preview.agent_id if preview else None,
+        preview_agent=dashboard.approval_preview.agent_id if dashboard.approval_preview else None,
     )
 
 
@@ -121,7 +133,13 @@ def serve_local_app(
         def do_GET(self) -> None:  # noqa: N802 - stdlib handler API.
             parsed = urlparse(self.path)
             if parsed.path in {"/", "/index.html"}:
-                state_data = build_app_state(workspace_root=workspace).to_dict()
+                dashboard_data = build_app_dashboard_report(
+                    workspace_root=workspace,
+                    preview_agent=preview_agent,
+                    preview_action=preview_action,
+                    preview_target=preview_target,
+                ).to_dict()
+                state_data = dashboard_data["state"]
                 preview = _preview_from_query(
                     parse_qs(parsed.query),
                     state_data=state_data,
@@ -130,10 +148,25 @@ def serve_local_app(
                     default_action=preview_action,
                     default_target=preview_target,
                 )
-                self._send_text(_render_app_html(state_data, preview.to_dict() if preview else None), "text/html")
+                if preview is not None:
+                    dashboard_data["approval_preview"] = preview.to_dict()
+                self._send_text(_render_app_html(dashboard_data), "text/html")
                 return
             if parsed.path == "/api/state":
                 self._send_json(build_app_state(workspace_root=workspace).to_dict())
+                return
+            if parsed.path == "/api/dashboard":
+                self._send_json(
+                    build_app_dashboard_report(
+                        workspace_root=workspace,
+                        preview_agent=preview_agent,
+                        preview_action=preview_action,
+                        preview_target=preview_target,
+                    ).to_dict()
+                )
+                return
+            if parsed.path == "/api/timeline":
+                self._send_json(build_timeline_report_from_paths(workspace_root=workspace).to_dict())
                 return
             if parsed.path == "/api/approval-preview":
                 state_data = build_app_state(workspace_root=workspace).to_dict()
@@ -180,7 +213,9 @@ def app_server_report(*, workspace_root: Path, host: str = DEFAULT_APP_HOST, por
         workspace=str(workspace),
         output_dir=None,
         index_html=None,
+        dashboard_json=None,
         state_json=None,
+        timeline_json=None,
         approval_preview_json=None,
         url=f"http://{host}:{port}/",
         preview_agent=_first_agent_id(build_app_state(workspace_root=workspace).to_dict()),
@@ -198,8 +233,12 @@ def render_local_app_report(report: LocalAppReport) -> str:
         lines.append(f"Output: {report.output_dir}")
     if report.index_html:
         lines.append(f"HTML: {report.index_html}")
+    if report.dashboard_json:
+        lines.append(f"Dashboard JSON: {report.dashboard_json}")
     if report.state_json:
         lines.append(f"State JSON: {report.state_json}")
+    if report.timeline_json:
+        lines.append(f"Timeline JSON: {report.timeline_json}")
     if report.approval_preview_json:
         lines.append(f"Approval Preview JSON: {report.approval_preview_json}")
     if report.url:
@@ -213,25 +252,6 @@ def render_local_app_report(report: LocalAppReport) -> str:
     lines.extend(["", "Next:"])
     lines.extend(f"- {action}" for action in report.next_actions)
     return "\n".join(lines)
-
-
-def _build_default_preview(
-    state_data: JsonMap,
-    *,
-    workspace_root: Path,
-    preview_agent: str | None,
-    preview_action: str,
-    preview_target: str,
-) -> ApprovalPreviewReport | None:
-    agent_id = preview_agent or _first_agent_id(state_data)
-    if not agent_id:
-        return None
-    return build_approval_preview_report(
-        agent_id=agent_id,
-        action=preview_action,
-        target=preview_target,
-        workspace_root=workspace_root,
-    )
 
 
 def _preview_from_query(
@@ -255,7 +275,15 @@ def _preview_from_query(
     )
 
 
-def _render_app_html(state_data: JsonMap, preview_data: JsonMap | None) -> str:
+def _render_app_html(dashboard_data: JsonMap) -> str:
+    state_data = dashboard_data.get("state") if isinstance(dashboard_data.get("state"), dict) else {}
+    preview_data = (
+        dashboard_data.get("approval_preview") if isinstance(dashboard_data.get("approval_preview"), dict) else None
+    )
+    timeline = dashboard_data.get("timeline") if isinstance(dashboard_data.get("timeline"), dict) else {}
+    command_center = (
+        dashboard_data.get("command_center") if isinstance(dashboard_data.get("command_center"), list) else []
+    )
     workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
     agents = state_data.get("agents") if isinstance(state_data.get("agents"), dict) else {}
@@ -376,8 +404,16 @@ def _render_app_html(state_data: JsonMap, preview_data: JsonMap | None) -> str:
       {_metric_panel("Release", release.get("status", "unknown"), f"{release.get('ready_count', 0)}/{release.get('ready_count', 0) + release.get('warning_count', 0) + release.get('failed_count', 0)} checks ready")}
     </section>
     <section class="panel">
+      <h2>Command Center</h2>
+      {_commands_html(command_center)}
+    </section>
+    <section class="panel">
       <h2>Approval Preview</h2>
       {_approval_preview_html(preview)}
+    </section>
+    <section class="panel">
+      <h2>Timeline</h2>
+      {_timeline_html(timeline)}
     </section>
     <section class="grid">
       <div class="panel">
@@ -395,7 +431,9 @@ def _render_app_html(state_data: JsonMap, preview_data: JsonMap | None) -> str:
       <code>delegation app-state --workspace {_escape(workspace.get("root", "."))} --json</code>
     </section>
   </main>
+  <script id="delegation-dashboard" type="application/json">{_json_script(dashboard_data)}</script>
   <script id="delegation-state" type="application/json">{_json_script(state_data)}</script>
+  <script id="delegation-timeline" type="application/json">{_json_script(timeline)}</script>
   <script id="delegation-approval-preview" type="application/json">{_json_script(preview_data or {})}</script>
 </body>
 </html>
@@ -424,6 +462,10 @@ def _approval_preview_html(preview: JsonMap) -> str:
 {_list_html(preview.get("required_approvals") if isinstance(preview.get("required_approvals"), list) else [])}
 <p class="subtle">Required evidence</p>
 {_list_html(preview.get("required_evidence") if isinstance(preview.get("required_evidence"), list) else [])}
+<p class="subtle">Safe next step</p>
+<p>{_escape(preview.get("safe_next_step", "Review the request before continuing."))}</p>
+<p class="subtle">Decision commands</p>
+{_commands_html(preview.get("decision_commands") if isinstance(preview.get("decision_commands"), list) else [])}
 """
 
 
@@ -437,6 +479,51 @@ def _agents_html(passports: list[T.Any]) -> str:
         label = f"{item.get('id', 'unknown')} - {item.get('runtime_type', 'unknown')} - {item.get('autonomy_level', 'unknown')}"
         items.append(label)
     return _list_html(items)
+
+
+def _timeline_html(timeline: JsonMap) -> str:
+    items = timeline.get("items") if isinstance(timeline.get("items"), list) else []
+    if not items:
+        return "<p class=\"subtle\">No timeline events yet.</p>"
+    rows: list[str] = []
+    for item in items[-10:]:
+        if not isinstance(item, dict):
+            continue
+        sequence = item.get("sequence")
+        prefix = f"{sequence}. " if isinstance(sequence, int) else ""
+        attention = " needs attention" if item.get("needs_attention") else ""
+        title = item.get("title", "event")
+        stage = item.get("stage", "ledger")
+        status = item.get("status", "unknown")
+        message = item.get("message", "")
+        rows.append(
+            "<li>"
+            f"<strong>{_escape(prefix)}[{_escape(stage)}] {_escape(status)}</strong> "
+            f"{_escape(title)}{_escape(attention)}"
+            + (f"<p class=\"subtle\">{_escape(message)}</p>" if message else "")
+            + "</li>"
+        )
+    return "<ul>" + "".join(rows) + "</ul>"
+
+
+def _commands_html(commands: list[T.Any]) -> str:
+    if not commands:
+        return "<p class=\"subtle\">none</p>"
+    rows: list[str] = []
+    for item in commands[:8]:
+        if not isinstance(item, dict):
+            continue
+        label = item.get("label", "Command")
+        command = item.get("command", "")
+        purpose = item.get("purpose", "")
+        rows.append(
+            "<li>"
+            f"<strong>{_escape(label)}</strong>"
+            + (f"<p class=\"subtle\">{_escape(purpose)}</p>" if purpose else "")
+            + (f"<code>{_escape(command)}</code>" if command else "")
+            + "</li>"
+        )
+    return "<ul>" + "".join(rows) + "</ul>"
 
 
 def _list_html(values: T.Sequence[T.Any]) -> str:

@@ -282,6 +282,44 @@ def main() -> int:
             print(cockpit.stderr, file=sys.stderr)
             return cockpit.returncode or 1
 
+        app_dashboard = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "app-dashboard",
+                "--workspace",
+                str(workspace),
+                "--preview-agent",
+                "smoke_cli_agent",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if app_dashboard.returncode != 0 or "DelegationHQ App Dashboard" not in app_dashboard.stdout:
+            print("FAIL: installed package app-dashboard smoke")
+            print(app_dashboard.stdout)
+            print(app_dashboard.stderr, file=sys.stderr)
+            return app_dashboard.returncode or 1
+
+        timeline = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "timeline",
+                "--workspace",
+                str(workspace),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if timeline.returncode != 0 or "DelegationHQ Mission Timeline" not in timeline.stdout:
+            print("FAIL: installed package timeline smoke")
+            print(timeline.stdout)
+            print(timeline.stderr, file=sys.stderr)
+            return timeline.returncode or 1
+
         approval_preview = _run(
             [
                 sys.executable,
@@ -482,7 +520,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, workspace app-state, cockpit, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 
