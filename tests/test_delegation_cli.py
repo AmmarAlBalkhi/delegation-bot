@@ -229,6 +229,105 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["passport_count"], 2)
         self.assertIn("crm_update_agent", [passport["id"] for passport in data["passports"]])
 
+    def test_workspace_init_creates_local_first_workspace_and_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "workspace-init",
+                        "--path",
+                        tmpdir,
+                        "--name",
+                        "QA Local Workspace",
+                        "--owner",
+                        "Ammar",
+                        "--plan",
+                        "--json",
+                    ]
+                )
+            data = json.loads(output.getvalue())
+            harnessfile = Path(data["harnessfile"])
+            registry = Path(data["registry"])
+            ledger = Path(data["ledger"])
+            harness_exists = harnessfile.exists()
+            registry_exists = registry.exists()
+            ledger_exists = ledger.exists()
+            with redirect_stdout(io.StringIO()) as status_output:
+                status_check = main(["workspace-status", "--path", tmpdir, "--json"])
+            status_data = json.loads(status_output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertTrue(data["planned"])
+        self.assertEqual(data["agent_count"], 1)
+        self.assertTrue(harness_exists)
+        self.assertTrue(registry_exists)
+        self.assertTrue(ledger_exists)
+        self.assertEqual(status_check, 0)
+        self.assertEqual(status_data["status"], "ready")
+        self.assertEqual(status_data["agent_count"], 1)
+        self.assertEqual(status_data["harness_status"], "ready")
+        self.assertEqual(status_data["registry_status"], "ready")
+        self.assertEqual(status_data["ledger_status"], "ready")
+
+    def test_workspace_init_is_human_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["workspace-init", "--path", tmpdir, "--plan"])
+
+        self.assertEqual(status, 0)
+        text = output.getvalue()
+        self.assertIn("Local Workspace Created", text)
+        self.assertIn("GitHub required: false", text)
+        self.assertIn("This folder is now an AI workspace.", text)
+
+    def test_agent_add_registers_custom_cli_agent_without_yaml_editing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = Path(tmpdir) / ".delegation" / "agents.yaml"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "agent-add",
+                        "research_agent",
+                        "--registry",
+                        str(registry),
+                        "--command",
+                        "python agents/research_agent.py",
+                        "--capability",
+                        "read.workspace",
+                        "--allowed-data",
+                        "workspace",
+                        "--evidence",
+                        "command_output",
+                        "--json",
+                    ]
+                )
+            data = json.loads(output.getvalue())
+            with redirect_stdout(io.StringIO()) as agents_output:
+                agents_status = main(["agents", "--registry", str(registry), "--json"])
+            agents_data = json.loads(agents_output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["agent_id"], "research_agent")
+        self.assertEqual(data["endpoint"], {"type": "command", "value": "python agents/research_agent.py"})
+        self.assertEqual(agents_status, 0)
+        self.assertEqual(agents_data["status"], "ready")
+        self.assertIn("research_agent", [passport["id"] for passport in agents_data["passports"]])
+
+    def test_agent_add_blocks_duplicate_without_force(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = Path(tmpdir) / "agents.yaml"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(
+                    main(["agent-add", "cli_agent", "--registry", str(registry), "--command", "python agent.py"]),
+                    0,
+                )
+            with redirect_stderr(io.StringIO()) as error:
+                status = main(["agent-add", "cli_agent", "--registry", str(registry), "--command", "python agent.py"])
+
+        self.assertEqual(status, 1)
+        self.assertIn("already exists", error.getvalue())
+
     def test_agent_gate_command_previews_harnessfile_agent(self) -> None:
         with redirect_stdout(io.StringIO()) as output:
             status = main(

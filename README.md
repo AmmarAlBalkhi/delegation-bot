@@ -38,6 +38,8 @@ delegation --version
 delegation demo --control-loop
 delegation mission-status --ledger .delegation/demo.jsonl
 delegation agent-packet --ledger .delegation/demo.jsonl --action-id agent_gate.planner.write_issue_draft
+delegation workspace-init --path . --plan
+delegation workspace-status --path .
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
@@ -54,6 +56,17 @@ Human approves.
 RunPrint proof is attached.
 Mission status says what is next.
 Agent packet tells custom agents what they may do.
+```
+
+`workspace-init` makes any local folder a DelegationHQ workspace. It writes a
+local Harnessfile, agent registry, and optional dry-run ledger under
+`.delegation/`. GitHub is optional, not the core.
+
+Add a custom agent without writing YAML:
+
+```bash
+delegation agent-add research_agent --command "python agents/research_agent.py" --capability read.workspace --allowed-data workspace --evidence command_output
+delegation agent-gate --registry .delegation/agents.yaml research_agent --action read.workspace --target workspace
 ```
 
 `app-state` gives the future app and a first-time user one compact health view:
@@ -102,7 +115,8 @@ delegation explain-policy --ledger .delegation/demo.jsonl
 ```
 
 For a guided version with what to look for, see
-[`docs/demo.md`](docs/demo.md).
+[`docs/demo.md`](docs/demo.md). For the no-GitHub folder workflow, see
+[`docs/local-first.md`](docs/local-first.md).
 
 ## Windows EXE
 
@@ -170,6 +184,9 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation --version` | Show the installed DelegationHQ version. |
 | `delegation demo` | Run the install-safe mission-control demo in one command. |
 | `delegation demo --control-loop` | Show the full plan -> gate -> approve -> record -> audit loop. |
+| `delegation workspace-init --path . --plan` | Turn any folder into a no-GitHub DelegationHQ workspace. |
+| `delegation workspace-status --path .` | Show local workspace health, registry status, and ledger status. |
+| `delegation agent-add AGENT --command "python agent.py"` | Register a custom agent passport without hand-editing YAML. |
 | `delegation mission-status --ledger .delegation/run.jsonl` | Explain one ledger as plan, gate, approval, proof, and next step. |
 | `delegation agent-packet --ledger .delegation/run.jsonl --action-id ID` | Export a BYOA packet for a custom agent. |
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |

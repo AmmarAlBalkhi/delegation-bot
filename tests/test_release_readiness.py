@@ -91,6 +91,7 @@ def _copy_release_fixture(root: Path) -> None:
         ".github/workflows/delegation.yml",
         "docs/demo.md",
         "docs/doctor.md",
+        "docs/local-first.md",
         "docs/release.md",
         "docs/qa.md",
         "docs/testpypi-dry-run.md",

@@ -113,6 +113,23 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    $SmokeWorkspace = Join-Path $SmokeDir "exe-local-workspace"
+    & $ExecutablePath workspace-init --path $SmokeWorkspace --owner exe-smoke --plan --force
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & $ExecutablePath workspace-status --path $SmokeWorkspace
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    $SmokeRegistry = Join-Path $SmokeWorkspace ".delegation\agents.yaml"
+    & $ExecutablePath agent-add exe_cli_agent --registry $SmokeRegistry --command "delegation demo" --capability read.workspace --allowed-data workspace --evidence command_output --force
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath app-plan
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

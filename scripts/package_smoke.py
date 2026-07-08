@@ -147,26 +147,75 @@ def main() -> int:
             print(app_state.stderr, file=sys.stderr)
             return app_state.returncode or 1
 
-        registry = tmp / "agent-passports.yaml"
-        registry.write_text(
-            "\n".join(
-                [
-                    "version: delegation.agent-registry/v1",
-                    "agents:",
-                    "  - id: smoke_cli_agent",
-                    "    runtime_type: cli.command",
-                    "    command: delegation demo",
-                    "    autonomy_level: suggest",
-                    "    capabilities:",
-                    "      - read.run_ledger",
-                    "    allowed_data:",
-                    "      - smoke",
-                    "    evidence_requirements:",
-                    "      - command_output",
-                ]
-            ),
-            encoding="utf-8",
+        workspace = tmp / "workspace"
+        workspace_init = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "workspace-init",
+                "--path",
+                str(workspace),
+                "--owner",
+                "package-smoke",
+                "--plan",
+            ],
+            cwd=tmp,
+            env=env,
         )
+        if workspace_init.returncode != 0 or "Local Workspace Created" not in workspace_init.stdout:
+            print("FAIL: installed package workspace-init smoke")
+            print(workspace_init.stdout)
+            print(workspace_init.stderr, file=sys.stderr)
+            return workspace_init.returncode or 1
+
+        workspace_status = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "workspace-status",
+                "--path",
+                str(workspace),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if workspace_status.returncode != 0 or "Local Workspace Status" not in workspace_status.stdout:
+            print("FAIL: installed package workspace-status smoke")
+            print(workspace_status.stdout)
+            print(workspace_status.stderr, file=sys.stderr)
+            return workspace_status.returncode or 1
+
+        registry = workspace / ".delegation" / "agents.yaml"
+        agent_add = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "agent-add",
+                "smoke_cli_agent",
+                "--registry",
+                str(registry),
+                "--command",
+                "delegation demo",
+                "--capability",
+                "read.run_ledger",
+                "--allowed-data",
+                "run_ledger",
+                "--evidence",
+                "command_output",
+                "--force",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if agent_add.returncode != 0 or "Agent Added" not in agent_add.stdout:
+            print("FAIL: installed package agent-add smoke")
+            print(agent_add.stdout)
+            print(agent_add.stderr, file=sys.stderr)
+            return agent_add.returncode or 1
+
         agents = _run(
             [
                 sys.executable,
@@ -197,7 +246,7 @@ def main() -> int:
                 "--action",
                 "read.run_ledger",
                 "--target",
-                "smoke",
+                "run_ledger",
                 "--ledger",
                 str(ledger),
                 "--write",
@@ -304,7 +353,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, local workspace, agent-add, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 

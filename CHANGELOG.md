@@ -73,6 +73,10 @@ The project is currently pre-release.
   `delegation eval --feedback`.
 - Added `delegation app-plan` for the first Windows EXE mission-cockpit plan
   with Bring Your Own Agent passport direction.
+- Added `delegation workspace-init` and `delegation workspace-status` so any
+  local folder can become a no-GitHub DelegationHQ workspace.
+- Added `delegation agent-add` so users can register custom agent passports
+  without hand-editing registry YAML.
 - Added Agent Gate ledger receipts and `delegation agent-audit` for comparing
   approved intent with planned or recorded RunPrint evidence.
 - Added `delegation approval-inbox` and `delegation approval-decision` for

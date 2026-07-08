@@ -1335,3 +1335,26 @@ Guardrails:
 
 Follow-up: Connect Agent Passports to approval previews and promotion reports
 so higher autonomy is earned from ledger evidence.
+
+## 2026-07-08: Add Local-First Workspace Commands
+
+Decision: Add `delegation workspace-init`, `delegation workspace-status`, and
+`delegation agent-add` as the first no-GitHub workspace setup path.
+
+Why: DelegationHQ should be the control layer for agentic work, not a GitHub
+tool with extra features. A local folder, codebase, research folder, Obsidian
+vault, or CRM export should become a controlled AI workspace before any hosted
+adapter is involved.
+
+Guardrails:
+
+- GitHub remains optional and adapter-based
+- workspace setup writes only under `.delegation/` inside the target folder
+- local init creates a Harnessfile, agent registry, and optional dry-run ledger
+- `agent-add` registers identity, runtime, scope, approvals, evidence, and
+  promotion evals without executing the agent
+- Agent Gate still decides allow, warn, approval required, or block before
+  useful actions
+
+Follow-up: Feed local workspace status into `app-state` so the future Windows
+EXE can open on a real workspace overview.

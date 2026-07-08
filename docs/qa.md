@@ -49,8 +49,10 @@ The QA command currently checks:
 - app-ready state bundle generation for the future local cockpit
 - installed package control-loop demo, mission-status, agent-packet, and
   app-state smoke tests
+- installed package local workspace init/status and `agent-add` smoke tests
 - installed package Agent Passport smoke test
 - first-run `delegation demo` and `delegation init` flows
+- local-first `workspace-init`, `workspace-status`, and `agent-add` flows
 - example Harnessfile validation
 - example Harnessfile dry-run planning
 - local OpenTelemetry export generation

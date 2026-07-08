@@ -16,6 +16,9 @@ delegation app-plan
 delegation app-plan --json
 delegation app-state --ledger .delegation/demo.jsonl
 delegation app-state --ledger .delegation/demo.jsonl --json
+delegation workspace-init --path . --plan
+delegation workspace-status --path .
+delegation agent-add local_cli_agent --command "python agent.py" --capability read.workspace --allowed-data workspace --evidence command_output
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
 delegation approval-inbox --ledger .delegation/demo.jsonl
@@ -67,6 +70,9 @@ dist\delegation.exe --version
 dist\delegation.exe demo --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe init --goal "prepare this repo for safe AI delegation" --output .delegation\exe-Harnessfile.yaml --force
 dist\delegation.exe validate .delegation\exe-Harnessfile.yaml
+dist\delegation.exe workspace-init --path .delegation\exe-local-workspace --owner exe-smoke --plan --force
+dist\delegation.exe workspace-status --path .delegation\exe-local-workspace
+dist\delegation.exe agent-add exe_cli_agent --registry .delegation\exe-local-workspace\.delegation\agents.yaml --command "delegation demo" --capability read.workspace --allowed-data workspace --evidence command_output --force
 dist\delegation.exe app-plan
 dist\delegation.exe app-state --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry examples\agent-passports.yaml
@@ -132,7 +138,7 @@ script: .\scripts\build-windows-exe.ps1 -InstallDependencies
 python: 3.12.13
 platform: Windows 11
 artifact: dist\delegation.exe
-smoke: demo, init, validate passed
+smoke: demo, init, validate, local workspace commands passed
 version: delegation.exe --version passed
 ```
 

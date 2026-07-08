@@ -19,6 +19,11 @@ from delegation_bot.agent_gate import (
 )
 from delegation_bot.agent_packet import build_agent_packet_report, render_agent_packet_report
 from delegation_bot.agent_passports import build_agent_passport_report, render_agent_passport_report
+from delegation_bot.agent_registry_writer import (
+    DEFAULT_REGISTRY_PATH,
+    add_agent_to_registry,
+    render_agent_add_report,
+)
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
 from delegation_bot.approval_inbox import (
@@ -92,6 +97,12 @@ from delegation_bot.github_issue_apply import (
 from delegation_bot.harness_manifest import ManifestError, load_manifest, summarize_manifest, validate_manifest
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
+from delegation_bot.local_workspace import (
+    build_workspace_status,
+    initialize_local_workspace,
+    render_workspace_init_report,
+    render_workspace_status,
+)
 from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_policy_report
 from delegation_bot.mission_status import build_mission_status_report, render_mission_status_report
 from delegation_bot.model_suggest_fixtures import (
@@ -253,6 +264,45 @@ def cmd_init(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_workspace_init(args: argparse.Namespace) -> int:
+    try:
+        report = initialize_local_workspace(
+            root=Path(args.path),
+            name=args.name,
+            owner=args.owner,
+            objective=args.goal,
+            force=args.force,
+            plan=args.plan,
+            ledger_path=Path(args.ledger) if args.ledger else None,
+        )
+    except (OSError, RuntimeError, ValueError, FileExistsError, PlanError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_workspace_init_report(report))
+    return 0
+
+
+def cmd_workspace_status(args: argparse.Namespace) -> int:
+    try:
+        report = build_workspace_status(
+            root=Path(args.path),
+            ledger_path=Path(args.ledger) if args.ledger else None,
+        )
+    except OSError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_workspace_status(report))
+    return 0
+
+
 def cmd_app_plan(args: argparse.Namespace) -> int:
     plan = build_app_plan()
     if args.json:
@@ -300,6 +350,39 @@ def cmd_agents(args: argparse.Namespace) -> int:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_agent_passport_report(report))
+    return 0
+
+
+def cmd_agent_add(args: argparse.Namespace) -> int:
+    try:
+        report = add_agent_to_registry(
+            registry_path=Path(args.registry),
+            agent_id=args.agent_id,
+            name=args.name,
+            runtime_type=args.runtime_type,
+            command=args.command,
+            api_url=args.api_url,
+            webhook_url=args.webhook_url,
+            mcp_endpoint=args.mcp_endpoint,
+            autonomy_level=args.autonomy_level,
+            risk_level=args.risk_level,
+            capabilities=tuple(args.capability or ()),
+            allowed_tools=tuple(args.allowed_tool or ()),
+            allowed_data=tuple(args.allowed_data or ()),
+            approvals=tuple(args.approval or ()),
+            expected_outputs=tuple(args.expected_output or ()),
+            evidence=tuple(args.evidence or ()),
+            promotion_evals=tuple(args.promotion_eval or ()),
+            force=args.force,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_agent_add_report(report))
     return 0
 
 
@@ -1452,6 +1535,33 @@ def build_parser() -> argparse.ArgumentParser:
     init.add_argument("--json", action="store_true", help="Print the init report as JSON.")
     init.set_defaults(func=cmd_init)
 
+    workspace_init = subparsers.add_parser(
+        "workspace-init",
+        help="Turn any local folder into a no-GitHub DelegationHQ workspace.",
+    )
+    workspace_init.add_argument("--path", default=".", help="Workspace folder to initialize. Defaults to the current folder.")
+    workspace_init.add_argument("--name", default="Local DelegationHQ Workspace", help="Workspace display name.")
+    workspace_init.add_argument(
+        "--goal",
+        default="control AI work in this local workspace",
+        help="Plain-language mission goal for this local workspace.",
+    )
+    workspace_init.add_argument("--owner", default="local-operator", help="Accountable local owner/reviewer.")
+    workspace_init.add_argument("--force", action="store_true", help="Overwrite existing .delegation workspace files.")
+    workspace_init.add_argument("--plan", action="store_true", help="Also compile the local Harnessfile and write a ledger.")
+    workspace_init.add_argument("--ledger", help="Ledger path for --plan. Defaults to .delegation/local-workspace.jsonl.")
+    workspace_init.add_argument("--json", action="store_true", help="Print the workspace init report as JSON.")
+    workspace_init.set_defaults(func=cmd_workspace_init)
+
+    workspace_status = subparsers.add_parser(
+        "workspace-status",
+        help="Show local workspace health without requiring GitHub.",
+    )
+    workspace_status.add_argument("--path", default=".", help="Workspace folder to inspect. Defaults to the current folder.")
+    workspace_status.add_argument("--ledger", help="Optional ledger path. Defaults to .delegation/local-workspace.jsonl.")
+    workspace_status.add_argument("--json", action="store_true", help="Print the workspace status as JSON.")
+    workspace_status.set_defaults(func=cmd_workspace_status)
+
     app_plan = subparsers.add_parser(
         "app-plan",
         help="Show the first visible Windows EXE app plan without launching a UI.",
@@ -1518,6 +1628,41 @@ def build_parser() -> argparse.ArgumentParser:
     )
     agents.add_argument("--json", action="store_true", help="Print Agent Passports as JSON.")
     agents.set_defaults(func=cmd_agents)
+
+    agent_add = subparsers.add_parser(
+        "agent-add",
+        help="Register a custom Bring Your Own Agent passport without hand-editing YAML.",
+    )
+    agent_add.add_argument("agent_id", help="Stable agent id, such as research_agent.")
+    agent_add.add_argument("--registry", default=DEFAULT_REGISTRY_PATH, help="Agent registry path to create or update.")
+    agent_add.add_argument("--name", help="Human-readable agent name.")
+    agent_add.add_argument("--runtime-type", default="cli.command", help="Runtime type, such as cli.command, api, webhook, mcp, or langgraph.graph.")
+    agent_add.add_argument("--command", help="Command endpoint for local CLI agents.")
+    agent_add.add_argument("--api-url", help="API endpoint for a hosted or local HTTP agent.")
+    agent_add.add_argument("--webhook-url", help="Webhook endpoint for event-driven agents.")
+    agent_add.add_argument("--mcp-endpoint", help="MCP server/tool endpoint for MCP-backed agents.")
+    agent_add.add_argument(
+        "--autonomy-level",
+        choices=("suggest", "draft", "act", "operate", "deploy"),
+        default="suggest",
+        help="How much freedom the agent starts with.",
+    )
+    agent_add.add_argument(
+        "--risk-level",
+        choices=("low", "medium", "high", "critical"),
+        default="low",
+        help="Starting risk level for the agent passport.",
+    )
+    agent_add.add_argument("--capability", action="append", help="Capability the agent may use. Repeatable.")
+    agent_add.add_argument("--allowed-tool", action="append", help="Tool the agent may touch. Repeatable.")
+    agent_add.add_argument("--allowed-data", action="append", help="Data or workspace scope the agent may touch. Repeatable.")
+    agent_add.add_argument("--approval", action="append", help="Action that requires approval. Repeatable.")
+    agent_add.add_argument("--expected-output", action="append", help="Expected output artifact. Repeatable.")
+    agent_add.add_argument("--evidence", action="append", help="Required evidence artifact. Repeatable.")
+    agent_add.add_argument("--promotion-eval", action="append", help="Eval required before promotion. Repeatable.")
+    agent_add.add_argument("--force", action="store_true", help="Replace an existing agent with the same id.")
+    agent_add.add_argument("--json", action="store_true", help="Print the added agent report as JSON.")
+    agent_add.set_defaults(func=cmd_agent_add)
 
     agent_gate = subparsers.add_parser(
         "agent-gate",

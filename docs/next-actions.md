@@ -44,8 +44,8 @@ Human = final yes/no for danger.
 
 1. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
    examples for CLI agents, webhook agents, MCP workflows, and CRM agents.
-2. Add a low-friction custom agent registry starter so users can register an
-   outside agent without writing a large YAML file by hand.
+2. Add `workspace-init` and `workspace-status` output to the future local app
+   state so the EXE can open on a real workspace, not a generic screen.
 3. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
    repo stabilizes.
 4. Add the next approval loop slice: optional reviewer notes, expiration, and
@@ -63,6 +63,11 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added `delegation workspace-init` and `delegation workspace-status` so any
+  local folder can become a no-GitHub DelegationHQ workspace with a Harnessfile,
+  Agent Passport registry, and optional dry-run ledger.
+- Added `delegation agent-add` so users can register CLI/API/webhook/MCP-style
+  custom agents without hand-editing a large YAML file.
 - Added `delegation demo --control-loop` so one install-safe command now shows
   the plan -> gate -> approval -> RunPrint recording -> audit path.
 - Added `delegation mission-status` for a plain operator view over one ledger:
