@@ -43,9 +43,12 @@ class ApprovalDecision:
 class ApprovalInboxItem:
     id: str
     action_id: str
+    request_id: str | None
     sequence: int | None
     title: str
     status: str
+    requested_by: str | None
+    request_summary: str | None
     agent_id: str
     action: str
     target: str
@@ -65,9 +68,12 @@ class ApprovalInboxItem:
         return {
             "id": self.id,
             "action_id": self.action_id,
+            "request_id": self.request_id,
             "sequence": self.sequence,
             "title": self.title,
             "status": self.status,
+            "requested_by": self.requested_by,
+            "request_summary": self.request_summary,
             "agent_id": self.agent_id,
             "action": self.action,
             "target": self.target,
@@ -161,11 +167,17 @@ def build_approval_inbox_report(
 ) -> ApprovalInboxReport:
     gate_events = tuple(_agent_gate_events(ledger_events))
     decisions = _approval_decisions_by_action(ledger_events)
+    requests = _action_requests_by_action(ledger_events)
     audit = build_agent_gate_audit_report(ledger_events, ledger_source=ledger_source)
     audit_by_sequence = {item.gate_sequence: item for item in audit.items if item.gate_sequence is not None}
 
     items = tuple(
-        _inbox_item(event, decisions.get(_event_action_id(event)), audit_by_sequence.get(_event_sequence(event)))
+        _inbox_item(
+            event,
+            decisions.get(_event_action_id(event)),
+            audit_by_sequence.get(_event_sequence(event)),
+            requests.get(_event_action_id(event)),
+        )
         for event in gate_events
     )
     pending_count = sum(1 for item in items if item.status == "pending_approval")
@@ -287,6 +299,10 @@ def render_approval_inbox_report(report: ApprovalInboxReport) -> str:
     for item in report.items:
         lines.append(f"- [{item.status}] {item.title}")
         lines.append(f"  action_id: {item.action_id}")
+        if item.requested_by:
+            lines.append(f"  requested by: {item.requested_by}")
+        if item.request_summary:
+            lines.append(f"  summary: {item.request_summary}")
         lines.append(f"  risk: {item.risk}; gate: {item.gate_decision}; evidence: {item.evidence_status}")
         if item.required_approvals:
             lines.append("  approvals: " + ", ".join(item.required_approvals))
@@ -314,7 +330,12 @@ def render_approval_decision_receipt(receipt: ApprovalDecisionReceipt) -> str:
     return "\n".join(lines)
 
 
-def _inbox_item(event: JsonMap, decision: ApprovalDecision | None, audit_item: T.Any | None) -> ApprovalInboxItem:
+def _inbox_item(
+    event: JsonMap,
+    decision: ApprovalDecision | None,
+    audit_item: T.Any | None,
+    request: JsonMap | None,
+) -> ApprovalInboxItem:
     details = event.get("details") if isinstance(event.get("details"), dict) else {}
     gate = details.get("agent_gate") if isinstance(details.get("agent_gate"), dict) else {}
     action_id = _event_action_id(event) or f"gate-{_event_sequence(event) or 'unknown'}"
@@ -329,14 +350,20 @@ def _inbox_item(event: JsonMap, decision: ApprovalDecision | None, audit_item: T
     evidence_status = _string_value(getattr(audit_item, "evidence_status", ""), default="missing")
     audit_outcome = _string_value(getattr(audit_item, "outcome", ""), default="unknown")
     status = _item_status(gate_decision, decision, audit_outcome)
-    title = f"{agent_id} wants {action} on {target}"
+    requested_by = _string_value(request.get("requested_by") if request else "") or None
+    request_summary = _string_value(request.get("summary") if request else "") or None
+    request_id = _string_value(request.get("request_id") if request else "") or None
+    title = request_summary or f"{agent_id} wants {action} on {target}"
     available_decisions = _available_decisions(status)
     return ApprovalInboxItem(
         id=action_id,
         action_id=action_id,
+        request_id=request_id,
         sequence=_event_sequence(event),
         title=title,
         status=status,
+        requested_by=requested_by,
+        request_summary=request_summary,
         agent_id=agent_id,
         action=action,
         target=target,
@@ -452,6 +479,29 @@ def _approval_decisions_by_action(events: T.Sequence[JsonMap]) -> dict[str, Appr
             timestamp=_string_value(event.get("timestamp")) or None,
         )
     return decisions
+
+
+def _action_requests_by_action(events: T.Sequence[JsonMap]) -> dict[str, JsonMap]:
+    requests: dict[str, JsonMap] = {}
+    for event in events:
+        if event.get("type") != "action.requested":
+            continue
+        action_id = _event_action_id(event)
+        if not action_id:
+            continue
+        details = event.get("details") if isinstance(event.get("details"), dict) else {}
+        sequence = _event_sequence(event)
+        existing = requests.get(action_id)
+        existing_sequence = existing.get("sequence") if isinstance(existing, dict) else None
+        if isinstance(existing_sequence, int) and isinstance(sequence, int) and existing_sequence > sequence:
+            continue
+        requests[action_id] = {
+            "request_id": _string_value(details.get("request_id")),
+            "requested_by": _string_value(details.get("requested_by")),
+            "summary": _string_value(details.get("summary")),
+            "sequence": sequence,
+        }
+    return requests
 
 
 def _approval_id(action_id: str, decision: str, approver: str, reason: str) -> str:

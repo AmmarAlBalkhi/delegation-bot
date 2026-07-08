@@ -323,6 +323,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "workspace-status",
             "agent-add",
             "agent-run",
+            "action-request",
             "--workspace",
             "agents",
             "agent-gate",
@@ -339,6 +340,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "Local Workspace Status",
             "Agent Added",
             "Agent Run",
+            "Action Request",
             "Agent Gate",
             "Agent Gate Evidence Audit",
             "Approval Inbox",
@@ -360,7 +362,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, action-request, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -386,6 +388,7 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "app-dashboard --workspace $SmokeWorkspace",
         "timeline --workspace $SmokeWorkspace",
         "approval-preview exe_cli_agent --workspace $SmokeWorkspace",
+        "action-request exe_cli_agent --workspace $SmokeWorkspace",
         "app-export --workspace $SmokeWorkspace",
         "app-serve --workspace $SmokeWorkspace --dry-run",
         "agents \"examples\\ai-harness-control-plane.yaml\"",

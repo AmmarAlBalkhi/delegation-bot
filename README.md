@@ -110,6 +110,10 @@ Bring Your Own Agent registries.
 this action on this target, so should DelegationHQ allow, warn, ask for
 approval, or block?
 
+`action-request` is the friendlier intake lane for custom agents. The agent
+asks to do work, DelegationHQ writes a local request receipt, immediately runs
+Agent Gate, and the Approval Inbox gets a real card. Nothing executes yet.
+
 `agent-audit` compares the Agent Gate receipt with recorder evidence. Simple
 version: the guard wrote a receipt, the camera has a proof plan, and the ledger
 keeps both together.
@@ -240,6 +244,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation app-serve --workspace .` | Serve the local cockpit on `127.0.0.1` for app testing. |
 | `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
+| `delegation action-request AGENT --workspace . --action ACTION --target TARGET` | Submit an agent request, gate it, and create an approval card without execution. |
 | `delegation approval-inbox --ledger .delegation/run.jsonl` | Show simple approval cards from Agent Gate receipts. |
 | `delegation approval-decision --ledger .delegation/run.jsonl --action-id ID --decision approve --approver NAME` | Record a local human approve/block receipt. |
 | `delegation evidence-ingest --ledger .delegation/run.jsonl --tool TOOL --action-id ID --recording-id REC --bundle-id BUNDLE --artifact PATH` | Append recorded proof from any compatible evidence tool. |

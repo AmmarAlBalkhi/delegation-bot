@@ -35,6 +35,11 @@ from delegation_bot.agent_run import (
     render_agent_run_report,
     run_agent_under_control,
 )
+from delegation_bot.action_request import (
+    build_action_request_events,
+    build_action_request_report,
+    render_action_request_report,
+)
 from delegation_bot.app_dashboard import build_app_dashboard_report, render_app_dashboard_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
@@ -660,6 +665,71 @@ def cmd_agent_gate(args: argparse.Namespace) -> int:
         if not args.json:
             print(f"\nAgent Gate event appended: {ledger_path}")
     return 1 if report.blocked else 0
+
+
+def cmd_action_request(args: argparse.Namespace) -> int:
+    workspace_root = Path(args.workspace).resolve() if args.workspace else None
+    harnessfile = Path(args.harnessfile) if args.harnessfile else None
+    registry_paths = [Path(path) for path in args.registry or ()]
+    ledger_path = Path(args.ledger) if args.ledger else None
+
+    if workspace_root is not None:
+        workspace_harnessfile = workspace_root / DEFAULT_WORKSPACE_HARNESS
+        workspace_registry = workspace_root / DEFAULT_WORKSPACE_REGISTRY
+        if harnessfile is None and workspace_harnessfile.exists():
+            harnessfile = workspace_harnessfile
+        if not registry_paths and workspace_registry.exists():
+            registry_paths.append(workspace_registry)
+        if ledger_path is None:
+            ledger_path = workspace_root / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+
+    if ledger_path is None:
+        print("ERROR: --ledger is required unless --workspace is provided.", file=sys.stderr)
+        return 1
+
+    manifest = None
+    if harnessfile:
+        manifest, status = _load_valid_manifest(harnessfile)
+        if status != 0 or manifest is None:
+            return status
+
+    try:
+        existing_events = load_jsonl(ledger_path) if ledger_path.exists() else []
+        report = build_action_request_report(
+            agent_id=args.agent_id,
+            action=args.action,
+            target=args.target,
+            ledger_source=str(ledger_path),
+            manifest=manifest,
+            manifest_source=str(harnessfile) if harnessfile else None,
+            registry_paths=tuple(registry_paths),
+            requested_risk=args.risk,
+            provided_evidence=tuple(args.evidence or ()),
+            provided_approvals=tuple(args.approval or ()),
+            requested_by=args.requested_by,
+            summary=args.summary,
+            wrote_ledger=not args.dry_run,
+        )
+        if not args.dry_run:
+            run_id = str(existing_events[0].get("run_id")) if existing_events else f"action-request-{args.agent_id}"
+            events = build_action_request_events(
+                report,
+                run_id=run_id,
+                start_sequence=len(existing_events) + 1,
+            )
+            ledger_path.parent.mkdir(parents=True, exist_ok=True)
+            append_jsonl(events, ledger_path)
+    except (EvalError, OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_action_request_report(report))
+        if not args.dry_run:
+            print(f"\nAction request appended: {ledger_path}")
+    return 0
 
 
 def cmd_agent_audit(args: argparse.Namespace) -> int:
@@ -2126,6 +2196,34 @@ def build_parser() -> argparse.ArgumentParser:
     )
     agent_gate.add_argument("--json", action="store_true", help="Print the Agent Gate report as JSON.")
     agent_gate.set_defaults(func=cmd_agent_gate)
+
+    action_request = subparsers.add_parser(
+        "action-request",
+        help="Submit an agent action request and create the matching gate receipt.",
+    )
+    action_request.add_argument("agent_id", help="Agent id from a Harnessfile or Agent Passport registry.")
+    action_request.add_argument("--workspace", help="Optional local workspace folder. Defaults registry, harness, and ledger paths.")
+    action_request.add_argument("--harnessfile", help="Optional Harnessfile with `agents:` declarations.")
+    action_request.add_argument(
+        "--registry",
+        action="append",
+        help="Optional Agent Passport registry file. Repeatable.",
+    )
+    action_request.add_argument("--ledger", help="Append the request to this run ledger JSONL file.")
+    action_request.add_argument("--action", required=True, help="Requested action, such as update.crm_record.")
+    action_request.add_argument("--target", required=True, help="Target resource, file, tool, or data scope.")
+    action_request.add_argument(
+        "--risk",
+        choices=("low", "medium", "high", "critical"),
+        help="Optional requested risk override.",
+    )
+    action_request.add_argument("--approval", action="append", help="Approval evidence already present. Repeatable.")
+    action_request.add_argument("--evidence", action="append", help="Evidence already present. Repeatable.")
+    action_request.add_argument("--requested-by", help="Who submitted the request. Defaults to the agent id.")
+    action_request.add_argument("--summary", help="Short human-readable request summary.")
+    action_request.add_argument("--dry-run", action="store_true", help="Preview without writing request receipts.")
+    action_request.add_argument("--json", action="store_true", help="Print the action request receipt as JSON.")
+    action_request.set_defaults(func=cmd_action_request)
 
     agent_audit = subparsers.add_parser(
         "agent-audit",

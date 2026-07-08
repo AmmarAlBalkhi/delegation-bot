@@ -57,6 +57,8 @@ The QA command currently checks:
 - installed package `app-dashboard`, `timeline`, `approval-preview`,
   `app-export`, and `app-serve --dry-run`
   smoke tests
+- installed package `action-request` smoke test for the agent asks -> gate ->
+  approval card path
 - approval preview regression coverage for request context, resource scope,
   evidence status, repeated-action history, reviewer notes, and expiration
 - local app operator UX regression coverage for full timelines, copy buttons,
@@ -65,7 +67,8 @@ The QA command currently checks:
 - first-run `delegation demo` and `delegation init` flows
 - local-first `workspace-init`, `workspace-status`, workspace-aware
   `agent-add`, `agent-run`, `app-state`, `cockpit`, `app-dashboard`,
-  `timeline`, `approval-preview`, `app-export`, and `app-serve` flows
+  `timeline`, `approval-preview`, `action-request`, `app-export`, and
+  `app-serve` flows
 - example Harnessfile validation
 - example Harnessfile dry-run planning
 - local OpenTelemetry export generation

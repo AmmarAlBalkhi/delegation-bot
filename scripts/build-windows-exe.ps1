@@ -164,6 +164,11 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    & $ExecutablePath action-request exe_cli_agent --workspace $SmokeWorkspace --action read.workspace --target workspace --summary "EXE smoke agent requests read access."
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath app-export --workspace $SmokeWorkspace --output (Join-Path $SmokeWorkspace ".delegation\cockpit") --preview-agent exe_cli_agent
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

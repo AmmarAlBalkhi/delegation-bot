@@ -63,6 +63,12 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added `delegation action-request` as the practical intake lane: an agent asks
+  to do work, DelegationHQ writes an `action.requested` receipt, immediately
+  runs Agent Gate, and the Approval Inbox gets a real card without execution.
+- Updated Approval Inbox, Mission Timeline, the local cockpit, package smoke,
+  release readiness, and docs to treat submitted action requests as first-class
+  control-plane evidence.
 - Added a `control_loop` checklist to `app-dashboard` and the local cockpit so
   users can see workspace -> mission -> agent -> gate -> approval -> execution
   -> evidence -> timeline/eval as one practical product path.

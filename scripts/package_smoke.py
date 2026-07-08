@@ -428,6 +428,31 @@ def main() -> int:
             print(agent_gate.stderr, file=sys.stderr)
             return agent_gate.returncode or 1
 
+        action_request = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "action-request",
+                "smoke_cli_agent",
+                "--workspace",
+                str(workspace),
+                "--action",
+                "read.run_ledger",
+                "--target",
+                "run_ledger",
+                "--summary",
+                "Smoke agent requests read access through the cockpit.",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if action_request.returncode != 0 or "Action Request" not in action_request.stdout:
+            print("FAIL: installed package action-request smoke")
+            print(action_request.stdout)
+            print(action_request.stderr, file=sys.stderr)
+            return action_request.returncode or 1
+
         approval_inbox = _run(
             [
                 sys.executable,
@@ -600,9 +625,9 @@ def main() -> int:
             print(agent_audit.stderr, file=sys.stderr)
             return agent_audit.returncode or 1
 
-    print(
-        "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
-    )
+        print(
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        )
     return 0
 
 

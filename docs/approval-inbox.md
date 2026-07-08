@@ -6,13 +6,24 @@ Simple version:
 
 ```text
 Agent asks to do work.
-Agent Gate writes a receipt.
+Action Request writes the ask.
+Agent Gate checks the passport.
 Approval Inbox shows the card.
 Human approves or blocks.
 Ledger keeps the decision.
 ```
 
 ## Commands
+
+Submit a request from a local workspace:
+
+```bash
+delegation action-request local_cli_agent \
+  --workspace . \
+  --action write.workspace \
+  --target workspace \
+  --summary "Agent wants to update three files."
+```
 
 Show cards from a ledger:
 

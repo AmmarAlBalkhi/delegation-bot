@@ -76,6 +76,8 @@ class MissionTimelineReport:
             return "Execute under recorder control, then attach evidence."
         if any(item.stage == "gate" for item in self.items):
             return "Record approval if required, then execute under recorder control."
+        if any(item.stage == "request" for item in self.items):
+            return "Review the request gate and approval card before execution."
         return "Create an Agent Gate receipt before real work."
 
     def to_dict(self) -> JsonMap:
@@ -225,6 +227,8 @@ def _stage(event: JsonMap) -> str:
     event_type = _event_type(event)
     if event_type == "plan.compiled":
         return "plan"
+    if event_type == "action.requested":
+        return "request"
     if event_type == "agent.gate.previewed":
         return "gate"
     if event_type in {"approval.granted", "approval.denied"}:
@@ -248,6 +252,14 @@ def _title(event: JsonMap) -> str:
     event_type = _event_type(event)
     if event_type == "plan.compiled":
         return "Mission plan compiled"
+    if event_type == "action.requested":
+        details = _details(event)
+        summary = _string(details.get("summary"))
+        if summary:
+            return summary
+        agent = _agent_id(event) or "agent"
+        action = _string(details.get("requested_action"), default="requested action")
+        return f"{agent} asked to {action}"
     if event_type == "agent.gate.previewed":
         agent = _agent_id(event) or "agent"
         action = _gate_value(event, "action") or "requested action"

@@ -319,6 +319,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     areas = _areas_by_id(product_areas)
     workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
+    approval_inbox = ledger.get("approval_inbox") if isinstance(ledger.get("approval_inbox"), dict) else {}
     agents = state_data.get("agents") if isinstance(state_data.get("agents"), dict) else {}
     next_actions = dashboard_data.get("next_actions") if isinstance(dashboard_data.get("next_actions"), list) else []
     passports = agents.get("passports") if isinstance(agents.get("passports"), list) else []
@@ -497,6 +498,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       <div class="panel">
         <h2>Approval Inbox</h2>
         {_area_panel_html(areas.get("approval_inbox"))}
+        {_approval_inbox_cards_html(approval_inbox)}
         {_approval_preview_html(preview)}
       </div>
     </section>
@@ -651,6 +653,44 @@ def _approval_preview_html(preview: JsonMap) -> str:
 <p class="subtle">Decision commands</p>
 {_commands_html(preview.get("decision_commands") if isinstance(preview.get("decision_commands"), list) else [], section_id="approval-commands")}
 """
+
+
+def _approval_inbox_cards_html(inbox: JsonMap) -> str:
+    items = inbox.get("items") if isinstance(inbox.get("items"), list) else []
+    if not items:
+        return "<p class=\"subtle\">No submitted action requests yet.</p>"
+    rows: list[str] = []
+    for index, item in enumerate(items[:6], start=1):
+        if not isinstance(item, dict):
+            continue
+        action_id = item.get("action_id", "unknown")
+        requested_by = item.get("requested_by") or item.get("agent_id", "unknown")
+        summary = item.get("request_summary") or item.get("title", "Action request")
+        status = item.get("status", "unknown")
+        risk = item.get("risk", "unknown")
+        evidence = _inline_list(item.get("required_evidence")) or "not declared"
+        approvals = _inline_list(item.get("required_approvals")) or "none"
+        next_action = item.get("next_action", "")
+        rows.append(
+            "<li>"
+            f"<strong>{_escape(index)}. {_escape(summary)}</strong> "
+            f"<span class=\"badge {_status_class(str(status))}\">{_escape(status)}</span>"
+            "<div class=\"kv\">"
+            f"<div><strong>Requested by:</strong> {_escape(requested_by)}</div>"
+            f"<div><strong>Action:</strong> {_escape(action_id)}</div>"
+            f"<div><strong>Risk:</strong> {_escape(risk)}</div>"
+            f"<div><strong>Approvals:</strong> {_escape(approvals)}</div>"
+            f"<div><strong>Evidence:</strong> {_escape(evidence)}</div>"
+            "</div>"
+            + (
+                "<p class=\"subtle\">Next</p>"
+                + _copyable_code(next_action, id_hint=f"approval-inbox-card-{index}")
+                if isinstance(next_action, str) and next_action.strip()
+                else ""
+            )
+            + "</li>"
+        )
+    return "<p class=\"subtle\">Submitted action requests</p><ul>" + "".join(rows) + "</ul>"
 
 
 def _agent_handoff_html(packet_report: JsonMap | None, preview: JsonMap) -> str:

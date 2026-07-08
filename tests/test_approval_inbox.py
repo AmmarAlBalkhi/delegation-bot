@@ -4,6 +4,7 @@ import unittest
 from pathlib import Path
 
 from delegation_bot.agent_gate import build_agent_gate_audit_report, build_agent_gate_events, build_agent_gate_report
+from delegation_bot.action_request import build_action_request_events, build_action_request_report
 from delegation_bot.approval_inbox import (
     build_approval_decision_events,
     build_approval_decision_receipt,
@@ -91,6 +92,38 @@ class ApprovalInboxTests(unittest.TestCase):
                 decision="approve",
                 approver="Ammar",
             )
+
+    def test_action_request_receipt_feeds_inbox_cards(self) -> None:
+        manifest = load_manifest(EXAMPLE)
+        plan = compile_plan(manifest, source=str(EXAMPLE))
+        ledger = [event.to_dict() for event in build_dry_run_ledger(plan, run_id="run-1")]
+        request = build_action_request_report(
+            manifest=manifest,
+            manifest_source=str(EXAMPLE),
+            agent_id="implementer",
+            action="create_pull_request",
+            target="repository",
+            ledger_source="ledger.jsonl",
+            requested_by="implementer",
+            summary="Implementer wants to open a pull request draft.",
+            wrote_ledger=True,
+        )
+        ledger.extend(
+            event.to_dict()
+            for event in build_action_request_events(
+                request,
+                run_id="run-1",
+                start_sequence=len(ledger) + 1,
+                timestamp="2026-01-01T00:00:00+00:00",
+            )
+        )
+
+        inbox = build_approval_inbox_report(ledger, ledger_source="ledger.jsonl")
+
+        self.assertEqual(inbox.pending_count, 1)
+        self.assertEqual(inbox.items[0].request_id, request.request_id)
+        self.assertEqual(inbox.items[0].requested_by, "implementer")
+        self.assertEqual(inbox.items[0].request_summary, "Implementer wants to open a pull request draft.")
 
 
 def _pending_gate_ledger() -> list[dict[str, object]]:

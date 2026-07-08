@@ -556,6 +556,90 @@ class DelegationCliTests(unittest.TestCase):
         self.assertGreaterEqual(data["timeline"]["stage_counts"]["gate"], 1)
         self.assertGreaterEqual(data["timeline"]["stage_counts"]["record"], 1)
 
+    def test_action_request_creates_pending_cockpit_card(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "cockpit"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "request_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('request ok')\"",
+                            "--capability",
+                            "write.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--approval",
+                            "write.workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as request_output:
+                request_status = main(
+                    [
+                        "action-request",
+                        "request_runner",
+                        "--workspace",
+                        tmpdir,
+                        "--action",
+                        "write.workspace",
+                        "--target",
+                        "workspace",
+                        "--summary",
+                        "Request runner wants to update the workspace.",
+                        "--json",
+                    ]
+                )
+            request_data = json.loads(request_output.getvalue())
+            ledger = Path(tmpdir) / ".delegation" / "agent-run.jsonl"
+            events = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+
+            with redirect_stdout(io.StringIO()) as inbox_output:
+                inbox_status = main(["approval-inbox", "--ledger", str(ledger), "--json"])
+            inbox_data = json.loads(inbox_output.getvalue())
+
+            with redirect_stdout(io.StringIO()) as timeline_output:
+                timeline_status = main(["timeline", "--ledger", str(ledger), "--json"])
+            timeline_data = json.loads(timeline_output.getvalue())
+
+            with redirect_stdout(io.StringIO()) as export_output:
+                export_status = main(
+                    [
+                        "app-export",
+                        "--workspace",
+                        tmpdir,
+                        "--output",
+                        str(output_dir),
+                        "--preview-agent",
+                        "request_runner",
+                        "--json",
+                    ]
+                )
+            export_data = json.loads(export_output.getvalue())
+            html_text = Path(export_data["index_html"]).read_text(encoding="utf-8")
+
+        self.assertEqual(request_status, 0)
+        self.assertEqual(request_data["status"], "pending_approval")
+        self.assertIn("action.requested", [event["type"] for event in events])
+        self.assertIn("agent.gate.previewed", [event["type"] for event in events])
+        self.assertEqual(inbox_status, 0)
+        self.assertEqual(inbox_data["pending_count"], 1)
+        self.assertEqual(inbox_data["items"][0]["request_summary"], "Request runner wants to update the workspace.")
+        self.assertEqual(timeline_status, 0)
+        self.assertIn("request", timeline_data["stage_counts"])
+        self.assertEqual(export_status, 0)
+        self.assertIn("Submitted action requests", html_text)
+        self.assertIn("Request runner wants to update the workspace.", html_text)
+
     def test_timeline_command_uses_workspace_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             with redirect_stdout(io.StringIO()):
