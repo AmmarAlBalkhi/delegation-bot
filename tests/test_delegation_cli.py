@@ -602,10 +602,95 @@ class DelegationCliTests(unittest.TestCase):
             request_data = json.loads(request_output.getvalue())
             ledger = Path(tmpdir) / ".delegation" / "agent-run.jsonl"
             events = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+            action_id = request_data["action_id"]
+
+            with redirect_stdout(io.StringIO()) as status_output:
+                pending_status = main(
+                    [
+                        "request-status",
+                        "--workspace",
+                        tmpdir,
+                        "--action-id",
+                        action_id,
+                        "--json",
+                    ]
+                )
+            pending_data = json.loads(status_output.getvalue())
+
+            with redirect_stdout(io.StringIO()) as blocked_run_output:
+                blocked_run_status = main(
+                    [
+                        "request-run",
+                        "--workspace",
+                        tmpdir,
+                        "--action-id",
+                        action_id,
+                        "--confirm",
+                        "LOCAL_AGENT_EXECUTION",
+                        "--json",
+                    ]
+                )
+            blocked_run_data = json.loads(blocked_run_output.getvalue())
 
             with redirect_stdout(io.StringIO()) as inbox_output:
                 inbox_status = main(["approval-inbox", "--ledger", str(ledger), "--json"])
             inbox_data = json.loads(inbox_output.getvalue())
+
+            with redirect_stdout(io.StringIO()):
+                approval_status = main(
+                    [
+                        "approval-decision",
+                        "--ledger",
+                        str(ledger),
+                        "--action-id",
+                        action_id,
+                        "--decision",
+                        "approve",
+                        "--approver",
+                        "Ammar",
+                    ]
+                )
+
+            with redirect_stdout(io.StringIO()) as approved_status_output:
+                approved_status = main(
+                    [
+                        "request-status",
+                        "--workspace",
+                        tmpdir,
+                        "--action-id",
+                        action_id,
+                        "--json",
+                    ]
+                )
+            approved_data = json.loads(approved_status_output.getvalue())
+
+            with redirect_stdout(io.StringIO()) as run_output:
+                run_status = main(
+                    [
+                        "request-run",
+                        "--workspace",
+                        tmpdir,
+                        "--action-id",
+                        action_id,
+                        "--confirm",
+                        "LOCAL_AGENT_EXECUTION",
+                        "--json",
+                    ]
+                )
+            run_data = json.loads(run_output.getvalue())
+
+            with redirect_stdout(io.StringIO()) as recorded_status_output:
+                recorded_status = main(
+                    [
+                        "request-status",
+                        "--workspace",
+                        tmpdir,
+                        "--action-id",
+                        action_id,
+                        "--json",
+                    ]
+                )
+            recorded_data = json.loads(recorded_status_output.getvalue())
 
             with redirect_stdout(io.StringIO()) as timeline_output:
                 timeline_status = main(["timeline", "--ledger", str(ledger), "--json"])
@@ -634,11 +719,30 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(inbox_status, 0)
         self.assertEqual(inbox_data["pending_count"], 1)
         self.assertEqual(inbox_data["items"][0]["request_summary"], "Request runner wants to update the workspace.")
+        self.assertEqual(pending_status, 0)
+        self.assertEqual(pending_data["status"], "pending_approval")
+        self.assertFalse(pending_data["ready_to_run"])
+        self.assertEqual(blocked_run_status, 1)
+        self.assertEqual(blocked_run_data["status"], "pending_approval")
+        self.assertIn("human decision", blocked_run_data["message"])
+        self.assertEqual(approval_status, 0)
+        self.assertEqual(approved_status, 0)
+        self.assertEqual(approved_data["status"], "approved")
+        self.assertTrue(approved_data["ready_to_run"])
+        self.assertEqual(run_status, 0)
+        self.assertEqual(run_data["status"], "recorded")
+        self.assertTrue(run_data["agent_run"]["executed"])
+        self.assertIn("request ok", run_data["agent_run"]["stdout_tail"])
+        self.assertEqual(recorded_status, 0)
+        self.assertEqual(recorded_data["status"], "recorded")
+        self.assertFalse(recorded_data["ready_to_run"])
         self.assertEqual(timeline_status, 0)
         self.assertIn("request", timeline_data["stage_counts"])
+        self.assertIn("record", timeline_data["stage_counts"])
         self.assertEqual(export_status, 0)
         self.assertIn("Submitted action requests", html_text)
         self.assertIn("Request runner wants to update the workspace.", html_text)
+        self.assertIn("delegation request-status", html_text)
 
     def test_timeline_command_uses_workspace_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

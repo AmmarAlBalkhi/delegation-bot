@@ -324,6 +324,27 @@ def _command_center(
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
     ledger_path = ledger.get("path")
     if isinstance(ledger_path, str) and ledger_path:
+        approval_inbox = ledger.get("approval_inbox") if isinstance(ledger.get("approval_inbox"), dict) else {}
+        latest_request = _latest_request_card(approval_inbox)
+        if latest_request:
+            action_id = latest_request.get("action_id")
+            status = latest_request.get("status")
+            if isinstance(action_id, str) and action_id:
+                yield {
+                    "id": "request_status",
+                    "label": "Check request status",
+                    "command": f"delegation request-status --ledger {ledger_path} --action-id {action_id}",
+                    "purpose": "Show whether the latest request is pending, approved, blocked, recorded, or ready to run.",
+                    "risk": "none",
+                }
+                if status in {"approved", "needs_evidence", "ready_for_recording"}:
+                    yield {
+                        "id": "request_run",
+                        "label": "Run approved request",
+                        "command": f"delegation request-run --ledger {ledger_path} --action-id {action_id} --confirm LOCAL_AGENT_EXECUTION",
+                        "purpose": "Run only after the request card is cleared by Agent Gate and approvals.",
+                        "risk": latest_request.get("risk", "medium"),
+                    }
         yield {
             "id": "timeline",
             "label": "Review timeline",
@@ -331,6 +352,14 @@ def _command_center(
             "purpose": timeline.next_action,
             "risk": "none",
         }
+
+
+def _latest_request_card(inbox: JsonMap) -> JsonMap | None:
+    items = inbox.get("items") if isinstance(inbox.get("items"), list) else []
+    for item in reversed(items):
+        if isinstance(item, dict):
+            return item
+    return None
 
 
 def _control_loop(

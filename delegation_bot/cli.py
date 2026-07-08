@@ -38,7 +38,11 @@ from delegation_bot.agent_run import (
 from delegation_bot.action_request import (
     build_action_request_events,
     build_action_request_report,
+    build_request_status_report,
     render_action_request_report,
+    render_request_run_report,
+    render_request_status_report,
+    run_request_under_control,
 )
 from delegation_bot.app_dashboard import build_app_dashboard_report, render_app_dashboard_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
@@ -668,20 +672,7 @@ def cmd_agent_gate(args: argparse.Namespace) -> int:
 
 
 def cmd_action_request(args: argparse.Namespace) -> int:
-    workspace_root = Path(args.workspace).resolve() if args.workspace else None
-    harnessfile = Path(args.harnessfile) if args.harnessfile else None
-    registry_paths = [Path(path) for path in args.registry or ()]
-    ledger_path = Path(args.ledger) if args.ledger else None
-
-    if workspace_root is not None:
-        workspace_harnessfile = workspace_root / DEFAULT_WORKSPACE_HARNESS
-        workspace_registry = workspace_root / DEFAULT_WORKSPACE_REGISTRY
-        if harnessfile is None and workspace_harnessfile.exists():
-            harnessfile = workspace_harnessfile
-        if not registry_paths and workspace_registry.exists():
-            registry_paths.append(workspace_registry)
-        if ledger_path is None:
-            ledger_path = workspace_root / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+    workspace_root, harnessfile, registry_paths, ledger_path, cwd, output_dir = _resolve_request_paths(args)
 
     if ledger_path is None:
         print("ERROR: --ledger is required unless --workspace is provided.", file=sys.stderr)
@@ -730,6 +721,91 @@ def cmd_action_request(args: argparse.Namespace) -> int:
         if not args.dry_run:
             print(f"\nAction request appended: {ledger_path}")
     return 0
+
+
+def cmd_request_status(args: argparse.Namespace) -> int:
+    _, _, _, ledger_path, _, _ = _resolve_request_paths(args)
+    if ledger_path is None:
+        print("ERROR: --ledger is required unless --workspace is provided.", file=sys.stderr)
+        return 1
+    try:
+        ledger_events = load_jsonl(ledger_path) if ledger_path.exists() else []
+        report = build_request_status_report(
+            ledger_events,
+            ledger_source=str(ledger_path),
+            action_id=args.action_id,
+        )
+    except (EvalError, OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_request_status_report(report))
+    return 1 if report.status in {"missing", "blocked_by_gate", "blocked_by_human"} else 0
+
+
+def cmd_request_run(args: argparse.Namespace) -> int:
+    workspace_root, harnessfile, registry_paths, ledger_path, cwd, output_dir = _resolve_request_paths(args)
+    if ledger_path is None:
+        print("ERROR: --ledger is required unless --workspace is provided.", file=sys.stderr)
+        return 1
+
+    manifest = None
+    if harnessfile:
+        manifest, status = _load_valid_manifest(harnessfile)
+        if status != 0 or manifest is None:
+            return status
+
+    try:
+        ledger_events = load_jsonl(ledger_path) if ledger_path.exists() else []
+        report = run_request_under_control(
+            ledger_events,
+            ledger_path=ledger_path,
+            action_id=args.action_id,
+            registry_paths=tuple(registry_paths),
+            manifest=manifest,
+            manifest_source=str(harnessfile) if harnessfile else None,
+            requested_risk=args.risk,
+            confirm=args.confirm,
+            cwd=Path(args.cwd) if args.cwd else cwd,
+            output_dir=Path(args.output_dir) if args.output_dir else output_dir,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except (EvalError, OSError, ValueError, json.JSONDecodeError, PlanError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_request_run_report(report))
+    return 1 if report.blocked else 0
+
+
+def _resolve_request_paths(args: argparse.Namespace) -> tuple[Path | None, Path | None, list[Path], Path | None, Path | None, Path | None]:
+    workspace_root = Path(args.workspace).resolve() if getattr(args, "workspace", None) else None
+    harnessfile = Path(args.harnessfile) if getattr(args, "harnessfile", None) else None
+    registry_paths = [Path(path) for path in getattr(args, "registry", None) or ()]
+    ledger_path = Path(args.ledger) if getattr(args, "ledger", None) else None
+    cwd = Path(getattr(args, "cwd", "")) if getattr(args, "cwd", None) else None
+    output_dir = Path(getattr(args, "output_dir", "")) if getattr(args, "output_dir", None) else None
+
+    if workspace_root is not None:
+        workspace_harnessfile = workspace_root / DEFAULT_WORKSPACE_HARNESS
+        workspace_registry = workspace_root / DEFAULT_WORKSPACE_REGISTRY
+        if harnessfile is None and workspace_harnessfile.exists():
+            harnessfile = workspace_harnessfile
+        if not registry_paths and workspace_registry.exists():
+            registry_paths.append(workspace_registry)
+        if ledger_path is None:
+            ledger_path = workspace_root / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+        if cwd is None:
+            cwd = workspace_root
+        if output_dir is None:
+            output_dir = workspace_root / DEFAULT_WORKSPACE_AGENT_RUNS_DIR
+    return workspace_root, harnessfile, registry_paths, ledger_path, cwd, output_dir
 
 
 def cmd_agent_audit(args: argparse.Namespace) -> int:
@@ -2224,6 +2300,46 @@ def build_parser() -> argparse.ArgumentParser:
     action_request.add_argument("--dry-run", action="store_true", help="Preview without writing request receipts.")
     action_request.add_argument("--json", action="store_true", help="Print the action request receipt as JSON.")
     action_request.set_defaults(func=cmd_action_request)
+
+    request_status = subparsers.add_parser(
+        "request-status",
+        help="Show whether a submitted action request is pending, approved, blocked, recorded, or ready to run.",
+    )
+    request_status.add_argument("--workspace", help="Optional local workspace folder. Defaults the request ledger path.")
+    request_status.add_argument("--ledger", help="Read request cards from this run ledger JSONL file.")
+    request_status.add_argument("--action-id", help="Specific Agent Gate action_id. Defaults to the latest request card.")
+    request_status.add_argument("--json", action="store_true", help="Print request status as JSON.")
+    request_status.set_defaults(func=cmd_request_status)
+
+    request_run = subparsers.add_parser(
+        "request-run",
+        help="Run an approved action request under DelegationHQ control.",
+    )
+    request_run.add_argument("--workspace", help="Optional local workspace folder. Defaults registry, harness, ledger, cwd, and output paths.")
+    request_run.add_argument("--harnessfile", help="Optional Harnessfile with `agents:` declarations.")
+    request_run.add_argument("--registry", action="append", help="Optional Agent Passport registry file. Repeatable.")
+    request_run.add_argument("--ledger", help="Read the request and append execution evidence to this ledger.")
+    request_run.add_argument("--action-id", help="Specific Agent Gate action_id. Defaults to the latest request card.")
+    request_run.add_argument(
+        "--risk",
+        choices=("low", "medium", "high", "critical"),
+        help="Optional requested risk override for the execution gate.",
+    )
+    request_run.add_argument(
+        "--confirm",
+        required=True,
+        help=f"Required exact token: {LOCAL_AGENT_EXECUTION_CONFIRMATION}.",
+    )
+    request_run.add_argument("--cwd", help="Working directory for command execution. Defaults to workspace.")
+    request_run.add_argument("--output-dir", help="Directory for command output evidence JSON.")
+    request_run.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=AGENT_RUN_DEFAULT_TIMEOUT_SECONDS,
+        help="Maximum command runtime in seconds.",
+    )
+    request_run.add_argument("--json", action="store_true", help="Print request run report as JSON.")
+    request_run.set_defaults(func=cmd_request_run)
 
     agent_audit = subparsers.add_parser(
         "agent-audit",

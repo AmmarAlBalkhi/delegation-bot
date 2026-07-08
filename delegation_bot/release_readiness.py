@@ -324,6 +324,8 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "agent-add",
             "agent-run",
             "action-request",
+            "request-status",
+            "request-run",
             "--workspace",
             "agents",
             "agent-gate",
@@ -341,6 +343,8 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "Agent Added",
             "Agent Run",
             "Action Request",
+            "Request Status",
+            "Request Run",
             "Agent Gate",
             "Agent Gate Evidence Audit",
             "Approval Inbox",
@@ -362,7 +366,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, action-request, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, action-request, request-status, request-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -389,6 +393,8 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "timeline --workspace $SmokeWorkspace",
         "approval-preview exe_cli_agent --workspace $SmokeWorkspace",
         "action-request exe_cli_agent --workspace $SmokeWorkspace",
+        "request-status --workspace $SmokeWorkspace",
+        "request-run --workspace $SmokeWorkspace",
         "app-export --workspace $SmokeWorkspace",
         "app-serve --workspace $SmokeWorkspace --dry-run",
         "agents \"examples\\ai-harness-control-plane.yaml\"",

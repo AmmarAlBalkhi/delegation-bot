@@ -114,6 +114,11 @@ approval, or block?
 asks to do work, DelegationHQ writes a local request receipt, immediately runs
 Agent Gate, and the Approval Inbox gets a real card. Nothing executes yet.
 
+`request-status` and `request-run` close the first real local loop. Status tells
+you whether a request is pending, approved, blocked, recorded, or ready to run.
+Run only executes approved/ready requests, writes evidence, and refuses pending,
+blocked, or already-recorded work.
+
 `agent-audit` compares the Agent Gate receipt with recorder evidence. Simple
 version: the guard wrote a receipt, the camera has a proof plan, and the ledger
 keeps both together.
@@ -245,6 +250,8 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
 | `delegation action-request AGENT --workspace . --action ACTION --target TARGET` | Submit an agent request, gate it, and create an approval card without execution. |
+| `delegation request-status --workspace . --action-id ID` | Show whether a request is pending, approved, blocked, recorded, or ready to run. |
+| `delegation request-run --workspace . --action-id ID --confirm LOCAL_AGENT_EXECUTION` | Run an approved/ready request under DelegationHQ control and append evidence. |
 | `delegation approval-inbox --ledger .delegation/run.jsonl` | Show simple approval cards from Agent Gate receipts. |
 | `delegation approval-decision --ledger .delegation/run.jsonl --action-id ID --decision approve --approver NAME` | Record a local human approve/block receipt. |
 | `delegation evidence-ingest --ledger .delegation/run.jsonl --tool TOOL --action-id ID --recording-id REC --bundle-id BUNDLE --artifact PATH` | Append recorded proof from any compatible evidence tool. |

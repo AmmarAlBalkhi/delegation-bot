@@ -169,6 +169,16 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    & $ExecutablePath request-status --workspace $SmokeWorkspace --action-id agent_gate.exe_cli_agent.read_workspace
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & $ExecutablePath request-run --workspace $SmokeWorkspace --action-id agent_gate.exe_cli_agent.read_workspace --confirm LOCAL_AGENT_EXECUTION
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath app-export --workspace $SmokeWorkspace --output (Join-Path $SmokeWorkspace ".delegation\cockpit") --preview-agent exe_cli_agent
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

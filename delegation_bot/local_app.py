@@ -659,6 +659,7 @@ def _approval_inbox_cards_html(inbox: JsonMap) -> str:
     items = inbox.get("items") if isinstance(inbox.get("items"), list) else []
     if not items:
         return "<p class=\"subtle\">No submitted action requests yet.</p>"
+    ledger_source = inbox.get("ledger_source") if isinstance(inbox.get("ledger_source"), str) else "LEDGER"
     rows: list[str] = []
     for index, item in enumerate(items[:6], start=1):
         if not isinstance(item, dict):
@@ -670,7 +671,7 @@ def _approval_inbox_cards_html(inbox: JsonMap) -> str:
         risk = item.get("risk", "unknown")
         evidence = _inline_list(item.get("required_evidence")) or "not declared"
         approvals = _inline_list(item.get("required_approvals")) or "none"
-        next_action = item.get("next_action", "")
+        next_action = _inbox_card_next_action(item, ledger_source=ledger_source)
         rows.append(
             "<li>"
             f"<strong>{_escape(index)}. {_escape(summary)}</strong> "
@@ -691,6 +692,21 @@ def _approval_inbox_cards_html(inbox: JsonMap) -> str:
             + "</li>"
         )
     return "<p class=\"subtle\">Submitted action requests</p><ul>" + "".join(rows) + "</ul>"
+
+
+def _inbox_card_next_action(item: JsonMap, *, ledger_source: str) -> str:
+    status = item.get("status")
+    action_id = item.get("action_id")
+    if not isinstance(action_id, str) or not action_id.strip():
+        return str(item.get("next_action", ""))
+    if status == "pending_approval":
+        return f"delegation approval-decision --ledger {ledger_source} --action-id {action_id} --decision approve --approver NAME"
+    if status in {"approved", "needs_evidence", "ready_for_recording"}:
+        return f"delegation request-run --ledger {ledger_source} --action-id {action_id} --confirm LOCAL_AGENT_EXECUTION"
+    if status == "recorded":
+        return f"delegation request-status --ledger {ledger_source} --action-id {action_id}"
+    value = item.get("next_action", "")
+    return value if isinstance(value, str) else ""
 
 
 def _agent_handoff_html(packet_report: JsonMap | None, preview: JsonMap) -> str:

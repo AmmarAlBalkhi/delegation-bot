@@ -1493,3 +1493,27 @@ Guardrails:
 
 Follow-up: Use this intent block to drive the future desktop approval inbox and
 first-run cockpit flow.
+
+## 2026-07-08: Add Request Lifecycle Commands
+
+Decision: Add `delegation request-status` and `delegation request-run` as the
+practical bridge from submitted action request to controlled execution.
+
+Why: Agent Passports and approval cards become real only when the next action
+is enforceable. A request should be inspectable, refused while pending or
+blocked, executable only after approval/gate readiness, and then recorded back
+into the ledger as evidence.
+
+Guardrails:
+
+- pending, blocked, warning, and already-recorded requests do not execute
+- execution still requires the exact `LOCAL_AGENT_EXECUTION` confirmation token
+- the command uses the request card's agent, action, target, approvals, and
+  workspace defaults instead of asking users to rebuild the command manually
+- the local cockpit may show copyable commands, but it does not execute them
+- generic evidence tooling remains compatible; RunPrint is one recorder lane,
+  not the whole product
+
+Follow-up: Turn the cockpit Approval Inbox into a first-run guided flow:
+submit request, approve/block, run approved request, ingest/review evidence,
+then show timeline and eval outcome.

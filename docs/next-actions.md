@@ -63,6 +63,14 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added `delegation request-status` and `delegation request-run` so a submitted
+  action request can move from ask -> gate -> approve -> controlled execution
+  -> recorded evidence without falling back to a generic `agent-run` recipe.
+- Updated the local cockpit and app dashboard next actions to point at
+  request-specific status/run commands, while still refusing pending, blocked,
+  or already-recorded requests.
+- Expanded CLI, package smoke, Windows EXE smoke, release readiness, and docs
+  around the approved request -> execution -> ledger evidence path.
 - Added `delegation action-request` as the practical intake lane: an agent asks
   to do work, DelegationHQ writes an `action.requested` receipt, immediately
   runs Agent Gate, and the Approval Inbox gets a real card without execution.

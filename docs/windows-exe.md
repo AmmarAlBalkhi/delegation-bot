@@ -88,6 +88,8 @@ dist\delegation.exe app-dashboard --workspace .delegation\exe-local-workspace --
 dist\delegation.exe timeline --workspace .delegation\exe-local-workspace
 dist\delegation.exe approval-preview exe_cli_agent --workspace .delegation\exe-local-workspace
 dist\delegation.exe action-request exe_cli_agent --workspace .delegation\exe-local-workspace --action read.workspace --target workspace --summary "EXE smoke agent requests read access."
+dist\delegation.exe request-status --workspace .delegation\exe-local-workspace --action-id agent_gate.exe_cli_agent.read_workspace
+dist\delegation.exe request-run --workspace .delegation\exe-local-workspace --action-id agent_gate.exe_cli_agent.read_workspace --confirm LOCAL_AGENT_EXECUTION
 dist\delegation.exe app-export --workspace .delegation\exe-local-workspace --output .delegation\exe-local-workspace\.delegation\cockpit --preview-agent exe_cli_agent
 dist\delegation.exe app-serve --workspace .delegation\exe-local-workspace --dry-run
 dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry examples\agent-passports.yaml

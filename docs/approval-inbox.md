@@ -10,6 +10,7 @@ Action Request writes the ask.
 Agent Gate checks the passport.
 Approval Inbox shows the card.
 Human approves or blocks.
+DelegationHQ runs only approved or ready requests.
 Ledger keeps the decision.
 ```
 
@@ -39,6 +40,23 @@ delegation approval-decision \
   --action-id agent_gate.implementer.create_pull_request \
   --decision approve \
   --approver Ammar
+```
+
+Check request status:
+
+```bash
+delegation request-status \
+  --workspace . \
+  --action-id agent_gate.implementer.create_pull_request
+```
+
+Run the approved request under DelegationHQ control:
+
+```bash
+delegation request-run \
+  --workspace . \
+  --action-id agent_gate.implementer.create_pull_request \
+  --confirm LOCAL_AGENT_EXECUTION
 ```
 
 Attach recorded evidence after the recorder runs:

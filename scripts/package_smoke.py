@@ -495,6 +495,48 @@ def main() -> int:
             print(approval_decision.stderr, file=sys.stderr)
             return approval_decision.returncode or 1
 
+        request_status = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "request-status",
+                "--workspace",
+                str(workspace),
+                "--action-id",
+                "agent_gate.smoke_cli_agent.read_run_ledger",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if request_status.returncode != 0 or "Request Status" not in request_status.stdout:
+            print("FAIL: installed package request-status smoke")
+            print(request_status.stdout)
+            print(request_status.stderr, file=sys.stderr)
+            return request_status.returncode or 1
+
+        request_run = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "request-run",
+                "--workspace",
+                str(workspace),
+                "--action-id",
+                "agent_gate.smoke_cli_agent.read_run_ledger",
+                "--confirm",
+                "LOCAL_AGENT_EXECUTION",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if request_run.returncode != 0 or "Request Run" not in request_run.stdout or "package agent ok" not in request_run.stdout:
+            print("FAIL: installed package request-run smoke")
+            print(request_run.stdout)
+            print(request_run.stderr, file=sys.stderr)
+            return request_run.returncode or 1
+
         agent_result_path = tmp / "agent-result.json"
         agent_result_path.write_text(
             json.dumps(
@@ -626,7 +668,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
         print(
-            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
         )
     return 0
 

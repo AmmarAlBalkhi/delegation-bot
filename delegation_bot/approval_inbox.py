@@ -125,8 +125,10 @@ class ApprovalInboxReport:
     def next_action(self) -> str:
         if self.pending_count:
             return "Record a human decision with `delegation approval-decision --ledger LEDGER --action-id ACTION_ID --decision approve|block --approver NAME`."
+        if self.ready_count:
+            return "Run an approved request with `delegation request-run --ledger LEDGER --action-id ACTION_ID --confirm LOCAL_AGENT_EXECUTION`."
         if self.needs_evidence_count:
-            return "Add recorder evidence or request more evidence before promotion."
+            return "Run a controlled request with `delegation request-run --ledger LEDGER --action-id ACTION_ID --confirm LOCAL_AGENT_EXECUTION`, or attach external evidence with `delegation evidence-ingest`."
         if self.item_count:
             return "Execute under recorder control, then run evals before promotion."
         return "Run `delegation agent-gate ... --ledger LEDGER --write` to create approval cards."
@@ -165,7 +167,7 @@ def build_approval_inbox_report(
     *,
     ledger_source: str = "<memory>",
 ) -> ApprovalInboxReport:
-    gate_events = tuple(_agent_gate_events(ledger_events))
+    gate_events = tuple(_latest_gate_events_by_action(_agent_gate_events(ledger_events)))
     decisions = _approval_decisions_by_action(ledger_events)
     requests = _action_requests_by_action(ledger_events)
     audit = build_agent_gate_audit_report(ledger_events, ledger_source=ledger_source)
@@ -426,16 +428,16 @@ def _item_next_action(status: str, action_id: str) -> str:
     if status == "pending_approval":
         return f"Run `delegation approval-decision --ledger LEDGER --action-id {action_id} --decision approve --approver NAME` or block it."
     if status == "approved":
-        return "Execute under recorder control, then run evals before promotion."
+        return f"Run `delegation request-run --ledger LEDGER --action-id {action_id} --confirm LOCAL_AGENT_EXECUTION`."
     if status in {"blocked_by_human", "blocked_by_gate"}:
         return "Change the request, passport, target, or approval decision before retrying."
     if status == "needs_evidence":
-        return "Add recorder evidence before promotion."
+        return f"Run `delegation request-run --ledger LEDGER --action-id {action_id} --confirm LOCAL_AGENT_EXECUTION`, or attach external evidence with `delegation evidence-ingest`."
     if status == "recorded":
         return "Run evals and promotion checks against the ledger."
     if status == "warning":
         return "Review the warning and request more evidence if needed."
-    return "Execute under recorder control, then append recorded evidence."
+    return f"Run `delegation request-run --ledger LEDGER --action-id {action_id} --confirm LOCAL_AGENT_EXECUTION`."
 
 
 def _report_status(items: T.Sequence[ApprovalInboxItem]) -> str:
@@ -453,6 +455,18 @@ def _agent_gate_events(events: T.Sequence[JsonMap]) -> T.Iterator[JsonMap]:
     for event in events:
         if event.get("type") == "agent.gate.previewed":
             yield event
+
+
+def _latest_gate_events_by_action(events: T.Iterable[JsonMap]) -> T.Iterator[JsonMap]:
+    latest: dict[str, JsonMap] = {}
+    for event in events:
+        action_id = _event_action_id(event) or f"gate-{_event_sequence(event) or 'unknown'}"
+        existing = latest.get(action_id)
+        existing_sequence = _event_sequence(existing) if existing else None
+        sequence = _event_sequence(event)
+        if existing is None or (isinstance(sequence, int) and (existing_sequence is None or sequence >= existing_sequence)):
+            latest[action_id] = event
+    yield from sorted(latest.values(), key=lambda event: _event_sequence(event) or 0)
 
 
 def _approval_decisions_by_action(events: T.Sequence[JsonMap]) -> dict[str, ApprovalDecision]:
