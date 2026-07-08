@@ -373,6 +373,8 @@ def cmd_app_dashboard(args: argparse.Namespace) -> int:
             preview_action=args.preview_action,
             preview_target=args.preview_target,
             preview_risk=args.preview_risk,
+            preview_note=args.preview_note,
+            preview_expires_at=args.preview_expires_at,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -398,6 +400,8 @@ def cmd_approval_preview(args: argparse.Namespace) -> int:
             requested_risk=args.risk,
             approvals=tuple(args.approval or ()),
             evidence=tuple(args.evidence or ()),
+            reviewer_note=args.review_note,
+            expires_at=args.expires_at,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -436,6 +440,8 @@ def cmd_app_export(args: argparse.Namespace) -> int:
             preview_agent=args.preview_agent,
             preview_action=args.preview_action,
             preview_target=args.preview_target,
+            preview_note=args.preview_note,
+            preview_expires_at=args.preview_expires_at,
         )
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -468,6 +474,8 @@ def cmd_app_serve(args: argparse.Namespace) -> int:
             preview_agent=args.preview_agent,
             preview_action=args.preview_action,
             preview_target=args.preview_target,
+            preview_note=args.preview_note,
+            preview_expires_at=args.preview_expires_at,
         )
     except KeyboardInterrupt:
         print("\nStopped DelegationHQ local app server.")
@@ -1839,6 +1847,8 @@ def build_parser() -> argparse.ArgumentParser:
     app_dashboard.add_argument("--preview-agent", help="Agent id to show in the approval preview card.")
     app_dashboard.add_argument("--preview-action", default="read.workspace", help="Approval preview action. Defaults to read.workspace.")
     app_dashboard.add_argument("--preview-target", default="workspace", help="Approval preview target. Defaults to workspace.")
+    app_dashboard.add_argument("--preview-note", help="Optional reviewer note to include in the approval preview packet.")
+    app_dashboard.add_argument("--preview-expires-at", help="Optional ISO timestamp after which the preview should be regenerated.")
     app_dashboard.add_argument(
         "--preview-risk",
         choices=("low", "medium", "high", "critical"),
@@ -1856,6 +1866,8 @@ def build_parser() -> argparse.ArgumentParser:
     app_export.add_argument("--preview-agent", help="Agent id to show in the approval preview card.")
     app_export.add_argument("--preview-action", default="read.workspace", help="Approval preview action. Defaults to read.workspace.")
     app_export.add_argument("--preview-target", default="workspace", help="Approval preview target. Defaults to workspace.")
+    app_export.add_argument("--preview-note", help="Optional reviewer note to include in the approval preview packet.")
+    app_export.add_argument("--preview-expires-at", help="Optional ISO timestamp after which the preview should be regenerated.")
     app_export.add_argument("--json", action="store_true", help="Print the export report as JSON.")
     app_export.set_defaults(func=cmd_app_export)
 
@@ -1869,6 +1881,8 @@ def build_parser() -> argparse.ArgumentParser:
     app_serve.add_argument("--preview-agent", help="Agent id to show in the approval preview card.")
     app_serve.add_argument("--preview-action", default="read.workspace", help="Approval preview action. Defaults to read.workspace.")
     app_serve.add_argument("--preview-target", default="workspace", help="Approval preview target. Defaults to workspace.")
+    app_serve.add_argument("--preview-note", help="Optional reviewer note to include in the approval preview packet.")
+    app_serve.add_argument("--preview-expires-at", help="Optional ISO timestamp after which the preview should be regenerated.")
     app_serve.add_argument("--dry-run", action="store_true", help="Print the local app URL without starting the server.")
     app_serve.add_argument("--json", action="store_true", help="Print the server report as JSON.")
     app_serve.set_defaults(func=cmd_app_serve)
@@ -1895,6 +1909,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     approval_preview.add_argument("--approval", action="append", help="Approval evidence already present. Repeatable.")
     approval_preview.add_argument("--evidence", action="append", help="Evidence already present. Repeatable.")
+    approval_preview.add_argument("--review-note", help="Optional reviewer note to attach to this preview packet.")
+    approval_preview.add_argument("--expires-at", help="Optional ISO timestamp after which this preview should be regenerated.")
     approval_preview.add_argument("--json", action="store_true", help="Print the approval preview as JSON.")
     approval_preview.set_defaults(func=cmd_approval_preview)
 

@@ -42,30 +42,31 @@ Human = final yes/no for danger.
 
 ## Now
 
-1. Add reviewer notes, expiration, and decision history summaries to the
-   approval loop so repeated agent actions feel controlled but not heavy.
-2. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
+1. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
    examples for CLI agents, webhook agents, MCP workflows, and CRM agents.
-3. Improve the local app shell after visual direction is approved: agent list,
+2. Improve the local app shell after visual direction is approved: agent list,
    approval cards, mission timeline, and evidence details should feel fast and
    obvious without exposing internal complexity.
-4. Expand Agent Approval Preview with proposed file/resource diffs, command
-   intent, reviewer notes, expiration, and repeated-action history.
-5. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
+3. Expand Agent Approval Preview with proposed file/resource diffs and command
+   intent previews before risky writes.
+4. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
    repo stabilizes.
-6. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
+5. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
    designing UI until the visual direction is approved.
-7. Run `delegation release-check --strict-artifacts` on a clean Windows release
+6. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-8. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+7. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-9. Test the GitHub App issue-write path against a real installed app before
+8. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-10. Decide which `delegation github-app-plan` mode should become the first
+9. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently
 
+- Expanded Approval Preview into a practical human control card with request
+  packet context, resource scope, evidence status, repeated-action history,
+  reviewer notes, expiration, app rendering, CLI flags, and regression tests.
 - Turned the local app tester report into functional UX fixes: full timeline,
   copy buttons, labeled next actions, wrapped workspace paths, richer Agent
   Passport cards, local JSON links, refresh control, and regression coverage.

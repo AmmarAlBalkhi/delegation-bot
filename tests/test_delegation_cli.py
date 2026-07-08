@@ -259,6 +259,77 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["agent_id"], "preview_runner")
         self.assertTrue(data["can_execute"])
         self.assertIn("command_output", data["required_evidence"])
+        self.assertEqual(data["request_context"]["intent"], "preview_runner wants to read workspace")
+        self.assertEqual(data["resource_summary"]["target_kind"], "workspace")
+        self.assertEqual(data["evidence_status"]["status"], "missing")
+        self.assertEqual(data["history"]["status"], "no_history")
+
+    def test_approval_preview_includes_history_note_and_expiration(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "history_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('history ok')\"",
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+                for _ in range(2):
+                    self.assertEqual(
+                        main(
+                            [
+                                "agent-run",
+                                "history_runner",
+                                "--workspace",
+                                tmpdir,
+                                "--execute",
+                                "--confirm",
+                                "LOCAL_AGENT_EXECUTION",
+                            ]
+                        ),
+                        0,
+                    )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "approval-preview",
+                        "history_runner",
+                        "--workspace",
+                        tmpdir,
+                        "--review-note",
+                        "tests passed locally",
+                        "--expires-at",
+                        "2099-01-01T00:00:00Z",
+                        "--json",
+                    ]
+                )
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["reviewer_note"], "tests passed locally")
+        self.assertEqual(data["expires_at"], "2099-01-01T00:00:00Z")
+        self.assertFalse(data["expired"])
+        self.assertEqual(data["history"]["status"], "has_history")
+        self.assertEqual(data["history"]["gate_count"], 2)
+        self.assertEqual(data["history"]["recorded_count"], 2)
+        self.assertEqual(data["history"]["matching_event_count"], 8)
+        self.assertIn("recorded RunPrint proof", data["history"]["summary"])
+        self.assertEqual(data["request_context"]["reviewer_note"], "tests passed locally")
+        self.assertIn("workspace", data["resource_summary"]["touches"])
 
     def test_app_export_writes_static_local_app_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -295,6 +366,10 @@ class DelegationCliTests(unittest.TestCase):
                         str(output_dir),
                         "--preview-agent",
                         "app_runner",
+                        "--preview-note",
+                        "operator checked",
+                        "--preview-expires-at",
+                        "2099-01-01T00:00:00Z",
                         "--json",
                     ]
                 )
@@ -321,6 +396,9 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("DelegationHQ Local App", html_text)
         self.assertIn("Command Center", html_text)
         self.assertIn("Approval Preview", html_text)
+        self.assertIn("Request packet", html_text)
+        self.assertIn("operator checked", html_text)
+        self.assertIn('--review-note &quot;operator checked&quot;', html_text)
         self.assertIn("Timeline", html_text)
 
     def test_app_export_renders_operator_ux_without_truncating_timeline(self) -> None:
@@ -388,6 +466,9 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("16. [record]", html_text)
         self.assertIn("data-copy=", html_text)
         self.assertIn("Copy</button>", html_text)
+        self.assertIn("Request packet", html_text)
+        self.assertIn("Touched resources", html_text)
+        self.assertIn("Decision history", html_text)
         self.assertIn("Endpoint:", html_text)
         self.assertIn("Can do:", html_text)
         self.assertIn("Can use:", html_text)

@@ -92,8 +92,10 @@ approval preview, command center, timeline, and next safe actions in one bundle.
 eval, feedback, and promotion.
 
 `approval-preview` is the human card: this agent wants this action, here is
-the risk, here is the approval/evidence needed, here are the approve/block/run
-commands, and here is the safe next step.
+what it can touch, here is the risk, here is the approval/evidence needed, here
+is prior history for repeated actions, here are optional reviewer notes and
+expiration, here are the approve/block/run commands, and here is the safe next
+step.
 
 `app-export` writes a local browser cockpit bundle with `dashboard.json`,
 `state.json`, `timeline.json`, and approval preview data. `app-serve` serves the

@@ -6,13 +6,15 @@ It combines the pieces a user needs on one screen:
 
 - workspace health
 - Agent Passports
-- approval preview
+- approval preview with reviewer note, expiration, resource scope, evidence
+  gaps, and repeated-action history
 - command center
 - mission timeline
 - next safe actions
 
 ```bash
 delegation app-dashboard --workspace . --preview-agent local_cli_agent
+delegation app-dashboard --workspace . --preview-agent local_cli_agent --preview-note "scope checked"
 delegation app-dashboard --workspace . --preview-agent local_cli_agent --json
 ```
 
@@ -22,6 +24,8 @@ Simple version:
 Show me the workspace.
 Show me the agent request.
 Show me if it is safe.
+Show me what it can touch.
+Show me if it happened before.
 Show me the next command.
 Show me the proof trail.
 ```
@@ -34,7 +38,9 @@ future hosted/team surfaces.
 Top-level fields:
 
 - `state`: app-ready workspace state
-- `approval_preview`: human card for the current agent request
+- `approval_preview`: human card for the current agent request, including
+  request context, resource summary, evidence status, note/expiration, and
+  decision history
 - `timeline`: ordered proof/history over the ledger
 - `command_center`: safe commands the UI can show without guessing
 - `next_actions`: deduped next useful actions

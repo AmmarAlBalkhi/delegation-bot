@@ -74,6 +74,8 @@ def export_local_app(
     preview_agent: str | None = None,
     preview_action: str = "read.workspace",
     preview_target: str = "workspace",
+    preview_note: str | None = None,
+    preview_expires_at: str | None = None,
 ) -> LocalAppReport:
     """Write a static local cockpit bundle for a workspace."""
 
@@ -85,6 +87,8 @@ def export_local_app(
         preview_agent=preview_agent,
         preview_action=preview_action,
         preview_target=preview_target,
+        preview_note=preview_note,
+        preview_expires_at=preview_expires_at,
     )
     dashboard_data = dashboard.to_dict()
     state_data = dashboard_data["state"]
@@ -125,6 +129,8 @@ def serve_local_app(
     preview_agent: str | None = None,
     preview_action: str = "read.workspace",
     preview_target: str = "workspace",
+    preview_note: str | None = None,
+    preview_expires_at: str | None = None,
 ) -> None:
     """Serve the local cockpit until interrupted."""
 
@@ -139,6 +145,8 @@ def serve_local_app(
                     preview_agent=preview_agent,
                     preview_action=preview_action,
                     preview_target=preview_target,
+                    preview_note=preview_note,
+                    preview_expires_at=preview_expires_at,
                 ).to_dict()
                 state_data = dashboard_data["state"]
                 preview = _preview_from_query(
@@ -148,6 +156,8 @@ def serve_local_app(
                     default_agent=preview_agent,
                     default_action=preview_action,
                     default_target=preview_target,
+                    default_note=preview_note,
+                    default_expires_at=preview_expires_at,
                 )
                 if preview is not None:
                     dashboard_data["approval_preview"] = preview.to_dict()
@@ -163,6 +173,8 @@ def serve_local_app(
                         preview_agent=preview_agent,
                         preview_action=preview_action,
                         preview_target=preview_target,
+                        preview_note=preview_note,
+                        preview_expires_at=preview_expires_at,
                     ).to_dict()
                 )
                 return
@@ -178,6 +190,8 @@ def serve_local_app(
                     default_agent=preview_agent,
                     default_action=preview_action,
                     default_target=preview_target,
+                    default_note=preview_note,
+                    default_expires_at=preview_expires_at,
                 )
                 if preview is None:
                     self._send_json({"status": "empty", "message": "No agent passport is available."}, status=404)
@@ -263,6 +277,8 @@ def _preview_from_query(
     default_agent: str | None,
     default_action: str,
     default_target: str,
+    default_note: str | None = None,
+    default_expires_at: str | None = None,
 ) -> ApprovalPreviewReport | None:
     agent = _query_value(query, "agent") or default_agent or _first_agent_id(state_data)
     if not agent:
@@ -273,6 +289,8 @@ def _preview_from_query(
         target=_query_value(query, "target") or default_target,
         workspace_root=workspace_root,
         requested_risk=_query_value(query, "risk"),
+        reviewer_note=_query_value(query, "note") or default_note,
+        expires_at=_query_value(query, "expires_at") or default_expires_at,
     )
 
 
@@ -521,16 +539,28 @@ def _metric_panel(title: str, value: T.Any, detail: T.Any) -> str:
 def _approval_preview_html(preview: JsonMap) -> str:
     if not preview:
         return "<p class=\"subtle\">No agent passport is available yet.</p>"
+    context = preview.get("request_context") if isinstance(preview.get("request_context"), dict) else {}
+    resource = preview.get("resource_summary") if isinstance(preview.get("resource_summary"), dict) else {}
+    evidence = preview.get("evidence_status") if isinstance(preview.get("evidence_status"), dict) else {}
+    history = preview.get("history") if isinstance(preview.get("history"), dict) else {}
     return f"""
 <p><strong>{_escape(preview.get("summary", "No summary available."))}</strong></p>
 <div class="grid">
   {_metric_panel("Decision", preview.get("decision", "unknown"), f"risk: {preview.get('risk', 'unknown')}")}
   {_metric_panel("Agent", preview.get("agent_id", "unknown"), preview.get("action", "unknown"))}
+  {_metric_panel("History", history.get("status", "unknown"), history.get("summary", "No history loaded."))}
+  {_metric_panel("Evidence", evidence.get("status", "unknown"), evidence.get("summary", "No evidence summary."))}
 </div>
+<p class="subtle">Request packet</p>
+{_request_packet_html(context, preview)}
+<p class="subtle">Touched resources</p>
+{_resource_summary_html(resource)}
 <p class="subtle">Required approvals</p>
 {_list_html(preview.get("required_approvals") if isinstance(preview.get("required_approvals"), list) else [])}
 <p class="subtle">Required evidence</p>
 {_list_html(preview.get("required_evidence") if isinstance(preview.get("required_evidence"), list) else [])}
+<p class="subtle">Decision history</p>
+{_approval_history_html(history)}
 <p class="subtle">Safe next step</p>
 <p>{_escape(preview.get("safe_next_step", "Review the request before continuing."))}</p>
 <p class="subtle">Decision commands</p>
@@ -611,6 +641,55 @@ def _next_actions_html(actions: list[T.Any]) -> str:
             "</li>"
         )
     return "<ul>" + "".join(rows) + "</ul>" if rows else "<p class=\"subtle\">none</p>"
+
+
+def _request_packet_html(context: JsonMap, preview: JsonMap) -> str:
+    note = context.get("reviewer_note") or preview.get("reviewer_note") or "none"
+    expires = context.get("expires_at") or preview.get("expires_at") or "not set"
+    expired = context.get("expired") or preview.get("expired")
+    expiry_status = "expired" if expired else "active"
+    return f"""<div class="kv">
+  <div><strong>Intent:</strong> {_escape(context.get("intent", "unknown"))}</div>
+  <div><strong>Operation:</strong> {_escape(context.get("operation", preview.get("action", "unknown")))}</div>
+  <div><strong>Decision reason:</strong> {_escape(context.get("decision_reason", "unknown"))}</div>
+  <div><strong>Reviewer note:</strong> {_escape(note)}</div>
+  <div><strong>Expires:</strong> {_escape(expires)} ({_escape(expiry_status)})</div>
+</div>"""
+
+
+def _resource_summary_html(resource: JsonMap) -> str:
+    touches = resource.get("touches") if isinstance(resource.get("touches"), list) else []
+    return f"""<div class="kv">
+  <div><strong>Target:</strong> {_escape(resource.get("target", "unknown"))}</div>
+  <div><strong>Kind:</strong> {_escape(resource.get("target_kind", "unknown"))}</div>
+  <div><strong>Endpoint:</strong> {_escape(resource.get("endpoint", "unknown"))}</div>
+  <div><strong>Scope:</strong> {_escape(_inline_list(touches) or "not declared")}</div>
+  <div><strong>Action check:</strong> {_escape(resource.get("matched_action_check", "not checked"))}</div>
+  <div><strong>Target check:</strong> {_escape(resource.get("matched_target_check", "not checked"))}</div>
+</div>"""
+
+
+def _approval_history_html(history: JsonMap) -> str:
+    recent = history.get("recent_events") if isinstance(history.get("recent_events"), list) else []
+    rows = [
+        f"<div><strong>Status:</strong> {_escape(history.get('status', 'unknown'))}</div>",
+        f"<div><strong>Summary:</strong> {_escape(history.get('summary', 'No history loaded.'))}</div>",
+        f"<div><strong>Gate receipts:</strong> {_escape(history.get('gate_count', 0))}</div>",
+        f"<div><strong>RunPrint proof:</strong> {_escape(history.get('recorded_count', 0))}</div>",
+        f"<div><strong>Approvals:</strong> {_escape(history.get('approval_count', 0))}</div>",
+        f"<div><strong>Blocks:</strong> {_escape(history.get('block_count', 0))}</div>",
+    ]
+    if recent:
+        rows.append("<div><strong>Recent:</strong></div>")
+        for item in recent[-3:]:
+            if isinstance(item, dict):
+                rows.append(
+                    "<div>"
+                    f"{_escape(item.get('sequence', '?'))}. {_escape(item.get('event_type', 'event'))} "
+                    f"[{_escape(item.get('status', 'unknown'))}]"
+                    "</div>"
+                )
+    return "<div class=\"kv\">" + "".join(rows) + "</div>"
 
 
 def _agent_passport_html(passport: JsonMap, *, workspace_root: T.Any) -> str:

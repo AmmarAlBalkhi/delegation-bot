@@ -1447,3 +1447,27 @@ Guardrails:
 
 Follow-up: Add richer approval context next: proposed files/resources, reviewer
 notes, expiration, and repeated-action history.
+
+## 2026-07-08: Make Approval Preview The Human Control Card
+
+Decision: Expand `approval-preview`, `app-dashboard`, `app-export`, and
+`app-serve` so an agent request includes request context, touched resources,
+evidence status, repeated-action history, reviewer notes, and optional
+expiration.
+
+Why: Agent Passports become real when the user can understand a requested
+action before saying yes. The approval card should answer: who is asking, what
+do they want, what can they touch, what proof is missing, did this happen
+before, and what command is safe next?
+
+Guardrails:
+
+- approval preview is still read-only
+- notes and expiration change the approval packet, not the underlying policy
+  engine
+- expired previews disable direct execution and tell the user to regenerate
+- command copy remains explicit; the app page does not execute agents
+- history comes from the local ledger and works without GitHub
+
+Follow-up: Add proposed file/resource diffs and command intent previews before
+risky writes.

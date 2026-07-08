@@ -56,6 +56,8 @@ def build_app_dashboard_report(
     preview_action: str = "read.workspace",
     preview_target: str = "workspace",
     preview_risk: str | None = None,
+    preview_note: str | None = None,
+    preview_expires_at: str | None = None,
 ) -> AppDashboardReport:
     """Build the functional local app bundle for one workspace."""
 
@@ -70,6 +72,8 @@ def build_app_dashboard_report(
         preview_action=preview_action,
         preview_target=preview_target,
         preview_risk=preview_risk,
+        preview_note=preview_note,
+        preview_expires_at=preview_expires_at,
     )
     return AppDashboardReport(
         schema_version=APP_DASHBOARD_SCHEMA_VERSION,
@@ -157,6 +161,8 @@ def _build_preview(
     preview_action: str,
     preview_target: str,
     preview_risk: str | None,
+    preview_note: str | None,
+    preview_expires_at: str | None,
 ) -> ApprovalPreviewReport | None:
     agent_id = preview_agent or _first_agent_id(state_data)
     if not agent_id:
@@ -167,6 +173,8 @@ def _build_preview(
         target=preview_target,
         workspace_root=workspace_root,
         requested_risk=preview_risk,
+        reviewer_note=preview_note,
+        expires_at=preview_expires_at,
     )
 
 
@@ -201,7 +209,11 @@ def _command_center(
         yield {
             "id": "preview_request",
             "label": "Preview request",
-            "command": f"delegation approval-preview {preview.agent_id} --workspace {workspace} --action {preview.action} --target {preview.target}",
+            "command": (
+                f"delegation approval-preview {preview.agent_id} --workspace {workspace} "
+                f"--action {preview.action} --target {preview.target}"
+                f"{_preview_metadata_args(preview)}"
+            ),
             "purpose": "Recheck the agent passport before action.",
             "risk": preview.gate.effective_risk,
         }
@@ -254,6 +266,21 @@ def _dashboard_warnings(
         yield "No agent passport is available for an approval preview."
     elif preview.warnings:
         yield from preview.warnings
+
+
+def _preview_metadata_args(preview: ApprovalPreviewReport) -> str:
+    parts: list[str] = []
+    if preview.reviewer_note:
+        parts.append("--review-note " + _shell_arg(preview.reviewer_note))
+    if preview.expires_at:
+        parts.append("--expires-at " + _shell_arg(preview.expires_at))
+    return " " + " ".join(parts) if parts else ""
+
+
+def _shell_arg(value: str) -> str:
+    if not any(char.isspace() for char in value) and '"' not in value:
+        return value
+    return '"' + value.replace('"', '\\"') + '"'
 
 
 def _first_agent_id(state_data: JsonMap) -> str | None:

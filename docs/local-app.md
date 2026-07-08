@@ -11,8 +11,8 @@ read a workspace, show agents, show approval previews, and stay local-first.
 ```bash
 delegation workspace-init --path . --plan
 delegation agent-add local_cli_agent --workspace . --command "python agent.py" --capability read.workspace --allowed-data workspace --evidence command_output --force
-delegation approval-preview local_cli_agent --workspace .
-delegation app-dashboard --workspace . --preview-agent local_cli_agent
+delegation approval-preview local_cli_agent --workspace . --review-note "scope checked" --expires-at 2099-01-01T00:00:00Z
+delegation app-dashboard --workspace . --preview-agent local_cli_agent --preview-note "scope checked"
 delegation timeline --workspace .
 delegation app-export --workspace . --preview-agent local_cli_agent
 delegation app-serve --workspace . --dry-run
@@ -42,7 +42,8 @@ http://127.0.0.1:8765/
 - ledger status
 - registered Agent Passports
 - release readiness
-- a human approval preview card
+- a human approval preview card with request context, resource scope, evidence
+  gaps, history, reviewer notes, and expiration
 - a command center with safe next commands
 - a full mission timeline
 - copy buttons for commands
@@ -58,6 +59,8 @@ Folder is workspace.
 Agents have ID cards.
 App shows current state.
 Approval card says allow, ask human, or block.
+Approval card says what the agent wants and what it can touch.
+History says if this action happened before.
 Timeline shows everything that happened.
 Copy buttons make commands easy.
 Agent cards show what the worker may do before it works.
