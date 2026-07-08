@@ -47,9 +47,8 @@ Human = final yes/no for danger.
 1. Expand Bring Your Own Agent adapters from file-based handoff to live
    connector modes: CLI stdin/stdout, webhook callback, MCP tool call, and
    LangGraph invocation.
-2. Improve the local app shell after visual direction is approved: agent list,
-   approval cards, mission timeline, and evidence details should feel fast and
-   obvious without exposing internal complexity.
+2. Add controlled request execution UX only after the guarded app approval and
+   Agent Passport registration loop has more local testing.
 3. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
    designing UI until the visual direction is approved.
 4. Run `delegation release-check --strict-artifacts` on a clean Windows release
@@ -63,6 +62,10 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added the first functional local cockpit controls: guarded approve/block
+  buttons for pending requests, guarded Agent Passport registration, and a
+  `result_summary` contract over evidence, execution, attention, and latest
+  timeline events.
 - Added guarded local app approval writes: `app-serve` stays read-only by
   default, `--allow-actions` enables only approve/block receipt recording with
   `LOCAL_APP_WRITE`, and actual agent execution still needs

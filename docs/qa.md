@@ -62,6 +62,8 @@ The QA command currently checks:
   smoke tests
 - installed package guarded `app-serve --allow-actions` smoke test so approval
   writes are covered without executing agents
+- installed package app export smoke test for functional app sections such as
+  Add Agent Passport and Mission Result
 - installed package `action-request` smoke test for the agent asks -> gate ->
   approval card path
 - installed package `request-status` and `request-run` smoke tests for the
@@ -70,6 +72,8 @@ The QA command currently checks:
   active real request from the workspace ledger
 - local app regression coverage for disabled action mode, wrong confirmation
   token blocking, and guarded approval receipt recording
+- local app regression coverage for guarded Agent Passport registration
+- app-dashboard regression coverage for `result_summary`
 - approval preview regression coverage for request context, resource scope,
   evidence status, repeated-action history, reviewer notes, and expiration
 - local app operator UX regression coverage for full timelines, copy buttons,

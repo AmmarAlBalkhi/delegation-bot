@@ -48,10 +48,10 @@ an approve/block decision for the active request, start it deliberately:
 delegation app-serve --workspace . --allow-actions
 ```
 
-The browser-facing approval endpoint still requires the exact confirmation token
-`LOCAL_APP_WRITE`. This only records the human approval receipt. Agent execution
-still requires the separate `LOCAL_AGENT_EXECUTION` confirmation through the
-controlled request-run path.
+The browser-facing write endpoints still require the exact confirmation token
+`LOCAL_APP_WRITE`. They can register an Agent Passport or record a human
+approve/block receipt. Agent execution still requires the separate
+`LOCAL_AGENT_EXECUTION` confirmation through the controlled request-run path.
 
 ## What It Shows
 
@@ -61,8 +61,11 @@ controlled request-run path.
 - Evidence
 - Timeline
 - Settings
+- Mission Result
 - workspace health
 - active request from the real workspace ledger
+- app-backed Agent Passport registration for CLI/API/webhook/MCP-style workers
+- app-backed approve/block controls for active pending requests
 - guided workspace flow with the current step and one next safe command
 - one-command demo workspace with optional approval, execution, evidence, and
   cockpit export
@@ -77,6 +80,8 @@ controlled request-run path.
 - local data links for generated JSON files in Settings
 - next safe actions
 - guarded local approval writes when the server is started with `--allow-actions`
+- guarded local agent registration when the server is started with
+  `--allow-actions`
 
 Simple version:
 
@@ -84,12 +89,15 @@ Simple version:
 Folder is workspace.
 Mission is the objective.
 Agents have ID cards.
+Add agent gives a worker an ID card.
 Approval card says allow, ask human, or block.
+Approve or block is the human yes/no.
 Action intent says what may happen before you say yes.
 Workspace flow says what to do next.
 Active request says what the agent is asking for now.
 Evidence says what was recorded.
 Timeline shows everything that happened.
+Mission Result says what happened in plain terms.
 Settings keeps maintenance details out of the main loop.
 ```
 
@@ -97,8 +105,8 @@ Settings keeps maintenance details out of the main loop.
 
 - `app-export` writes static files only.
 - `app-serve` is read-only unless started with `--allow-actions`.
-- `--allow-actions` can record a local approve/block receipt only when the
-  request includes `LOCAL_APP_WRITE`.
+- `--allow-actions` can register local agents or record local approve/block
+  receipts only when the request includes `LOCAL_APP_WRITE`.
 - Agent execution still requires `LOCAL_AGENT_EXECUTION`.
 - Neither app command executes agents.
 - Neither command writes to GitHub.

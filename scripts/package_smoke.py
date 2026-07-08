@@ -411,6 +411,10 @@ def main() -> int:
         if not (workspace / ".delegation" / "cockpit" / "index.html").exists():
             print("FAIL: installed package app-export index.html missing")
             return 1
+        app_index_text = (workspace / ".delegation" / "cockpit" / "index.html").read_text(encoding="utf-8")
+        if "Add Agent Passport" not in app_index_text or "Mission Result" not in app_index_text:
+            print("FAIL: installed package app-export missing functional app sections")
+            return 1
 
         app_serve = _run(
             [
@@ -540,6 +544,7 @@ def main() -> int:
         if (
             active_request_dashboard.returncode != 0
             or '"active_request"' not in active_request_dashboard.stdout
+            or '"result_summary"' not in active_request_dashboard.stdout
             or "Smoke agent requests read access through the cockpit." not in active_request_dashboard.stdout
         ):
             print("FAIL: installed package active request dashboard smoke")
@@ -762,7 +767,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
         print(
-            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, active request dashboard, approval-preview, app-export, app-serve, guarded app actions, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, active request dashboard, result summary, approval-preview, app-export functional sections, app-serve, guarded app actions, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
         )
     return 0
 

@@ -1603,3 +1603,26 @@ Guardrails:
 
 Follow-up: Add a small first-run approval inbox UI over this endpoint after the
 functional contract is stable and the visual direction is approved.
+
+## 2026-07-08: Add Functional Local Cockpit Controls
+
+Decision: Add app-backed controls for guarded approval decisions, guarded Agent
+Passport registration, and a plain `result_summary` contract.
+
+Why: DelegationHQ should feel like a working trust cockpit, not a fake demo
+dashboard. The first app slice now supports the practical loop: add agent,
+review active request, approve/block, then inspect result and proof trail.
+
+Guardrails:
+
+- app writes still require `app-serve --allow-actions`
+- each app write still requires `LOCAL_APP_WRITE`
+- app approval writes only record human decision receipts
+- app agent registration only writes the local Agent Passport registry
+- agent execution still requires `LOCAL_AGENT_EXECUTION`
+- controls are plain and replaceable so final visual design can change later
+- implementation uses local workspace paths and standard library HTTP so the
+  flow stays cross-platform across Windows, macOS, and Linux
+
+Follow-up: Add controlled request execution from the app only after the first
+approval/register/result loop has more operator testing.

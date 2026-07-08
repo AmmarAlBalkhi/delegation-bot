@@ -31,6 +31,7 @@ class AppDashboardReport:
     approval_preview: ApprovalPreviewReport | None
     agent_packet: AgentPacketReport | None
     workspace_flow: WorkspaceFlowReport
+    result_summary: JsonMap
     product_areas: tuple[JsonMap, ...]
     command_center: tuple[JsonMap, ...]
     control_loop: tuple[JsonMap, ...]
@@ -57,6 +58,7 @@ class AppDashboardReport:
             "approval_preview": self.approval_preview.to_dict() if self.approval_preview else None,
             "agent_packet": self.agent_packet.to_dict() if self.agent_packet else None,
             "workspace_flow": self.workspace_flow.to_dict(),
+            "result_summary": self.result_summary,
             "product_areas": list(self.product_areas),
             "command_center": list(self.command_center),
             "control_loop": list(self.control_loop),
@@ -103,6 +105,7 @@ def build_app_dashboard_report(
     agent_packet = _build_agent_packet(preview)
     workspace_flow = build_workspace_flow_report(workspace_root=workspace, state=state, timeline=timeline)
     command_center = tuple(_command_center(workspace, state_data, timeline, preview, active_request))
+    result_summary = _result_summary(state_data, timeline, active_request, agent_packet)
     control_loop = tuple(_control_loop(state_data, timeline, preview, agent_packet, command_center))
     return AppDashboardReport(
         schema_version=APP_DASHBOARD_SCHEMA_VERSION,
@@ -115,6 +118,7 @@ def build_app_dashboard_report(
         approval_preview=preview,
         agent_packet=agent_packet,
         workspace_flow=workspace_flow,
+        result_summary=result_summary,
         product_areas=tuple(_product_areas(state_data, timeline, preview, agent_packet, command_center)),
         command_center=command_center,
         control_loop=control_loop,
@@ -170,6 +174,16 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
                 f"- action: {report.agent_packet.action_id}",
             ]
         )
+    lines.extend(
+        [
+            "",
+            "Result summary:",
+            f"- status: {report.result_summary.get('status', 'unknown')}",
+            f"- summary: {report.result_summary.get('summary', 'No result yet.')}",
+            f"- evidence: {report.result_summary.get('evidence_count', 0)}",
+            f"- timeline events: {report.result_summary.get('timeline_events', 0)}",
+        ]
+    )
 
     lines.extend(["", "Control loop:"])
     lines.append(f"- Workspace flow: {report.workspace_flow.status}")
@@ -326,6 +340,66 @@ def _build_agent_packet(preview: ApprovalPreviewReport | None) -> AgentPacketRep
     except LedgerError:
         return build_agent_packet_report((), action_id=preview.action_id, ledger_source=str(ledger_path))
     return build_agent_packet_report(events, action_id=preview.action_id, ledger_source=str(ledger_path))
+
+
+def _result_summary(
+    state_data: JsonMap,
+    timeline: MissionTimelineReport,
+    active_request: JsonMap | None,
+    agent_packet: AgentPacketReport | None,
+) -> JsonMap:
+    ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
+    evidence = ledger.get("evidence") if isinstance(ledger.get("evidence"), dict) else {}
+    record_events = timeline.stage_counts.get("record", 0)
+    execute_events = timeline.stage_counts.get("execute", 0)
+    evidence_count = _int_value(evidence.get("recorded_count")) or record_events
+    active_status = _string(active_request.get("status")) if active_request else ""
+    if active_status == "recorded" or evidence_count:
+        status = "recorded"
+        summary = "Work has recorded evidence and is ready for review."
+    elif active_status in {"approved", "needs_evidence", "ready_for_recording"}:
+        status = "ready_to_run"
+        summary = "Request is approved or cleared; controlled execution is the next step."
+    elif active_status == "pending_approval":
+        status = "pending_approval"
+        summary = "Request is waiting for a human approve/block decision."
+    elif active_status in {"blocked_by_human", "blocked_by_gate"}:
+        status = "blocked"
+        summary = "Request is blocked; review the decision before retrying."
+    elif agent_packet and agent_packet.status not in {"missing", ""}:
+        status = agent_packet.status
+        summary = "Agent Packet exists; wait for result and evidence ingest."
+    elif timeline.event_count:
+        status = timeline.status
+        summary = "Mission has timeline evidence but no active completed request yet."
+    else:
+        status = "empty"
+        summary = "No mission result has been recorded yet."
+
+    latest_items = []
+    for item in timeline.items[-5:]:
+        latest_items.append(
+            {
+                "sequence": item.sequence,
+                "stage": item.stage,
+                "status": item.status,
+                "title": item.title,
+                "needs_attention": item.needs_attention,
+            }
+        )
+    return {
+        "schema_version": "delegation.result-summary.v1",
+        "status": status,
+        "summary": summary,
+        "active_request_status": active_status or None,
+        "evidence_count": evidence_count,
+        "timeline_events": timeline.event_count,
+        "attention_count": timeline.attention_count,
+        "execute_events": execute_events,
+        "record_events": record_events,
+        "agent_packet_status": agent_packet.status if agent_packet else "missing",
+        "latest_items": latest_items,
+    }
 
 
 def _command_center(
@@ -729,6 +803,10 @@ def _settings_status(doctor: JsonMap, release: JsonMap) -> str:
     if doctor.get("status") == "ready":
         return "ready"
     return _string(doctor.get("status"), default="unknown")
+
+
+def _int_value(value: T.Any, default: int = 0) -> int:
+    return value if isinstance(value, int) else default
 
 
 def _first_command(commands: T.Sequence[JsonMap], command_id: str) -> str | None:

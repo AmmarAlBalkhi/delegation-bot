@@ -10,7 +10,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 from delegation_bot.cli import main
-from delegation_bot.local_app import LOCAL_APP_WRITE_CONFIRMATION, build_local_app_approval_decision
+from delegation_bot.local_app import (
+    LOCAL_APP_WRITE_CONFIRMATION,
+    build_local_app_agent_add,
+    build_local_app_approval_decision,
+)
 from delegation_bot.model_suggest_fixtures import ModelSuggestionDraft
 from delegation_bot.suggest import build_suggestion
 
@@ -647,6 +651,21 @@ class DelegationCliTests(unittest.TestCase):
                 pending_dashboard_status = main(["app-dashboard", "--workspace", tmpdir, "--json"])
             pending_dashboard_data = json.loads(pending_dashboard_output.getvalue())
 
+            pending_output_dir = Path(tmpdir) / "pending-cockpit"
+            with redirect_stdout(io.StringIO()) as pending_export_output:
+                pending_export_status = main(
+                    [
+                        "app-export",
+                        "--workspace",
+                        tmpdir,
+                        "--output",
+                        str(pending_output_dir),
+                        "--json",
+                    ]
+                )
+            pending_export_data = json.loads(pending_export_output.getvalue())
+            pending_html_text = Path(pending_export_data["index_html"]).read_text(encoding="utf-8")
+
             with redirect_stdout(io.StringIO()):
                 approval_status = main(
                     [
@@ -745,7 +764,11 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(pending_dashboard_data["approval_preview"]["decision"], "approval_required")
         self.assertIn("approve_request", [item["id"] for item in pending_dashboard_data["command_center"]])
         self.assertIn("request_status", [item["id"] for item in pending_dashboard_data["command_center"]])
+        self.assertEqual(pending_dashboard_data["result_summary"]["status"], "pending_approval")
         self.assertEqual(len(pending_dashboard_data["request_cards"]), 1)
+        self.assertEqual(pending_export_status, 0)
+        self.assertIn("Guarded local decision", pending_html_text)
+        self.assertIn("data-approval-decision=\"approve\"", pending_html_text)
         self.assertEqual(pending_status, 0)
         self.assertEqual(pending_data["status"], "pending_approval")
         self.assertFalse(pending_data["ready_to_run"])
@@ -772,6 +795,9 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(export_status, 0)
         self.assertIn("Submitted action requests", html_text)
         self.assertIn("Active Request", html_text)
+        self.assertIn("Mission Result", html_text)
+        self.assertIn("Add Agent Passport", html_text)
+        self.assertIn("data-agent-register", html_text)
         self.assertIn("Workspace Flow", html_text)
         self.assertIn("Request runner wants to update the workspace.", html_text)
         self.assertIn("delegation request-status", html_text)
@@ -978,6 +1004,50 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(status_code, 0)
         self.assertEqual(status_data["status"], "approved")
         self.assertTrue(status_data["ready_to_run"])
+
+    def test_local_app_guarded_agent_add_registers_passport(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+
+            disabled = build_local_app_agent_add(
+                workspace_root=Path(tmpdir),
+                actions_enabled=False,
+                agent_id="local_form_agent",
+                command=f"{sys.executable} -c \"print('form ok')\"",
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            wrong_token = build_local_app_agent_add(
+                workspace_root=Path(tmpdir),
+                actions_enabled=True,
+                agent_id="local_form_agent",
+                command=f"{sys.executable} -c \"print('form ok')\"",
+                confirm="wrong",
+            )
+            recorded = build_local_app_agent_add(
+                workspace_root=Path(tmpdir),
+                actions_enabled=True,
+                agent_id="local_form_agent",
+                name="Local Form Agent",
+                command=f"{sys.executable} -c \"print('form ok')\"",
+                capabilities=("read.workspace",),
+                allowed_data=("workspace",),
+                evidence=("command_output",),
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            with redirect_stdout(io.StringIO()) as agents_output:
+                status = main(["agents", "--registry", str(Path(tmpdir) / ".delegation" / "agents.yaml"), "--json"])
+            data = json.loads(agents_output.getvalue())
+
+        self.assertEqual(disabled.status, "disabled")
+        self.assertFalse(disabled.wrote_registry)
+        self.assertEqual(wrong_token.status, "blocked")
+        self.assertFalse(wrong_token.wrote_registry)
+        self.assertEqual(recorded.status, "recorded")
+        self.assertTrue(recorded.wrote_registry)
+        self.assertEqual(recorded.agent_id, "local_form_agent")
+        self.assertEqual(status, 0)
+        self.assertIn("local_form_agent", [passport["id"] for passport in data["passports"]])
 
     def test_app_state_reports_missing_ledger_without_process_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

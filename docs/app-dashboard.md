@@ -10,7 +10,10 @@ It combines the pieces a user needs on one screen:
 - Evidence
 - Timeline
 - Settings
+- Mission Result
 - active request card from real workspace ledger data
+- result summary over approval, execution, evidence, attention, and latest
+  timeline events
 - workspace flow guide from workspace -> agent -> request -> approval ->
   execution -> evidence -> review
 - approval preview with reviewer note, expiration, resource scope, evidence
@@ -33,14 +36,15 @@ the active request automatically. Use `--preview-agent` only when you want to
 inspect a specific agent before it has submitted a real request.
 
 The local app server can use that same active request to record a guarded
-approve/block receipt when it is started with:
+approve/block receipt or register a local Agent Passport when it is started
+with:
 
 ```bash
 delegation app-serve --workspace . --allow-actions
 ```
 
-That write path is still only an approval receipt. It does not execute the
-agent, call GitHub, or call models.
+Those write paths only update local control-plane files. They do not execute
+the agent, call GitHub, or call models.
 
 Simple version:
 
@@ -52,6 +56,7 @@ Show me if it is safe.
 Show me what it can touch.
 Show me if it happened before.
 Show me the evidence.
+Show me the result.
 Show me the timeline.
 Show me the next safe step.
 ```
@@ -73,6 +78,8 @@ Top-level fields:
 - `agent_packet`: Bring Your Own Agent handoff packet when a matching Agent Gate
   receipt exists
 - `workspace_flow`: guided local flow stages and the next safe command
+- `result_summary`: plain status over the active request, evidence count,
+  execution events, attention count, and latest proof trail
 - `product_areas`: stable app areas for Missions, Agents, Approval Inbox,
   Evidence, and Settings
 - `control_loop`: simple progress checklist for the real trust loop
@@ -84,7 +91,7 @@ Top-level fields:
 
 This command is read-only. It does not execute agents, call GitHub, call models,
 or write approval decisions. The separate `app-serve --allow-actions` mode can
-record guarded local approval receipts for the active request.
+record guarded local approval receipts and Agent Passport registrations.
 
 Design can change later. The important product contract is the data shape.
 RunPrint is currently one evidence tool; the dashboard should keep saying

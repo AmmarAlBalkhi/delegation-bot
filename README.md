@@ -113,7 +113,9 @@ must return.
 `state.json`, `timeline.json`, and approval preview data. `app-serve` serves the
 same workspace state at `http://127.0.0.1:8765/` for the future desktop app path.
 It is read-only by default; `--allow-actions` only enables guarded local
-approve/block receipt writes, not agent execution.
+Agent Passport registration and approve/block receipt writes, not agent
+execution. The dashboard also exposes a `result_summary` so the app can show
+what happened without making users read the raw ledger first.
 
 `agents` shows Agent Passports for built-in Harnessfile agents and custom
 Bring Your Own Agent registries.

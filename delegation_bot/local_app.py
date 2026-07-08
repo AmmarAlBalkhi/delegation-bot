@@ -17,7 +17,8 @@ from delegation_bot.app_state import build_app_state
 from delegation_bot.approval_inbox import build_approval_decision_events, build_approval_inbox_report
 from delegation_bot.approval_preview import ApprovalPreviewReport, build_approval_preview_report
 from delegation_bot.evals import append_jsonl, load_jsonl
-from delegation_bot.local_workspace import DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+from delegation_bot.agent_registry_writer import add_agent_to_registry
+from delegation_bot.local_workspace import DEFAULT_WORKSPACE_AGENT_RUN_LEDGER, DEFAULT_WORKSPACE_REGISTRY
 from delegation_bot.mission_timeline import build_timeline_report_from_paths
 
 
@@ -27,6 +28,7 @@ DEFAULT_APP_HOST = "127.0.0.1"
 DEFAULT_APP_PORT = 8765
 LOCAL_APP_WRITE_CONFIRMATION = "LOCAL_APP_WRITE"
 LOCAL_APP_ACTION_SCHEMA_VERSION = "delegation.local-app-action.v1"
+LOCAL_APP_AGENT_SCHEMA_VERSION = "delegation.local-app-agent.v1"
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,45 @@ class LocalAppActionReport:
             "decision": self.decision,
             "approver": self.approver,
             "wrote_ledger": self.wrote_ledger,
+            "message": self.message,
+            "warnings": list(self.warnings),
+            "next_actions": list(self.next_actions),
+        }
+
+
+@dataclass(frozen=True)
+class LocalAppAgentReport:
+    schema_version: str
+    status: str
+    action: str
+    workspace: str
+    registry: str
+    agent_id: str
+    runtime_type: str
+    wrote_registry: bool
+    message: str
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def next_actions(self) -> tuple[str, ...]:
+        if self.status == "recorded":
+            return (
+                f"delegation agents --registry {self.registry}",
+                f"delegation approval-preview {self.agent_id} --workspace {self.workspace}",
+                "Refresh `/api/dashboard` to see the Agent Passport.",
+            )
+        return ("Refresh `/api/dashboard` and review the agent form.",)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "schema_version": self.schema_version,
+            "status": self.status,
+            "action": self.action,
+            "workspace": self.workspace,
+            "registry": self.registry,
+            "agent_id": self.agent_id,
+            "runtime_type": self.runtime_type,
+            "wrote_registry": self.wrote_registry,
             "message": self.message,
             "warnings": list(self.warnings),
             "next_actions": list(self.next_actions),
@@ -352,6 +393,147 @@ def _clean(value: T.Any) -> str:
     return value.strip() if isinstance(value, str) else ""
 
 
+def build_local_app_agent_add(
+    *,
+    workspace_root: Path,
+    actions_enabled: bool,
+    agent_id: str = "",
+    name: str = "",
+    runtime_type: str = "cli.command",
+    command: str = "",
+    api_url: str = "",
+    webhook_url: str = "",
+    mcp_endpoint: str = "",
+    capabilities: T.Sequence[str] = (),
+    allowed_tools: T.Sequence[str] = (),
+    allowed_data: T.Sequence[str] = (),
+    approvals: T.Sequence[str] = (),
+    expected_outputs: T.Sequence[str] = (),
+    evidence: T.Sequence[str] = (),
+    promotion_evals: T.Sequence[str] = (),
+    confirm: str | None = None,
+    force: bool = False,
+) -> LocalAppAgentReport:
+    """Register an Agent Passport through the guarded local app backend."""
+
+    workspace = workspace_root.resolve()
+    registry = workspace / DEFAULT_WORKSPACE_REGISTRY
+    clean_agent_id = _clean(agent_id)
+    clean_runtime = _clean(runtime_type) or "cli.command"
+    if not actions_enabled:
+        return _local_app_agent_refused(
+            workspace=workspace,
+            registry=registry,
+            agent_id=clean_agent_id,
+            runtime_type=clean_runtime,
+            status="disabled",
+            message="Local app actions are disabled. Restart with --allow-actions to register agents.",
+        )
+    if confirm != LOCAL_APP_WRITE_CONFIRMATION:
+        return _local_app_agent_refused(
+            workspace=workspace,
+            registry=registry,
+            agent_id=clean_agent_id,
+            runtime_type=clean_runtime,
+            status="blocked",
+            message=f"Agent registration requires confirmation token {LOCAL_APP_WRITE_CONFIRMATION}.",
+        )
+    if not clean_agent_id:
+        return _local_app_agent_refused(
+            workspace=workspace,
+            registry=registry,
+            agent_id=clean_agent_id,
+            runtime_type=clean_runtime,
+            status="blocked",
+            message="Agent id is required.",
+        )
+    try:
+        report = add_agent_to_registry(
+            registry_path=registry,
+            agent_id=clean_agent_id,
+            name=_clean(name) or None,
+            runtime_type=clean_runtime,
+            command=_clean(command) or None,
+            api_url=_clean(api_url) or None,
+            webhook_url=_clean(webhook_url) or None,
+            mcp_endpoint=_clean(mcp_endpoint) or None,
+            capabilities=tuple(_clean_list_values(capabilities)),
+            allowed_tools=tuple(_clean_list_values(allowed_tools)),
+            allowed_data=tuple(_clean_list_values(allowed_data)),
+            approvals=tuple(_clean_list_values(approvals)),
+            expected_outputs=tuple(_clean_list_values(expected_outputs)),
+            evidence=tuple(_clean_list_values(evidence)),
+            promotion_evals=tuple(_clean_list_values(promotion_evals)),
+            force=force,
+        )
+    except (OSError, ValueError) as exc:
+        return _local_app_agent_refused(
+            workspace=workspace,
+            registry=registry,
+            agent_id=clean_agent_id,
+            runtime_type=clean_runtime,
+            status="blocked",
+            message=str(exc),
+        )
+    return LocalAppAgentReport(
+        schema_version=LOCAL_APP_AGENT_SCHEMA_VERSION,
+        status="recorded",
+        action="agent-add",
+        workspace=str(workspace),
+        registry=report.registry,
+        agent_id=report.agent_id,
+        runtime_type=report.runtime_type,
+        wrote_registry=True,
+        message=f"Agent `{report.agent_id}` registered in the local workspace.",
+        warnings=report.warnings,
+    )
+
+
+def _local_app_agent_refused(
+    *,
+    workspace: Path,
+    registry: Path,
+    agent_id: str,
+    runtime_type: str,
+    status: str,
+    message: str,
+    warnings: tuple[str, ...] = (),
+) -> LocalAppAgentReport:
+    return LocalAppAgentReport(
+        schema_version=LOCAL_APP_AGENT_SCHEMA_VERSION,
+        status=status,
+        action="agent-add",
+        workspace=str(workspace),
+        registry=str(registry),
+        agent_id=agent_id,
+        runtime_type=runtime_type,
+        wrote_registry=False,
+        message=message,
+        warnings=warnings,
+    )
+
+
+def _clean_list_values(values: T.Sequence[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        cleaned = _clean(value)
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        result.append(cleaned)
+    return result
+
+
+def _payload_list(value: T.Any) -> tuple[str, ...]:
+    if isinstance(value, list):
+        return tuple(str(item) for item in value if isinstance(item, (str, int, float)))
+    if isinstance(value, str):
+        normalized = value.replace("\r\n", "\n").replace("\r", "\n").replace(",", "\n")
+        return tuple(part.strip() for part in normalized.split("\n") if part.strip())
+    return ()
+
+
 def serve_local_app(
     *,
     workspace_root: Path,
@@ -437,17 +619,41 @@ def serve_local_app(
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler API.
             parsed = urlparse(self.path)
-            if parsed.path != "/api/approval-decision":
+            if parsed.path not in {"/api/approval-decision", "/api/agent-add"}:
                 self._send_json({"status": "missing", "path": parsed.path}, status=404)
                 return
             payload = self._read_json()
-            report = build_local_app_approval_decision(
+            if parsed.path == "/api/approval-decision":
+                report = build_local_app_approval_decision(
+                    workspace_root=workspace,
+                    actions_enabled=allow_actions,
+                    action_id=_clean(payload.get("action_id")),
+                    decision=_clean(payload.get("decision")),
+                    approver=_clean(payload.get("approver")),
+                    reason=_clean(payload.get("reason")),
+                    confirm=_clean(payload.get("confirm")),
+                )
+                status = 200 if report.status == "recorded" else 403 if report.status == "disabled" else 400
+                self._send_json(report.to_dict(), status=status)
+                return
+            report = build_local_app_agent_add(
                 workspace_root=workspace,
                 actions_enabled=allow_actions,
-                action_id=_clean(payload.get("action_id")),
-                decision=_clean(payload.get("decision")),
-                approver=_clean(payload.get("approver")),
-                reason=_clean(payload.get("reason")),
+                agent_id=_clean(payload.get("agent_id")),
+                name=_clean(payload.get("name")),
+                runtime_type=_clean(payload.get("runtime_type")) or "cli.command",
+                command=_clean(payload.get("command")),
+                api_url=_clean(payload.get("api_url")),
+                webhook_url=_clean(payload.get("webhook_url")),
+                mcp_endpoint=_clean(payload.get("mcp_endpoint")),
+                capabilities=_payload_list(payload.get("capabilities")),
+                allowed_tools=_payload_list(payload.get("allowed_tools")),
+                allowed_data=_payload_list(payload.get("allowed_data")),
+                approvals=_payload_list(payload.get("approvals")),
+                expected_outputs=_payload_list(payload.get("expected_outputs")),
+                evidence=_payload_list(payload.get("evidence")),
+                promotion_evals=_payload_list(payload.get("promotion_evals")),
+                force=bool(payload.get("force")),
                 confirm=_clean(payload.get("confirm")),
             )
             status = 200 if report.status == "recorded" else 403 if report.status == "disabled" else 400
@@ -603,6 +809,9 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     workspace_flow = (
         dashboard_data.get("workspace_flow") if isinstance(dashboard_data.get("workspace_flow"), dict) else {}
     )
+    result_summary = (
+        dashboard_data.get("result_summary") if isinstance(dashboard_data.get("result_summary"), dict) else {}
+    )
     areas = _areas_by_id(product_areas)
     workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
@@ -720,6 +929,67 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     .kv div {{
       overflow-wrap: anywhere;
     }}
+    .action-panel, .form-grid {{
+      border: 1px solid #e2e0d8;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      background: #fbfbf8;
+    }}
+    .form-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+    }}
+    label {{
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #3d403a;
+    }}
+    input, select, textarea {{
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #bbb9af;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #191919;
+      font: inherit;
+      font-size: 13px;
+      padding: 8px;
+    }}
+    textarea {{
+      min-height: 70px;
+      resize: vertical;
+    }}
+    .action-row {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }}
+    .action-button {{
+      border: 1px solid #8f9188;
+      border-radius: 6px;
+      background: #222420;
+      color: #ffffff;
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 8px 10px;
+    }}
+    .action-button.secondary {{
+      background: #ffffff;
+      color: #222420;
+    }}
+    .app-message {{
+      margin-top: 8px;
+      font-size: 13px;
+      color: #5f625b;
+      overflow-wrap: anywhere;
+    }}
     .badge {{
       display: inline-flex;
       align-items: center;
@@ -778,6 +1048,10 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       {_active_request_html(active_request, request_cards, command_center)}
     </section>
     <section class="panel">
+      <h2>Mission Result</h2>
+      {_result_summary_html(result_summary)}
+    </section>
+    <section class="panel">
       <h2>Control Loop</h2>
       {_control_loop_html(control_loop)}
     </section>
@@ -788,6 +1062,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     <section class="grid">
       <div class="panel">
         <h2>Agents</h2>
+        {_agent_registration_form()}
         {_agents_html(passports, workspace.get("root", "."))}
       </div>
       <div class="panel">
@@ -843,6 +1118,61 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
         button.textContent = "Selected";
       }}
     }});
+    document.addEventListener("click", async function (event) {{
+      const button = event.target.closest("[data-approval-decision]");
+      if (!button) return;
+      const panel = button.closest("[data-active-request-controls], [data-inbox-request-controls]");
+      if (!panel) return;
+      const payload = {{
+        action_id: panel.getAttribute("data-action-id") || "",
+        decision: button.getAttribute("data-approval-decision") || "",
+        approver: panel.querySelector("[data-approval-approver]")?.value || "",
+        reason: panel.querySelector("[data-approval-reason]")?.value || "",
+        confirm: panel.querySelector("[data-local-write-confirm]")?.value || ""
+      }};
+      await postDelegationAction("/api/approval-decision", payload, panel);
+    }});
+    document.addEventListener("click", async function (event) {{
+      const button = event.target.closest("[data-agent-register]");
+      if (!button) return;
+      const panel = button.closest("[data-agent-form]");
+      if (!panel) return;
+      const endpointType = panel.querySelector("[data-agent-endpoint-type]")?.value || "command";
+      const payload = {{
+        agent_id: panel.querySelector("[data-agent-id]")?.value || "",
+        name: panel.querySelector("[data-agent-name]")?.value || "",
+        runtime_type: panel.querySelector("[data-agent-runtime]")?.value || "cli.command",
+        capabilities: panel.querySelector("[data-agent-capabilities]")?.value || "",
+        allowed_data: panel.querySelector("[data-agent-allowed-data]")?.value || "",
+        approvals: panel.querySelector("[data-agent-approvals]")?.value || "",
+        evidence: panel.querySelector("[data-agent-evidence]")?.value || "",
+        confirm: panel.querySelector("[data-local-write-confirm]")?.value || "",
+        force: panel.querySelector("[data-agent-force]")?.checked || false
+      }};
+      payload.command = endpointType === "command" ? panel.querySelector("[data-agent-endpoint]")?.value || "" : "";
+      payload.api_url = endpointType === "api" ? panel.querySelector("[data-agent-endpoint]")?.value || "" : "";
+      payload.webhook_url = endpointType === "webhook" ? panel.querySelector("[data-agent-endpoint]")?.value || "" : "";
+      payload.mcp_endpoint = endpointType === "mcp" ? panel.querySelector("[data-agent-endpoint]")?.value || "" : "";
+      await postDelegationAction("/api/agent-add", payload, panel);
+    }});
+    async function postDelegationAction(url, payload, panel) {{
+      const target = panel.querySelector("[data-app-message]");
+      if (target) target.textContent = "Working...";
+      try {{
+        const response = await fetch(url, {{
+          method: "POST",
+          headers: {{ "Content-Type": "application/json" }},
+          body: JSON.stringify(payload)
+        }});
+        const data = await response.json();
+        if (target) target.textContent = data.message || data.status || "Done.";
+        if (response.ok) {{
+          window.setTimeout(function () {{ window.location.reload(); }}, 900);
+        }}
+      }} catch (error) {{
+        if (target) target.textContent = "Could not reach the local action server. Start with --allow-actions.";
+      }}
+    }}
   </script>
 </body>
 </html>
@@ -922,6 +1252,7 @@ def _active_request_html(
 </div>
 <p class="subtle">Operator commands</p>
 {_commands_html(relevant_commands, section_id="active-request-commands")}
+{_approval_action_controls(action_id, status, panel_id="active")}
 """
 
 
@@ -1050,6 +1381,7 @@ def _approval_inbox_cards_html(inbox: JsonMap) -> str:
             f"<div><strong>Approvals:</strong> {_escape(approvals)}</div>"
             f"<div><strong>Evidence:</strong> {_escape(evidence)}</div>"
             "</div>"
+            + _approval_action_controls(str(action_id), str(status), panel_id=f"inbox-{index}")
             + (
                 "<p class=\"subtle\">Next</p>"
                 + _copyable_code(next_action, id_hint=f"approval-inbox-card-{index}")
@@ -1074,6 +1406,118 @@ def _inbox_card_next_action(item: JsonMap, *, ledger_source: str) -> str:
         return f"delegation request-status --ledger {ledger_source} --action-id {action_id}"
     value = item.get("next_action", "")
     return value if isinstance(value, str) else ""
+
+
+def _approval_action_controls(action_id: str, status: str, *, panel_id: str) -> str:
+    if status not in {"pending_approval", "warning"} or not action_id or action_id == "unknown":
+        return ""
+    attr_action = _escape(action_id)
+    return f"""
+<div class="action-panel" data-{_escape(panel_id)}-request-controls data-inbox-request-controls data-action-id="{attr_action}">
+  <p class="subtle">Guarded local decision</p>
+  <div class="form-grid">
+    <label>Approver
+      <input data-approval-approver autocomplete="name" placeholder="Your name">
+    </label>
+    <label>Confirmation
+      <input data-local-write-confirm placeholder="{LOCAL_APP_WRITE_CONFIRMATION}">
+    </label>
+    <label>Reason
+      <input data-approval-reason placeholder="Optional reason">
+    </label>
+  </div>
+  <div class="action-row">
+    <button type="button" class="action-button" data-approval-decision="approve">Approve</button>
+    <button type="button" class="action-button secondary" data-approval-decision="block">Block</button>
+  </div>
+  <div class="app-message" data-app-message>Requires app-serve --allow-actions and {LOCAL_APP_WRITE_CONFIRMATION}.</div>
+</div>"""
+
+
+def _agent_registration_form() -> str:
+    return f"""
+<div class="action-panel" data-agent-form>
+  <p><strong>Add Agent Passport</strong></p>
+  <p class="subtle">Register a CLI/API/webhook/MCP worker under DelegationHQ control.</p>
+  <div class="form-grid">
+    <label>Agent id
+      <input data-agent-id placeholder="research_agent">
+    </label>
+    <label>Name
+      <input data-agent-name placeholder="Research Agent">
+    </label>
+    <label>Runtime
+      <select data-agent-runtime>
+        <option value="cli.command">CLI command</option>
+        <option value="api.http">API HTTP</option>
+        <option value="webhook">Webhook</option>
+        <option value="mcp.tool">MCP tool/workflow</option>
+      </select>
+    </label>
+    <label>Endpoint type
+      <select data-agent-endpoint-type>
+        <option value="command">Command</option>
+        <option value="api">API URL</option>
+        <option value="webhook">Webhook URL</option>
+        <option value="mcp">MCP endpoint</option>
+      </select>
+    </label>
+    <label>Endpoint
+      <input data-agent-endpoint placeholder="python agents/research_agent.py">
+    </label>
+    <label>Capabilities
+      <input data-agent-capabilities value="read.workspace">
+    </label>
+    <label>Allowed data
+      <input data-agent-allowed-data value="workspace">
+    </label>
+    <label>Approval rules
+      <input data-agent-approvals placeholder="write.workspace">
+    </label>
+    <label>Evidence required
+      <input data-agent-evidence value="command_output">
+    </label>
+    <label>Confirmation
+      <input data-local-write-confirm placeholder="{LOCAL_APP_WRITE_CONFIRMATION}">
+    </label>
+    <label>Replace existing
+      <input type="checkbox" data-agent-force>
+    </label>
+  </div>
+  <div class="action-row">
+    <button type="button" class="action-button" data-agent-register>Register Agent</button>
+  </div>
+  <div class="app-message" data-app-message>Requires app-serve --allow-actions and {LOCAL_APP_WRITE_CONFIRMATION}.</div>
+</div>"""
+
+
+def _result_summary_html(summary: JsonMap) -> str:
+    if not summary:
+        return "<p class=\"subtle\">No result summary is available yet.</p>"
+    latest = summary.get("latest_items") if isinstance(summary.get("latest_items"), list) else []
+    latest_rows = []
+    for item in latest:
+        if not isinstance(item, dict):
+            continue
+        label = f"{item.get('sequence', '?')}. [{item.get('stage', 'ledger')}] {item.get('status', 'unknown')}"
+        latest_rows.append(
+            "<li>"
+            f"<strong>{_escape(label)}</strong> {_escape(item.get('title', 'event'))}"
+            + (" <span class=\"badge attention\">attention</span>" if item.get("needs_attention") else "")
+            + "</li>"
+        )
+    latest_html = "<ul>" + "".join(latest_rows) + "</ul>" if latest_rows else "<p class=\"subtle\">No recent events yet.</p>"
+    return f"""
+<p><strong>{_escape(summary.get("summary", "No result yet."))}</strong></p>
+<div class="grid">
+  {_metric_panel("Result", summary.get("status", "unknown"), f"active: {summary.get('active_request_status', 'none')}")}
+  {_metric_panel("Evidence", summary.get("evidence_count", 0), f"records: {summary.get('record_events', 0)}")}
+  {_metric_panel("Timeline", summary.get("timeline_events", 0), f"attention: {summary.get('attention_count', 0)}")}
+  {_metric_panel("Execution", summary.get("execute_events", 0), f"packet: {summary.get('agent_packet_status', 'missing')}")}
+</div>
+<p class="subtle">Latest proof trail</p>
+{latest_html}
+"""
 
 
 def _agent_handoff_html(packet_report: JsonMap | None, preview: JsonMap) -> str:
