@@ -114,6 +114,11 @@ DelegationHQ is bigger: future tools can record diffs, tests, CRM changes,
 research artifacts, browser sessions, API calls, logs, or business workflow
 proof under the same control loop.
 
+Approval Preview should keep the human decision simple while exposing the
+action intent underneath: execution mode, likely touched resources, live effect,
+required confirmation, command preview, expected proof, and the exact question
+the user is answering.
+
 ## Product Test
 
 Before adding a feature, ask:

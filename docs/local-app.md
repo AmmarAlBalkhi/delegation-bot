@@ -47,8 +47,9 @@ http://127.0.0.1:8765/
 - Settings
 - workspace health
 - registered Agent Passports
-- a human approval preview card with request context, resource scope, evidence
-  gaps, history, reviewer notes, and expiration
+- a human approval preview card with request context, action intent, command
+  preview, resource scope, evidence gaps, history, reviewer notes, and
+  expiration
 - a full mission timeline
 - copy buttons for commands
 - richer Agent Passport details with endpoint, scope, trust, warnings, and
@@ -63,6 +64,7 @@ Folder is workspace.
 Mission is the objective.
 Agents have ID cards.
 Approval card says allow, ask human, or block.
+Action intent says what may happen before you say yes.
 Evidence says what was recorded.
 Timeline shows everything that happened.
 Settings keeps maintenance details out of the main loop.

@@ -300,6 +300,16 @@ def _command_center(
                 "purpose": "Validate the worker result against the packet and append proof.",
                 "risk": preview.gate.effective_risk,
             }
+            yield {
+                "id": "ingest_evidence",
+                "label": "Attach evidence",
+                "command": (
+                    f"delegation evidence-ingest --ledger {preview.ledger} --action-id {preview.action_id} "
+                    "--tool TOOL --recording-id REC --bundle-id BUNDLE --artifact PATH"
+                ),
+                "purpose": "Attach proof from any compatible recorder, test reporter, monitor, or workflow tool.",
+                "risk": preview.gate.effective_risk,
+            }
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
     ledger_path = ledger.get("path")
     if isinstance(ledger_path, str) and ledger_path:
@@ -382,6 +392,7 @@ def _product_areas(
             "packet": agent_packet.status if agent_packet else "missing",
         },
         "next_action": _first_command(command_center, "ingest_agent_result")
+        or _first_command(command_center, "ingest_evidence")
         or _first_command(command_center, "export_agent_packet")
         or "Attach recorder evidence after execution.",
         "functional": True,

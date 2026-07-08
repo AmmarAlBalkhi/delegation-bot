@@ -50,21 +50,24 @@ Human = final yes/no for danger.
 2. Improve the local app shell after visual direction is approved: agent list,
    approval cards, mission timeline, and evidence details should feel fast and
    obvious without exposing internal complexity.
-3. Expand Agent Approval Preview with proposed file/resource diffs and command
-   intent previews before risky writes.
-4. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
+3. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
    designing UI until the visual direction is approved.
-5. Run `delegation release-check --strict-artifacts` on a clean Windows release
+4. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-6. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+5. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-7. Test the GitHub App issue-write path against a real installed app before
+6. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-8. Decide which `delegation github-app-plan` mode should become the first
+7. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently
 
+- Added an `action_intent` block to Approval Preview so the human card shows
+  execution mode, likely touched resources, live effect, required confirmation,
+  command preview, expected proof, and a clear human question before approval.
+- Rendered Action Intent in the local cockpit and added a copyable
+  `evidence-ingest` command to the app dashboard command center.
 - Added `delegation evidence-ingest` so any compatible proof tool can attach
   recorded evidence to an Agent Gate receipt, while `runprint-ingest` remains
   the RunPrint-specific compatibility lane.

@@ -40,6 +40,7 @@ class ApprovalPreviewReport:
     request_context: JsonMap | None = None
     resource_summary: JsonMap | None = None
     evidence_status: JsonMap | None = None
+    action_intent: JsonMap | None = None
     history: JsonMap | None = None
     warnings: tuple[str, ...] = ()
 
@@ -159,6 +160,7 @@ class ApprovalPreviewReport:
             "request_context": self.request_context or {},
             "resource_summary": self.resource_summary or {},
             "evidence_status": self.evidence_status or {},
+            "action_intent": self.action_intent or {},
             "history": self.history or {},
             "safe_next_step": self.safe_next_step,
             "decision_commands": list(self.decision_commands),
@@ -251,6 +253,13 @@ def build_approval_preview_report(
         ),
         resource_summary=_resource_summary(gate),
         evidence_status=_evidence_status(gate),
+        action_intent=_action_intent(
+            gate,
+            workspace=str(resolved_workspace) if resolved_workspace else None,
+            ledger=str(resolved_ledger) if resolved_ledger else None,
+            command=command,
+            expired=expired,
+        ),
         history=history,
         warnings=tuple([*warnings, *gate.registry_warnings]),
     )
@@ -317,6 +326,19 @@ def render_approval_preview_report(report: ApprovalPreviewReport) -> str:
     evidence_status = report.evidence_status or {}
     if evidence_status:
         lines.append(f"- status: {evidence_status.get('status', 'unknown')}")
+
+    intent = report.action_intent or {}
+    lines.extend(["", "Action intent:"])
+    lines.append(f"- execution mode: {intent.get('execution_mode', 'unknown')}")
+    lines.append(f"- live effect: {intent.get('live_effect', 'unknown')}")
+    lines.append(f"- workspace effect: {intent.get('workspace_effect', 'unknown')}")
+    lines.append(f"- confirmation: {intent.get('confirmation', 'unknown')}")
+    change_preview = intent.get("change_preview") if isinstance(intent.get("change_preview"), dict) else {}
+    if change_preview:
+        lines.append(f"- change preview: {change_preview.get('summary', 'not available')}")
+    command_preview = intent.get("command_preview") if isinstance(intent.get("command_preview"), dict) else {}
+    if command_preview.get("command"):
+        lines.append(f"- command preview: {command_preview['command']}")
 
     history = report.history or {}
     lines.extend(["", "History:"])
@@ -431,6 +453,63 @@ def _evidence_status(gate: AgentGateReport) -> JsonMap:
     }
 
 
+def _action_intent(
+    gate: AgentGateReport,
+    *,
+    workspace: str | None,
+    ledger: str | None,
+    command: str | None,
+    expired: bool,
+) -> JsonMap:
+    passport = gate.passport
+    operation = _operation(gate.action)
+    endpoint = passport.endpoint if passport else {}
+    execution_mode = _execution_mode(endpoint)
+    workspace_effect = _workspace_effect(operation, gate.target)
+    live_effect = _live_effect(gate.decision, workspace_effect, expired)
+    confirmation = _confirmation_requirement(gate, live_effect, expired)
+    return {
+        "action_id": _action_id(gate.agent_id, gate.action),
+        "agent_id": gate.agent_id,
+        "operation": operation,
+        "target": gate.target,
+        "target_kind": _target_kind(gate.target),
+        "risk": gate.effective_risk,
+        "decision": gate.decision,
+        "execution_mode": execution_mode,
+        "live_effect": live_effect,
+        "workspace_effect": workspace_effect,
+        "confirmation": confirmation,
+        "workspace": workspace,
+        "ledger": ledger,
+        "command_preview": {
+            "available": bool(command),
+            "command": command,
+            "endpoint_type": (_clean_optional(endpoint.get("type")) if isinstance(endpoint, dict) else None) or "unknown",
+            "requires_exact_confirmation": live_effect == "can_execute",
+            "writes_ledger": live_effect in {"can_execute", "approval_required"},
+        },
+        "resource_preview": {
+            "primary_target": gate.target,
+            "likely_touches": _intent_touches(gate),
+            "allowed_data": list(passport.allowed_data) if passport else [],
+            "allowed_tools": list(passport.allowed_tools) if passport else [],
+            "blocked_by_default": [
+                "secrets unless explicitly approved",
+                "external writes outside the requested target",
+                "tools or data outside the agent passport",
+            ],
+        },
+        "evidence_to_collect": _dedupe([*gate.required_evidence, "evidence_recording_id", "evidence_bundle_id"]),
+        "change_preview": {
+            "status": "not_executed",
+            "summary": "No diff is produced in preview mode; DelegationHQ is showing intended scope before the agent runs.",
+            "expected_outputs": list(passport.expected_outputs) if passport else [],
+        },
+        "human_question": _human_question(gate, live_effect),
+    }
+
+
 def _approval_history(ledger_path: Path | None, action_id: str) -> JsonMap:
     if ledger_path is None:
         return _history_payload("not_available", None, (), "No ledger was provided for history.")
@@ -450,7 +529,7 @@ def _history_payload(status: str, ledger: str | None, events: T.Sequence[JsonMap
     gate_count = sum(1 for event in events if _event_type(event) == "agent.gate.previewed")
     approval_count = sum(1 for event in events if _event_type(event) == "approval.granted")
     block_count = sum(1 for event in events if _event_type(event) == "approval.denied")
-    recorded_count = sum(1 for event in events if _event_type(event).startswith("runprint.recording."))
+    recorded_count = sum(1 for event in events if _is_recording_event(event))
     failed_count = sum(1 for event in events if _event_status(event) in {"failed", "blocked", "timed_out"})
     latest = events[-1] if events else {}
     return {
@@ -485,7 +564,7 @@ def _history_event(event: JsonMap) -> JsonMap:
 
 def _history_summary(events: T.Sequence[JsonMap]) -> str:
     gate_count = sum(1 for event in events if _event_type(event) == "agent.gate.previewed")
-    recorded_count = sum(1 for event in events if _event_type(event).startswith("runprint.recording."))
+    recorded_count = sum(1 for event in events if _is_recording_event(event))
     approval_count = sum(1 for event in events if _event_type(event) == "approval.granted")
     block_count = sum(1 for event in events if _event_type(event) == "approval.denied")
     parts = [f"{len(events)} matching event(s)", f"{gate_count} gate receipt(s)"]
@@ -516,6 +595,84 @@ def _command_from_gate(gate: AgentGateReport) -> str | None:
         return None
     value = endpoint.get("value")
     return value.strip() if isinstance(value, str) and value.strip() else None
+
+
+def _execution_mode(endpoint: JsonMap) -> str:
+    endpoint_type = (_clean_optional(endpoint.get("type")) if isinstance(endpoint, dict) else None) or "unknown"
+    return {
+        "command": "local_command",
+        "api": "api_call",
+        "webhook": "webhook",
+        "mcp": "mcp_tool",
+    }.get(endpoint_type, endpoint_type)
+
+
+def _workspace_effect(operation: str, target: str) -> str:
+    if operation in {"read", "summarize", "classify", "retrieve", "suggest"}:
+        return "read_only"
+    if operation in {"write", "edit", "create", "update", "delete", "commit", "merge", "deploy", "send", "execute", "run"}:
+        if _target_kind(target) in {"workspace", "file", "repository", "crm", "api", "tool"}:
+            return "write_possible"
+        return "side_effect_possible"
+    return "unknown"
+
+
+def _live_effect(decision: str, workspace_effect: str, expired: bool) -> str:
+    if expired:
+        return "expired"
+    if decision == "block":
+        return "blocked"
+    if decision == "approval_required":
+        return "approval_required"
+    if decision == "warn":
+        return "review_required"
+    if decision == "allow" and workspace_effect == "read_only":
+        return "read_only_allowed"
+    if decision == "allow":
+        return "can_execute"
+    return "unknown"
+
+
+def _confirmation_requirement(gate: AgentGateReport, live_effect: str, expired: bool) -> str:
+    if expired:
+        return "regenerate_preview"
+    if gate.decision == "approval_required":
+        return "human_approval"
+    if gate.decision == "block":
+        return "not_available"
+    if live_effect in {"can_execute", "read_only_allowed"}:
+        return "exact_execution_token"
+    return "human_review"
+
+
+def _intent_touches(gate: AgentGateReport) -> list[str]:
+    passport = gate.passport
+    touches = [gate.target]
+    if passport:
+        touches.extend(passport.allowed_data)
+        touches.extend(f"tool:{item}" for item in passport.allowed_tools)
+        touches.extend(f"output:{item}" for item in passport.expected_outputs)
+    return _dedupe(touches)
+
+
+def _human_question(gate: AgentGateReport, live_effect: str) -> str:
+    if live_effect == "approval_required":
+        return f"Approve {gate.agent_id} to {gate.action} on {gate.target}?"
+    if live_effect == "blocked":
+        return f"What must change before {gate.agent_id} can try this request again?"
+    if live_effect == "review_required":
+        return f"Review warnings before {gate.agent_id} gets more freedom."
+    if live_effect in {"can_execute", "read_only_allowed"}:
+        return f"Run {gate.agent_id} under DelegationHQ control with exact confirmation?"
+    return "Review this request before continuing."
+
+
+def _is_recording_event(event: JsonMap) -> bool:
+    event_type = _event_type(event)
+    status = _event_status(event)
+    return (
+        event_type.startswith("runprint.recording.") or event_type.startswith("evidence.recording.")
+    ) and not event_type.endswith(".planned") and status != "planned"
 
 
 def _expiration_state(expires_at: str | None) -> tuple[bool, str | None]:

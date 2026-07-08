@@ -95,7 +95,9 @@ eval, feedback, and promotion.
 what it can touch, here is the risk, here is the approval/evidence needed, here
 is prior history for repeated actions, here are optional reviewer notes and
 expiration, here are the approve/block/run commands, and here is the safe next
-step.
+step. It also includes action intent: execution mode, likely touched resources,
+live effect, required confirmation, command preview, and the proof the agent
+must return.
 
 `app-export` writes a local browser cockpit bundle with `dashboard.json`,
 `state.json`, `timeline.json`, and approval preview data. `app-serve` serves the

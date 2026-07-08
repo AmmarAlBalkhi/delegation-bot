@@ -590,6 +590,7 @@ def _approval_preview_html(preview: JsonMap) -> str:
     context = preview.get("request_context") if isinstance(preview.get("request_context"), dict) else {}
     resource = preview.get("resource_summary") if isinstance(preview.get("resource_summary"), dict) else {}
     evidence = preview.get("evidence_status") if isinstance(preview.get("evidence_status"), dict) else {}
+    intent = preview.get("action_intent") if isinstance(preview.get("action_intent"), dict) else {}
     history = preview.get("history") if isinstance(preview.get("history"), dict) else {}
     return f"""
 <p><strong>{_escape(preview.get("summary", "No summary available."))}</strong></p>
@@ -603,6 +604,8 @@ def _approval_preview_html(preview: JsonMap) -> str:
 {_request_packet_html(context, preview)}
 <p class="subtle">Touched resources</p>
 {_resource_summary_html(resource)}
+<p class="subtle">Action intent</p>
+{_action_intent_html(intent)}
 <p class="subtle">Required approvals</p>
 {_list_html(preview.get("required_approvals") if isinstance(preview.get("required_approvals"), list) else [])}
 <p class="subtle">Required evidence</p>
@@ -776,6 +779,29 @@ def _resource_summary_html(resource: JsonMap) -> str:
   <div><strong>Action check:</strong> {_escape(resource.get("matched_action_check", "not checked"))}</div>
   <div><strong>Target check:</strong> {_escape(resource.get("matched_target_check", "not checked"))}</div>
 </div>"""
+
+
+def _action_intent_html(intent: JsonMap) -> str:
+    if not intent:
+        return "<p class=\"subtle\">No action intent preview found.</p>"
+    command = intent.get("command_preview") if isinstance(intent.get("command_preview"), dict) else {}
+    resources = intent.get("resource_preview") if isinstance(intent.get("resource_preview"), dict) else {}
+    change = intent.get("change_preview") if isinstance(intent.get("change_preview"), dict) else {}
+    likely_touches = resources.get("likely_touches") if isinstance(resources.get("likely_touches"), list) else []
+    evidence = intent.get("evidence_to_collect") if isinstance(intent.get("evidence_to_collect"), list) else []
+    command_html = ""
+    if isinstance(command.get("command"), str) and command["command"].strip():
+        command_html = _copyable_code(command["command"], id_hint="action-intent-command")
+    return f"""<div class="kv">
+  <div><strong>Mode:</strong> {_escape(intent.get("execution_mode", "unknown"))}</div>
+  <div><strong>Live effect:</strong> {_escape(intent.get("live_effect", "unknown"))}</div>
+  <div><strong>Workspace effect:</strong> {_escape(intent.get("workspace_effect", "unknown"))}</div>
+  <div><strong>Confirmation:</strong> {_escape(intent.get("confirmation", "unknown"))}</div>
+  <div><strong>Human question:</strong> {_escape(intent.get("human_question", "Review this request before continuing."))}</div>
+  <div><strong>Likely touches:</strong> {_escape(_inline_list(likely_touches) or "not declared")}</div>
+  <div><strong>Proof needed:</strong> {_escape(_inline_list(evidence) or "not declared")}</div>
+  <div><strong>Change preview:</strong> {_escape(change.get("summary", "not available"))}</div>
+</div>{command_html}"""
 
 
 def _approval_history_html(history: JsonMap) -> str:

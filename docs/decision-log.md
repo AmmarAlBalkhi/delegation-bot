@@ -1471,3 +1471,25 @@ Guardrails:
 
 Follow-up: Add proposed file/resource diffs and command intent previews before
 risky writes.
+
+## 2026-07-08: Add Approval Action Intent Preview
+
+Decision: Add an `action_intent` block to `approval-preview` and render it in
+the local cockpit.
+
+Why: A human should know what they are approving before live work starts. The
+approval card now explains execution mode, likely touched resources, live
+effect, required confirmation, command preview, expected proof, and the exact
+human question behind the decision.
+
+Guardrails:
+
+- the intent preview does not execute the agent
+- no diff is invented when no agent has run yet
+- exact execution confirmation is still required for controlled runs
+- generic evidence remains the proof lane; RunPrint is only one compatible
+  recorder
+- the local cockpit can redesign this later without changing the control data
+
+Follow-up: Use this intent block to drive the future desktop approval inbox and
+first-run cockpit flow.

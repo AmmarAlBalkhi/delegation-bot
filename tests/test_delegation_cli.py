@@ -264,6 +264,11 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["request_context"]["intent"], "preview_runner wants to read workspace")
         self.assertEqual(data["resource_summary"]["target_kind"], "workspace")
         self.assertEqual(data["evidence_status"]["status"], "missing")
+        self.assertEqual(data["action_intent"]["execution_mode"], "local_command")
+        self.assertEqual(data["action_intent"]["workspace_effect"], "read_only")
+        self.assertEqual(data["action_intent"]["live_effect"], "read_only_allowed")
+        self.assertEqual(data["action_intent"]["confirmation"], "exact_execution_token")
+        self.assertIn("command_output", data["action_intent"]["evidence_to_collect"])
         self.assertEqual(data["history"]["status"], "no_history")
 
     def test_approval_preview_includes_history_note_and_expiration(self) -> None:
@@ -400,6 +405,8 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Approval Inbox", html_text)
         self.assertIn("Evidence", html_text)
         self.assertIn("Settings", html_text)
+        self.assertIn("Action intent", html_text)
+        self.assertIn("Live effect", html_text)
         self.assertIn("agent-result-ingest", html_text)
         self.assertIn("Request packet", html_text)
         self.assertIn("operator checked", html_text)
@@ -531,6 +538,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["state"]["workspace"]["status"], "ready")
         self.assertEqual(data["approval_preview"]["agent_id"], "dashboard_runner")
         self.assertTrue(data["command_center"])
+        self.assertIn("ingest_evidence", [item["id"] for item in data["command_center"]])
         self.assertEqual(
             [area["id"] for area in data["product_areas"]],
             ["missions", "agents", "approval_inbox", "evidence", "settings"],
