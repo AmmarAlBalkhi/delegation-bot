@@ -307,6 +307,12 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
         dashboard_data.get("agent_packet") if isinstance(dashboard_data.get("agent_packet"), dict) else None
     )
     timeline = dashboard_data.get("timeline") if isinstance(dashboard_data.get("timeline"), dict) else {}
+    active_request = (
+        dashboard_data.get("active_request") if isinstance(dashboard_data.get("active_request"), dict) else None
+    )
+    request_cards = (
+        dashboard_data.get("request_cards") if isinstance(dashboard_data.get("request_cards"), list) else []
+    )
     command_center = (
         dashboard_data.get("command_center") if isinstance(dashboard_data.get("command_center"), list) else []
     )
@@ -490,6 +496,10 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       {_workspace_flow_html(workspace_flow)}
     </section>
     <section class="panel">
+      <h2>Active Request</h2>
+      {_active_request_html(active_request, request_cards, command_center)}
+    </section>
+    <section class="panel">
       <h2>Control Loop</h2>
       {_control_loop_html(control_loop)}
     </section>
@@ -532,6 +542,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
   <script id="delegation-dashboard" type="application/json">{_json_script(dashboard_data)}</script>
   <script id="delegation-state" type="application/json">{_json_script(state_data)}</script>
   <script id="delegation-timeline" type="application/json">{_json_script(timeline)}</script>
+  <script id="delegation-active-request" type="application/json">{_json_script(active_request or {})}</script>
   <script id="delegation-approval-preview" type="application/json">{_json_script(preview_data or {})}</script>
   <script id="delegation-agent-packet" type="application/json">{_json_script(agent_packet_data or {})}</script>
   <script>
@@ -598,6 +609,42 @@ def _area_panel_html(area: JsonMap | None) -> str:
   {metric_rows}
 </div>
 {next_html}"""
+
+
+def _active_request_html(
+    active_request: JsonMap | None,
+    request_cards: list[T.Any],
+    commands: list[T.Any],
+) -> str:
+    if not active_request:
+        return (
+            "<p class=\"subtle\">No real action request is active yet.</p>"
+            "<p class=\"subtle\">When a registered agent submits a request, it appears here before execution.</p>"
+        )
+    summary = active_request.get("request_summary") or active_request.get("title") or "Action request"
+    action_id = active_request.get("action_id", "unknown")
+    status = active_request.get("status", "unknown")
+    requested_by = active_request.get("requested_by") or active_request.get("agent_id") or "unknown"
+    risk = active_request.get("risk", "unknown")
+    action = active_request.get("action", "unknown")
+    target = active_request.get("target", "unknown")
+    relevant_commands = [
+        command
+        for command in commands
+        if isinstance(command, dict)
+        and command.get("id") in {"approve_request", "block_request", "request_status", "request_run", "export_agent_packet"}
+    ]
+    queue_count = len([item for item in request_cards if isinstance(item, dict)])
+    return f"""
+<p><strong>{_escape(summary)}</strong></p>
+<div class="grid">
+  {_metric_panel("Status", status, f"risk: {risk}")}
+  {_metric_panel("Agent", requested_by, f"{action} -> {target}")}
+  {_metric_panel("Action", action_id, f"{queue_count} request card(s) in workspace")}
+</div>
+<p class="subtle">Operator commands</p>
+{_commands_html(relevant_commands, section_id="active-request-commands")}
+"""
 
 
 def _control_loop_html(steps: list[T.Any]) -> str:

@@ -13,11 +13,12 @@ stay local-first.
 delegation workspace-init --path . --plan
 delegation workspace-demo --path .delegation/demo-workspace --approve --execute --confirm LOCAL_AGENT_EXECUTION --export-app
 delegation agent-add local_cli_agent --workspace . --command "python agent.py" --capability read.workspace --allowed-data workspace --evidence command_output --force
+delegation action-request local_cli_agent --workspace . --action read.workspace --target workspace --summary "Agent requests workspace access."
 delegation approval-preview local_cli_agent --workspace . --review-note "scope checked" --expires-at 2099-01-01T00:00:00Z
 delegation workspace-flow --workspace .
-delegation app-dashboard --workspace . --preview-agent local_cli_agent --preview-note "scope checked"
+delegation app-dashboard --workspace .
 delegation timeline --workspace .
-delegation app-export --workspace . --preview-agent local_cli_agent
+delegation app-export --workspace .
 delegation app-serve --workspace . --dry-run
 ```
 
@@ -48,6 +49,7 @@ http://127.0.0.1:8765/
 - Timeline
 - Settings
 - workspace health
+- active request from the real workspace ledger
 - guided workspace flow with the current step and one next safe command
 - one-command demo workspace with optional approval, execution, evidence, and
   cockpit export
@@ -71,6 +73,7 @@ Agents have ID cards.
 Approval card says allow, ask human, or block.
 Action intent says what may happen before you say yes.
 Workspace flow says what to do next.
+Active request says what the agent is asking for now.
 Evidence says what was recorded.
 Timeline shows everything that happened.
 Settings keeps maintenance details out of the main loop.

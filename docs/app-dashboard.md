@@ -10,6 +10,7 @@ It combines the pieces a user needs on one screen:
 - Evidence
 - Timeline
 - Settings
+- active request card from real workspace ledger data
 - workspace flow guide from workspace -> agent -> request -> approval ->
   execution -> evidence -> review
 - approval preview with reviewer note, expiration, resource scope, evidence
@@ -23,8 +24,13 @@ It combines the pieces a user needs on one screen:
 delegation app-dashboard --workspace . --preview-agent local_cli_agent
 delegation app-dashboard --workspace . --preview-agent local_cli_agent --preview-note "scope checked"
 delegation app-dashboard --workspace . --preview-agent local_cli_agent --json
+delegation app-dashboard --workspace . --json
 delegation workspace-flow --workspace .
 ```
+
+When a workspace already has submitted action requests, `app-dashboard` focuses
+the active request automatically. Use `--preview-agent` only when you want to
+inspect a specific agent before it has submitted a real request.
 
 Simple version:
 
@@ -48,6 +54,9 @@ future hosted/team surfaces.
 Top-level fields:
 
 - `state`: app-ready workspace state
+- `active_request`: the highest-priority real request card from the workspace
+  ledger, if one exists
+- `request_cards`: all current request cards from the Approval Inbox
 - `approval_preview`: human card for the current agent request, including
   request context, resource summary, evidence status, note/expiration, and
   decision history

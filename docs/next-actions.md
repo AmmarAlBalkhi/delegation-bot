@@ -63,6 +63,9 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Made `app-dashboard` and the exported cockpit focus the active real action
+  request from the workspace ledger, so Approval Inbox, preview, commands, and
+  timeline follow actual work instead of a generic demo preview.
 - Added `delegation workspace-demo` so a tester can create a real local demo
   workspace, register a demo agent, submit a request, optionally approve/run it,
   record evidence, and export the cockpit in one command.

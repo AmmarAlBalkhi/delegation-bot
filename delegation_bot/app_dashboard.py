@@ -26,6 +26,8 @@ class AppDashboardReport:
     workspace: str
     state: AppState
     timeline: MissionTimelineReport
+    active_request: JsonMap | None
+    request_cards: tuple[JsonMap, ...]
     approval_preview: ApprovalPreviewReport | None
     agent_packet: AgentPacketReport | None
     workspace_flow: WorkspaceFlowReport
@@ -50,6 +52,8 @@ class AppDashboardReport:
             "workspace": self.workspace,
             "state": self.state.to_dict(),
             "timeline": self.timeline.to_dict(),
+            "active_request": self.active_request,
+            "request_cards": list(self.request_cards),
             "approval_preview": self.approval_preview.to_dict() if self.approval_preview else None,
             "agent_packet": self.agent_packet.to_dict() if self.agent_packet else None,
             "workspace_flow": self.workspace_flow.to_dict(),
@@ -77,19 +81,28 @@ def build_app_dashboard_report(
     state = build_app_state(workspace_root=workspace)
     state_data = state.to_dict()
     timeline = build_timeline_report_from_paths(workspace_root=workspace, limit=0)
-    preview = _build_preview(
-        state_data,
-        workspace_root=workspace,
+    request_cards = tuple(_request_cards(state_data))
+    active_request = _select_active_request(request_cards)
+    preview_seed = _preview_seed(
+        active_request,
         preview_agent=preview_agent,
         preview_action=preview_action,
         preview_target=preview_target,
         preview_risk=preview_risk,
+    )
+    preview = _build_preview(
+        state_data,
+        workspace_root=workspace,
+        preview_agent=preview_seed["agent_id"],
+        preview_action=preview_seed["action"],
+        preview_target=preview_seed["target"],
+        preview_risk=preview_seed["risk"],
         preview_note=preview_note,
         preview_expires_at=preview_expires_at,
     )
     agent_packet = _build_agent_packet(preview)
     workspace_flow = build_workspace_flow_report(workspace_root=workspace, state=state, timeline=timeline)
-    command_center = tuple(_command_center(workspace, state_data, timeline, preview))
+    command_center = tuple(_command_center(workspace, state_data, timeline, preview, active_request))
     control_loop = tuple(_control_loop(state_data, timeline, preview, agent_packet, command_center))
     return AppDashboardReport(
         schema_version=APP_DASHBOARD_SCHEMA_VERSION,
@@ -97,6 +110,8 @@ def build_app_dashboard_report(
         workspace=str(workspace),
         state=state,
         timeline=timeline,
+        active_request=active_request,
+        request_cards=request_cards,
         approval_preview=preview,
         agent_packet=agent_packet,
         workspace_flow=workspace_flow,
@@ -134,6 +149,16 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
                 f"- target: {preview.target}",
                 f"- decision: {preview.gate.decision}",
                 f"- risk: {preview.gate.effective_risk}",
+            ]
+        )
+    if report.active_request:
+        lines.extend(
+            [
+                "",
+                "Active request card:",
+                f"- status: {report.active_request.get('status', 'unknown')}",
+                f"- summary: {report.active_request.get('request_summary') or report.active_request.get('title', 'unknown')}",
+                f"- action id: {report.active_request.get('action_id', 'unknown')}",
             ]
         )
     if report.agent_packet:
@@ -199,6 +224,58 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
     return "\n".join(lines)
 
 
+def _request_cards(state_data: JsonMap) -> T.Iterator[JsonMap]:
+    ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
+    inbox = ledger.get("approval_inbox") if isinstance(ledger.get("approval_inbox"), dict) else {}
+    items = inbox.get("items") if isinstance(inbox.get("items"), list) else []
+    for item in items:
+        if isinstance(item, dict):
+            yield item
+
+
+def _select_active_request(cards: T.Sequence[JsonMap]) -> JsonMap | None:
+    if not cards:
+        return None
+    status_order = (
+        "pending_approval",
+        "warning",
+        "approved",
+        "needs_evidence",
+        "ready_for_recording",
+        "blocked_by_human",
+        "blocked_by_gate",
+        "recorded",
+    )
+    for status in status_order:
+        for card in reversed(cards):
+            if card.get("status") == status:
+                return card
+    return cards[-1]
+
+
+def _preview_seed(
+    active_request: JsonMap | None,
+    *,
+    preview_agent: str | None,
+    preview_action: str,
+    preview_target: str,
+    preview_risk: str | None,
+) -> JsonMap:
+    if preview_agent or active_request is None:
+        return {
+            "agent_id": preview_agent,
+            "action": preview_action,
+            "target": preview_target,
+            "risk": preview_risk,
+        }
+    return {
+        "agent_id": _string(active_request.get("agent_id")) or None,
+        "action": _string(active_request.get("action"), default=preview_action),
+        "target": _string(active_request.get("target"), default=preview_target),
+        "risk": _string(active_request.get("risk")) or preview_risk,
+    }
+
+
 def _build_preview(
     state_data: JsonMap,
     *,
@@ -256,6 +333,7 @@ def _command_center(
     state_data: JsonMap,
     timeline: MissionTimelineReport,
     preview: ApprovalPreviewReport | None,
+    active_request: JsonMap | None,
 ) -> T.Iterator[JsonMap]:
     yield {
         "id": "refresh_dashboard",
@@ -334,7 +412,7 @@ def _command_center(
     ledger_path = ledger.get("path")
     if isinstance(ledger_path, str) and ledger_path:
         approval_inbox = ledger.get("approval_inbox") if isinstance(ledger.get("approval_inbox"), dict) else {}
-        latest_request = _latest_request_card(approval_inbox)
+        latest_request = active_request or _latest_request_card(approval_inbox)
         if latest_request:
             action_id = latest_request.get("action_id")
             status = latest_request.get("status")

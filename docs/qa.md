@@ -64,6 +64,8 @@ The QA command currently checks:
   approval card path
 - installed package `request-status` and `request-run` smoke tests for the
   approved request -> controlled execution -> evidence path
+- local app regression coverage that `app-dashboard` and `app-export` focus the
+  active real request from the workspace ledger
 - approval preview regression coverage for request context, resource scope,
   evidence status, repeated-action history, reviewer notes, and expiration
 - local app operator UX regression coverage for full timelines, copy buttons,

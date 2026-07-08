@@ -500,6 +500,29 @@ def main() -> int:
             print(action_request.stderr, file=sys.stderr)
             return action_request.returncode or 1
 
+        active_request_dashboard = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "app-dashboard",
+                "--workspace",
+                str(workspace),
+                "--json",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if (
+            active_request_dashboard.returncode != 0
+            or '"active_request"' not in active_request_dashboard.stdout
+            or "Smoke agent requests read access through the cockpit." not in active_request_dashboard.stdout
+        ):
+            print("FAIL: installed package active request dashboard smoke")
+            print(active_request_dashboard.stdout)
+            print(active_request_dashboard.stderr, file=sys.stderr)
+            return active_request_dashboard.returncode or 1
+
         approval_inbox = _run(
             [
                 sys.executable,
@@ -715,7 +738,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
         print(
-            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, active request dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
         )
     return 0
 

@@ -1560,3 +1560,25 @@ Guardrails:
 
 Follow-up: Add an EXE-safe demo mode after the Windows executable command
 runtime is finalized.
+
+## 2026-07-08: Focus Cockpit On Real Workspace Requests
+
+Decision: Make `app-dashboard` and the exported local cockpit select an active
+request from the workspace Approval Inbox when one exists.
+
+Why: The product should feel like a working trust cockpit, not a demo launcher.
+When an agent has already submitted real work, the dashboard should show that
+request, its approval status, safe commands, evidence state, and timeline
+instead of defaulting to a generic preview.
+
+Guardrails:
+
+- explicit `--preview-agent` still works for inspecting an agent before it has
+  submitted a request
+- dashboard/export remain read-only
+- live execution still goes through `request-run` or `agent-run` with exact
+  confirmation
+- visual design can change later without changing the data contract
+
+Follow-up: Let the future app shell approve/block from a guarded local action
+endpoint only after the command-backed flow is fully covered.

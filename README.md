@@ -23,9 +23,9 @@ The main workflow is intentionally short:
 delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
-delegation app-dashboard --workspace . --preview-agent hello_agent
+delegation app-dashboard --workspace .
 delegation timeline --workspace .
-delegation app-export --workspace . --preview-agent hello_agent
+delegation app-export --workspace .
 ```
 
 Package/public identity is moving to `delegationhq`. The Python import
@@ -42,10 +42,10 @@ delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation cockpit --workspace .
-delegation app-dashboard --workspace . --preview-agent hello_agent
+delegation app-dashboard --workspace .
 delegation timeline --workspace .
 delegation approval-preview hello_agent --workspace .
-delegation app-export --workspace . --preview-agent hello_agent
+delegation app-export --workspace .
 ```
 
 That makes the current folder a local AI workspace, registers a command-backed
@@ -94,7 +94,9 @@ submits a request, and can optionally approve, run, record evidence, and export
 the local cockpit in one command.
 
 `app-dashboard` is the one-screen app brain: workspace state, Agent Passports,
-approval preview, command center, timeline, and next safe actions in one bundle.
+active real request, approval preview, command center, timeline, and next safe
+actions in one bundle. If an agent has submitted a request, the dashboard
+focuses that request automatically.
 
 `timeline` shows the mission in order: plan, gate, approve, execute, record,
 eval, feedback, and promotion.
@@ -252,7 +254,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation cockpit --workspace .` | Show the local cockpit state with workspace defaults. |
 | `delegation workspace-flow --workspace .` | Show the guided local path and one next safe command. |
 | `delegation workspace-demo --path .delegation/demo-workspace --approve --execute --confirm LOCAL_AGENT_EXECUTION --export-app` | Create a complete local demo workspace and cockpit. |
-| `delegation app-dashboard --workspace . --preview-agent AGENT` | Show the combined local app brain: state, approval preview, timeline, commands. |
+| `delegation app-dashboard --workspace .` | Show the combined local app brain focused on the active real request when one exists. |
 | `delegation timeline --workspace .` | Show mission history as plan, gate, approval, execution, proof, eval, feedback, and promotion. |
 | `delegation approval-preview AGENT --workspace .` | Show the human approval card for one agent action. |
 | `delegation app-export --workspace . --preview-agent AGENT` | Write a local browser cockpit bundle. |
