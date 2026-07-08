@@ -148,6 +148,7 @@ from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_p
 from delegation_bot.mission_timeline import build_timeline_report_from_paths, render_timeline_report
 from delegation_bot.mission_status import build_mission_status_report, render_mission_status_report
 from delegation_bot.workspace_flow import build_workspace_flow_report, render_workspace_flow_report
+from delegation_bot.workspace_demo import build_workspace_demo_report, render_workspace_demo_report
 from delegation_bot.model_suggest_fixtures import (
     FIXTURE_PROVIDERS,
     ModelSuggestionFixtureError,
@@ -398,6 +399,28 @@ def cmd_workspace_flow(args: argparse.Namespace) -> int:
         print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_workspace_flow_report(report))
+    return 1 if report.status == "blocked" else 0
+
+
+def cmd_workspace_demo(args: argparse.Namespace) -> int:
+    try:
+        report = build_workspace_demo_report(
+            workspace_root=Path(args.path),
+            force=args.force,
+            approve=args.approve,
+            execute=args.execute,
+            confirm=args.confirm,
+            export_app=args.export_app,
+            command=args.command,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_workspace_demo_report(report))
     return 1 if report.status == "blocked" else 0
 
 
@@ -2078,6 +2101,23 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_flow.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
     workspace_flow.add_argument("--json", action="store_true", help="Print the workspace flow as JSON.")
     workspace_flow.set_defaults(func=cmd_workspace_flow)
+
+    workspace_demo = subparsers.add_parser(
+        "workspace-demo",
+        help="Create a real local demo workspace with a demo agent, request, optional approval/run, and optional cockpit export.",
+    )
+    workspace_demo.add_argument("--path", default=".delegation/demo-workspace", help="Demo workspace folder.")
+    workspace_demo.add_argument("--force", action="store_true", help="Replace existing demo workspace files.")
+    workspace_demo.add_argument("--approve", action="store_true", help="Record the demo human approval receipt.")
+    workspace_demo.add_argument("--execute", action="store_true", help="Run the approved demo request under control.")
+    workspace_demo.add_argument(
+        "--confirm",
+        help=f"Required exact token for --execute: {LOCAL_AGENT_EXECUTION_CONFIRMATION}.",
+    )
+    workspace_demo.add_argument("--export-app", action="store_true", help="Export the local cockpit after building the demo.")
+    workspace_demo.add_argument("--command", help="Override the demo agent command.")
+    workspace_demo.add_argument("--json", action="store_true", help="Print the workspace demo report as JSON.")
+    workspace_demo.set_defaults(func=cmd_workspace_demo)
 
     app_dashboard = subparsers.add_parser(
         "app-dashboard",

@@ -762,6 +762,54 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Request runner wants to update the workspace.", html_text)
         self.assertIn("delegation request-status", html_text)
 
+    def test_workspace_demo_creates_real_local_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir) / "demo-workspace"
+            with redirect_stdout(io.StringIO()) as pending_output:
+                pending_status = main(
+                    [
+                        "workspace-demo",
+                        "--path",
+                        str(workspace),
+                        "--force",
+                        "--json",
+                    ]
+                )
+            pending_data = json.loads(pending_output.getvalue())
+
+            with redirect_stdout(io.StringIO()) as recorded_output:
+                recorded_status = main(
+                    [
+                        "workspace-demo",
+                        "--path",
+                        str(workspace),
+                        "--force",
+                        "--approve",
+                        "--execute",
+                        "--confirm",
+                        "LOCAL_AGENT_EXECUTION",
+                        "--export-app",
+                        "--json",
+                    ]
+                )
+            recorded_data = json.loads(recorded_output.getvalue())
+            pending_ledger_exists = Path(pending_data["ledger"]).exists()
+            recorded_app_exists = Path(recorded_data["app_export"]["index_html"]).exists()
+
+        self.assertEqual(pending_status, 0)
+        self.assertEqual(pending_data["schema_version"], "delegation.workspace-demo.v1")
+        self.assertEqual(pending_data["flow"]["current_step"], "approval")
+        self.assertFalse(pending_data["approved"])
+        self.assertFalse(pending_data["executed"])
+        self.assertTrue(pending_ledger_exists)
+        self.assertEqual(recorded_status, 0)
+        self.assertEqual(recorded_data["status"], "recorded")
+        self.assertTrue(recorded_data["approved"])
+        self.assertTrue(recorded_data["executed"])
+        self.assertEqual(recorded_data["flow"]["current_step"], "complete")
+        self.assertIn("workspace demo agent ok", recorded_data["run"]["agent_run"]["stdout_tail"])
+        self.assertTrue(recorded_app_exists)
+
     def test_timeline_command_uses_workspace_defaults(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             with redirect_stdout(io.StringIO()):

@@ -1539,3 +1539,24 @@ Guardrails:
 
 Follow-up: Build the cockpit around this flow so first users see a clean path
 before advanced command/details panels.
+
+## 2026-07-08: Add One-Command Workspace Demo
+
+Decision: Add `delegation workspace-demo` as the fastest local path to a
+working DelegationHQ control loop.
+
+Why: A new user or tester should be able to see the product work without
+assembling many commands. The demo creates a local workspace, registers a demo
+agent, submits a gated action request, and can optionally record approval,
+controlled execution, evidence, and a cockpit export.
+
+Guardrails:
+
+- no execution happens unless `--execute --confirm LOCAL_AGENT_EXECUTION` is
+  present
+- approval is explicit with `--approve`
+- the command creates local demo files only
+- the cockpit export is static and does not execute agents
+
+Follow-up: Add an EXE-safe demo mode after the Windows executable command
+runtime is finalized.

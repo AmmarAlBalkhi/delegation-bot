@@ -11,6 +11,7 @@ stay local-first.
 
 ```bash
 delegation workspace-init --path . --plan
+delegation workspace-demo --path .delegation/demo-workspace --approve --execute --confirm LOCAL_AGENT_EXECUTION --export-app
 delegation agent-add local_cli_agent --workspace . --command "python agent.py" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation approval-preview local_cli_agent --workspace . --review-note "scope checked" --expires-at 2099-01-01T00:00:00Z
 delegation workspace-flow --workspace .
@@ -48,6 +49,8 @@ http://127.0.0.1:8765/
 - Settings
 - workspace health
 - guided workspace flow with the current step and one next safe command
+- one-command demo workspace with optional approval, execution, evidence, and
+  cockpit export
 - registered Agent Passports
 - a human approval preview card with request context, action intent, command
   preview, resource scope, evidence gaps, history, reviewer notes, and

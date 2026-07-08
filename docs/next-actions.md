@@ -63,6 +63,9 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added `delegation workspace-demo` so a tester can create a real local demo
+  workspace, register a demo agent, submit a request, optionally approve/run it,
+  record evidence, and export the cockpit in one command.
 - Added `delegation workspace-flow` and the matching dashboard/cockpit data
   block so the local app can show one guided path: workspace -> agent ->
   request -> approval -> execution -> evidence -> review.

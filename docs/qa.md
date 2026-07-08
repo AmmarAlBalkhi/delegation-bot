@@ -55,6 +55,8 @@ The QA command currently checks:
   execution
 - installed package workspace-aware `app-state`, `cockpit`, and
   `workspace-flow` smoke tests
+- installed package `workspace-demo` smoke test for one-command workspace,
+  request, approval, controlled execution, evidence, and cockpit export
 - installed package `app-dashboard`, `timeline`, `approval-preview`,
   `app-export`, and `app-serve --dry-run`
   smoke tests
@@ -70,8 +72,9 @@ The QA command currently checks:
 - first-run `delegation demo` and `delegation init` flows
 - local-first `workspace-init`, `workspace-status`, workspace-aware
   `agent-add`, `agent-run`, `app-state`, `cockpit`, `app-dashboard`,
-  `workspace-flow`, `timeline`, `approval-preview`, `action-request`,
-  `request-status`, `request-run`, `app-export`, and `app-serve` flows
+  `workspace-flow`, `workspace-demo`, `timeline`, `approval-preview`,
+  `action-request`, `request-status`, `request-run`, `app-export`, and
+  `app-serve` flows
 - example Harnessfile validation
 - example Harnessfile dry-run planning
 - local OpenTelemetry export generation

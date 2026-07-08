@@ -89,6 +89,10 @@ internal ledger or registry paths.
 stage from workspace -> agent -> request -> approval -> execution -> evidence
 -> review, plus one next safe command.
 
+`workspace-demo` creates a real local demo workspace, registers a demo agent,
+submits a request, and can optionally approve, run, record evidence, and export
+the local cockpit in one command.
+
 `app-dashboard` is the one-screen app brain: workspace state, Agent Passports,
 approval preview, command center, timeline, and next safe actions in one bundle.
 
@@ -247,6 +251,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation app-state --workspace .` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation cockpit --workspace .` | Show the local cockpit state with workspace defaults. |
 | `delegation workspace-flow --workspace .` | Show the guided local path and one next safe command. |
+| `delegation workspace-demo --path .delegation/demo-workspace --approve --execute --confirm LOCAL_AGENT_EXECUTION --export-app` | Create a complete local demo workspace and cockpit. |
 | `delegation app-dashboard --workspace . --preview-agent AGENT` | Show the combined local app brain: state, approval preview, timeline, commands. |
 | `delegation timeline --workspace .` | Show mission history as plan, gate, approval, execution, proof, eval, feedback, and promotion. |
 | `delegation approval-preview AGENT --workspace .` | Show the human approval card for one agent action. |

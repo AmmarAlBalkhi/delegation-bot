@@ -258,6 +258,22 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "local workspace demo",
+            [
+                python,
+                "scripts/delegation.py",
+                "workspace-demo",
+                "--path",
+                ".delegation/qa-demo-workspace",
+                "--force",
+                "--approve",
+                "--execute",
+                "--confirm",
+                "LOCAL_AGENT_EXECUTION",
+                "--export-app",
+            ],
+        ),
+        Check(
             "local app dashboard",
             [
                 python,

@@ -301,6 +301,35 @@ def main() -> int:
             print(workspace_flow.stderr, file=sys.stderr)
             return workspace_flow.returncode or 1
 
+        demo_workspace = tmp / "demo-workspace"
+        workspace_demo = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "workspace-demo",
+                "--path",
+                str(demo_workspace),
+                "--force",
+                "--approve",
+                "--execute",
+                "--confirm",
+                "LOCAL_AGENT_EXECUTION",
+                "--export-app",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if (
+            workspace_demo.returncode != 0
+            or "DelegationHQ Workspace Demo" not in workspace_demo.stdout
+            or "Executed: true" not in workspace_demo.stdout
+        ):
+            print("FAIL: installed package workspace-demo smoke")
+            print(workspace_demo.stdout)
+            print(workspace_demo.stderr, file=sys.stderr)
+            return workspace_demo.returncode or 1
+
         app_dashboard = _run(
             [
                 sys.executable,
@@ -686,7 +715,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
         print(
-            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
         )
     return 0
 
