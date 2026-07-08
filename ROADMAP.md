@@ -96,6 +96,8 @@ Deliverables:
 - workspace-aware app state and local cockpit backend
 - custom agent registration without hand-editing large YAML files
 - controlled command-backed agent execution with local evidence capture
+- human approval preview cards for agent requests
+- static local app export and local app server dry-run
 - agent gate previews for requested actions
 - mission status over the plan/gate/approval/proof loop
 - agent packets for custom agent handoff
@@ -221,10 +223,9 @@ Current focus:
    examples for CLI, API/webhook, MCP, CRM, LangGraph, Codex, and Claude-style
    workers.
 2. Keep the visible loop simple: plan, gate, approve, record, status, packet.
-3. Build the first local app shell against `cockpit --workspace .` and
-   `app-state --workspace . --json` after visual direction is approved.
-4. Add richer Agent Approval Preview cards over passport, risk, missing
-   approvals, evidence, and proposed action details.
+3. Improve the local app shell after visual direction is approved.
+4. Add richer Agent Approval Preview cards over proposed file/resource diffs,
+   command intent, reviewer notes, expiration, and repeated-action history.
 5. Align RunPrint ingest with the standalone RunPrint bundle schema as it
    stabilizes.
 6. Run the Windows `.exe` build script on a clean Windows release host and

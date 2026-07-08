@@ -92,6 +92,7 @@ def _copy_release_fixture(root: Path) -> None:
         "docs/demo.md",
         "docs/doctor.md",
         "docs/local-first.md",
+        "docs/local-app.md",
         "docs/release.md",
         "docs/qa.md",
         "docs/testpypi-dry-run.md",

@@ -1403,3 +1403,26 @@ Guardrails:
 
 Follow-up: Build the first local app shell against `cockpit --workspace .` and
 `app-state --workspace . --json`, then add richer approval preview cards.
+
+## 2026-07-08: Add Local App Shell And Approval Preview
+
+Decision: Add `delegation approval-preview`, `delegation app-export`, and
+`delegation app-serve` as the first working local app surface over the
+DelegationHQ control plane.
+
+Why: The product needs to become usable as an app soon, not only as terminal
+pieces. A workspace should now produce a human approval card and a local browser
+cockpit shell that reads app-state, agent passports, and gate decisions without
+live execution.
+
+Guardrails:
+
+- `approval-preview` is a human decision card, not an execution command
+- `app-export` writes static local files under the selected output directory
+- `app-serve` serves local state on `127.0.0.1` and does not execute agents
+- final visual design still waits for maintainer approval before becoming the
+  product UI
+- GitHub remains optional and adapter-based
+
+Follow-up: Improve approval preview with file/resource diffs, reviewer notes,
+expiration, repeated-action history, and RunPrint bundle alignment.

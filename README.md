@@ -24,6 +24,7 @@ delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation cockpit --workspace .
+delegation app-export --workspace . --preview-agent hello_agent
 ```
 
 Package/public identity is moving to `delegationhq`. The Python import
@@ -40,11 +41,14 @@ delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
 delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation cockpit --workspace .
+delegation approval-preview hello_agent --workspace .
+delegation app-export --workspace . --preview-agent hello_agent
 ```
 
 That makes the current folder a local AI workspace, registers a command-backed
 custom agent, gates it, runs it only after the exact confirmation token, records
-evidence, and shows one cockpit-ready state view. GitHub is not required.
+evidence, shows one cockpit-ready state view, and writes a local browser app
+bundle under `.delegation/cockpit/`. GitHub is not required.
 
 Simple version:
 
@@ -76,6 +80,12 @@ safe action, and guardrails.
 `cockpit` is the short local app backend command. It uses the workspace
 defaults and prints the same app-ready state without making users remember
 internal ledger or registry paths.
+
+`approval-preview` is the human card: this agent wants this action, here is
+the risk, here is the approval/evidence needed, and here is the safe next step.
+
+`app-export` writes a local browser cockpit bundle. `app-serve` serves the same
+workspace state at `http://127.0.0.1:8765/` for the future desktop app path.
 
 `agents` shows Agent Passports for built-in Harnessfile agents and custom
 Bring Your Own Agent registries.
@@ -197,6 +207,9 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
 | `delegation app-state --workspace .` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation cockpit --workspace .` | Show the local cockpit state with workspace defaults. |
+| `delegation approval-preview AGENT --workspace .` | Show the human approval card for one agent action. |
+| `delegation app-export --workspace . --preview-agent AGENT` | Write a local browser cockpit bundle. |
+| `delegation app-serve --workspace .` | Serve the local cockpit on `127.0.0.1` for app testing. |
 | `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
 | `delegation approval-inbox --ledger .delegation/run.jsonl` | Show simple approval cards from Agent Gate receipts. |
@@ -291,6 +304,7 @@ Start here:
 - [Positioning](docs/positioning.md)
 - [Roadmap](ROADMAP.md)
 - [Next actions](docs/next-actions.md)
+- [Local app shell](docs/local-app.md)
 
 Build here:
 

@@ -149,6 +149,21 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    & $ExecutablePath approval-preview exe_cli_agent --workspace $SmokeWorkspace
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & $ExecutablePath app-export --workspace $SmokeWorkspace --output (Join-Path $SmokeWorkspace ".delegation\cockpit") --preview-agent exe_cli_agent
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
+    & $ExecutablePath app-serve --workspace $SmokeWorkspace --dry-run
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath agents "examples\ai-harness-control-plane.yaml" --registry "examples\agent-passports.yaml"
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

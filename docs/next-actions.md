@@ -44,12 +44,11 @@ Human = final yes/no for danger.
 
 1. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
    examples for CLI agents, webhook agents, MCP workflows, and CRM agents.
-2. Build the first local app shell against `delegation cockpit --workspace .`
-   and `delegation app-state --workspace . --json` after visual direction is
-   approved.
-3. Add the next Agent Approval Preview slice so an agent request can summarize
-   proposed changes, risk, missing approvals, evidence, and the exact approve
-   or block choice.
+2. Improve the local app shell after visual direction is approved: agent list,
+   approval cards, mission timeline, and evidence details should feel fast and
+   obvious.
+3. Expand Agent Approval Preview with proposed file/resource diffs, command
+   intent, reviewer notes, expiration, and repeated-action history.
 4. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
    repo stabilizes.
 5. Add the next approval loop slice: optional reviewer notes, expiration, and
@@ -77,6 +76,9 @@ Human = final yes/no for danger.
 - Added workspace defaults for `agent-add`, `agent-run`, `app-state`, and
   `cockpit` so the local app path can start from a folder instead of a pile of
   internal ledger and registry flags.
+- Added `delegation approval-preview`, `delegation app-export`, and
+  `delegation app-serve` so a workspace can produce a human approval card and a
+  local browser cockpit shell without live execution.
 - Added `delegation demo --control-loop` so one install-safe command now shows
   the plan -> gate -> approval -> RunPrint recording -> audit path.
 - Added `delegation mission-status` for a plain operator view over one ledger:

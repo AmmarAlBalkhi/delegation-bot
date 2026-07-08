@@ -231,6 +231,7 @@ def _check_core_docs(root: Path) -> ReleaseCheck:
         "docs/demo.md",
         "docs/doctor.md",
         "docs/local-first.md",
+        "docs/local-app.md",
         "docs/release.md",
         "docs/qa.md",
         "docs/testpypi-dry-run.md",
@@ -313,6 +314,9 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "agent-packet",
             "app-state",
             "cockpit",
+            "approval-preview",
+            "app-export",
+            "app-serve",
             "workspace-init",
             "workspace-status",
             "agent-add",
@@ -350,7 +354,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, agent packet, workspace-aware app state, cockpit, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, agent packet, workspace-aware app state, cockpit, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -373,6 +377,9 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "agent-run exe_cli_agent --workspace $SmokeWorkspace",
         "app-state --workspace $SmokeWorkspace",
         "cockpit --workspace $SmokeWorkspace",
+        "approval-preview exe_cli_agent --workspace $SmokeWorkspace",
+        "app-export --workspace $SmokeWorkspace",
+        "app-serve --workspace $SmokeWorkspace --dry-run",
         "agents \"examples\\ai-harness-control-plane.yaml\"",
         "agent-gate \"examples\\ai-harness-control-plane.yaml\" implementer",
         "agent-audit --ledger",

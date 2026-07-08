@@ -248,6 +248,42 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "agent approval preview",
+            [
+                python,
+                "scripts/delegation.py",
+                "approval-preview",
+                "qa_cli_agent",
+                "--workspace",
+                ".delegation/qa-local-workspace",
+            ],
+        ),
+        Check(
+            "local app export",
+            [
+                python,
+                "scripts/delegation.py",
+                "app-export",
+                "--workspace",
+                ".delegation/qa-local-workspace",
+                "--output",
+                ".delegation/qa-local-workspace/.delegation/cockpit",
+                "--preview-agent",
+                "qa_cli_agent",
+            ],
+        ),
+        Check(
+            "local app server dry run",
+            [
+                python,
+                "scripts/delegation.py",
+                "app-serve",
+                "--workspace",
+                ".delegation/qa-local-workspace",
+                "--dry-run",
+            ],
+        ),
+        Check(
             "Agent Passport registry",
             [
                 python,

@@ -282,6 +282,69 @@ def main() -> int:
             print(cockpit.stderr, file=sys.stderr)
             return cockpit.returncode or 1
 
+        approval_preview = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "approval-preview",
+                "smoke_cli_agent",
+                "--workspace",
+                str(workspace),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if approval_preview.returncode != 0 or "Agent Approval Preview" not in approval_preview.stdout:
+            print("FAIL: installed package approval-preview smoke")
+            print(approval_preview.stdout)
+            print(approval_preview.stderr, file=sys.stderr)
+            return approval_preview.returncode or 1
+
+        app_export = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "app-export",
+                "--workspace",
+                str(workspace),
+                "--output",
+                str(workspace / ".delegation" / "cockpit"),
+                "--preview-agent",
+                "smoke_cli_agent",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if app_export.returncode != 0 or "DelegationHQ Local App" not in app_export.stdout:
+            print("FAIL: installed package app-export smoke")
+            print(app_export.stdout)
+            print(app_export.stderr, file=sys.stderr)
+            return app_export.returncode or 1
+        if not (workspace / ".delegation" / "cockpit" / "index.html").exists():
+            print("FAIL: installed package app-export index.html missing")
+            return 1
+
+        app_serve = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "app-serve",
+                "--workspace",
+                str(workspace),
+                "--dry-run",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if app_serve.returncode != 0 or "http://127.0.0.1:8765/" not in app_serve.stdout:
+            print("FAIL: installed package app-serve dry-run smoke")
+            print(app_serve.stdout)
+            print(app_serve.stderr, file=sys.stderr)
+            return app_serve.returncode or 1
+
         agents = _run(
             [
                 sys.executable,
@@ -419,7 +482,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, workspace app-state, cockpit, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, workspace app-state, cockpit, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 

@@ -32,6 +32,7 @@ from delegation_bot.agent_run import (
 )
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
+from delegation_bot.approval_preview import build_approval_preview_report, render_approval_preview_report
 from delegation_bot.approval_inbox import (
     APPROVAL_DECISIONS,
     build_approval_decision_events,
@@ -112,6 +113,14 @@ from delegation_bot.local_workspace import (
     initialize_local_workspace,
     render_workspace_init_report,
     render_workspace_status,
+)
+from delegation_bot.local_app import (
+    DEFAULT_APP_HOST,
+    DEFAULT_APP_PORT,
+    app_server_report,
+    export_local_app,
+    render_local_app_report,
+    serve_local_app,
 )
 from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_policy_report
 from delegation_bot.mission_status import build_mission_status_report, render_mission_status_report
@@ -351,6 +360,78 @@ def cmd_cockpit(args: argparse.Namespace) -> int:
         print(json.dumps(state.to_dict(), indent=2, sort_keys=True))
     else:
         print(render_app_state(state))
+    return 0
+
+
+def cmd_approval_preview(args: argparse.Namespace) -> int:
+    try:
+        report = build_approval_preview_report(
+            agent_id=args.agent_id,
+            action=args.action,
+            target=args.target,
+            workspace_root=Path(args.workspace) if args.workspace else None,
+            harnessfile=Path(args.harnessfile) if args.harnessfile else None,
+            registry_paths=tuple(Path(path) for path in args.registry or ()),
+            ledger_path=Path(args.ledger) if args.ledger else None,
+            requested_risk=args.risk,
+            approvals=tuple(args.approval or ()),
+            evidence=tuple(args.evidence or ()),
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_approval_preview_report(report))
+    return 1 if report.gate.blocked else 0
+
+
+def cmd_app_export(args: argparse.Namespace) -> int:
+    try:
+        report = export_local_app(
+            workspace_root=Path(args.workspace),
+            output_dir=Path(args.output) if args.output else None,
+            preview_agent=args.preview_agent,
+            preview_action=args.preview_action,
+            preview_target=args.preview_target,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_local_app_report(report))
+    return 0
+
+
+def cmd_app_serve(args: argparse.Namespace) -> int:
+    report = app_server_report(workspace_root=Path(args.workspace), host=args.host, port=args.port)
+    if args.dry_run:
+        if args.json:
+            print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+        else:
+            print(render_local_app_report(report))
+        return 0
+
+    print(render_local_app_report(report))
+    print("")
+    print("Press Ctrl+C to stop the local app server.")
+    try:
+        serve_local_app(
+            workspace_root=Path(args.workspace),
+            host=args.host,
+            port=args.port,
+            preview_agent=args.preview_agent,
+            preview_action=args.preview_action,
+            preview_target=args.preview_target,
+        )
+    except KeyboardInterrupt:
+        print("\nStopped DelegationHQ local app server.")
+        return 0
     return 0
 
 
@@ -1709,6 +1790,57 @@ def build_parser() -> argparse.ArgumentParser:
     cockpit.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
     cockpit.add_argument("--json", action="store_true", help="Print the cockpit state as JSON.")
     cockpit.set_defaults(func=cmd_cockpit)
+
+    app_export = subparsers.add_parser(
+        "app-export",
+        help="Write a static local browser cockpit bundle for a workspace.",
+    )
+    app_export.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
+    app_export.add_argument("--output", help="Output directory. Defaults to .delegation/cockpit inside the workspace.")
+    app_export.add_argument("--preview-agent", help="Agent id to show in the approval preview card.")
+    app_export.add_argument("--preview-action", default="read.workspace", help="Approval preview action. Defaults to read.workspace.")
+    app_export.add_argument("--preview-target", default="workspace", help="Approval preview target. Defaults to workspace.")
+    app_export.add_argument("--json", action="store_true", help="Print the export report as JSON.")
+    app_export.set_defaults(func=cmd_app_export)
+
+    app_serve = subparsers.add_parser(
+        "app-serve",
+        help="Serve the local browser cockpit over http://127.0.0.1.",
+    )
+    app_serve.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
+    app_serve.add_argument("--host", default=DEFAULT_APP_HOST, help=f"Host to bind. Defaults to {DEFAULT_APP_HOST}.")
+    app_serve.add_argument("--port", type=int, default=DEFAULT_APP_PORT, help=f"Port to bind. Defaults to {DEFAULT_APP_PORT}.")
+    app_serve.add_argument("--preview-agent", help="Agent id to show in the approval preview card.")
+    app_serve.add_argument("--preview-action", default="read.workspace", help="Approval preview action. Defaults to read.workspace.")
+    app_serve.add_argument("--preview-target", default="workspace", help="Approval preview target. Defaults to workspace.")
+    app_serve.add_argument("--dry-run", action="store_true", help="Print the local app URL without starting the server.")
+    app_serve.add_argument("--json", action="store_true", help="Print the server report as JSON.")
+    app_serve.set_defaults(func=cmd_app_serve)
+
+    approval_preview = subparsers.add_parser(
+        "approval-preview",
+        help="Show the human approval card for one agent action.",
+    )
+    approval_preview.add_argument("agent_id", help="Agent id from a Harnessfile or Agent Passport registry.")
+    approval_preview.add_argument("--workspace", help="Optional local workspace folder. Defaults registry, harness, and ledger paths.")
+    approval_preview.add_argument("--harnessfile", help="Optional Harnessfile with `agents:` declarations.")
+    approval_preview.add_argument(
+        "--registry",
+        action="append",
+        help="Optional Agent Passport registry file. Repeatable.",
+    )
+    approval_preview.add_argument("--ledger", help="Optional ledger path for approval next-actions.")
+    approval_preview.add_argument("--action", default="read.workspace", help="Requested action. Defaults to read.workspace.")
+    approval_preview.add_argument("--target", default="workspace", help="Target resource, file, tool, or data scope.")
+    approval_preview.add_argument(
+        "--risk",
+        choices=("low", "medium", "high", "critical"),
+        help="Optional requested risk override.",
+    )
+    approval_preview.add_argument("--approval", action="append", help="Approval evidence already present. Repeatable.")
+    approval_preview.add_argument("--evidence", action="append", help="Evidence already present. Repeatable.")
+    approval_preview.add_argument("--json", action="store_true", help="Print the approval preview as JSON.")
+    approval_preview.set_defaults(func=cmd_approval_preview)
 
     agents = subparsers.add_parser(
         "agents",

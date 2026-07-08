@@ -20,6 +20,9 @@ delegation agent-add local_cli_agent --workspace . --command "python agent.py" -
 delegation agent-run local_cli_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation app-state --workspace .
 delegation cockpit --workspace .
+delegation approval-preview local_cli_agent --workspace .
+delegation app-export --workspace . --preview-agent local_cli_agent
+delegation app-serve --workspace . --dry-run
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
 delegation approval-inbox --ledger .delegation/demo.jsonl
@@ -78,6 +81,9 @@ dist\delegation.exe agent-run exe_cli_agent --workspace .delegation\exe-local-wo
 dist\delegation.exe app-plan
 dist\delegation.exe app-state --workspace .delegation\exe-local-workspace
 dist\delegation.exe cockpit --workspace .delegation\exe-local-workspace
+dist\delegation.exe approval-preview exe_cli_agent --workspace .delegation\exe-local-workspace
+dist\delegation.exe app-export --workspace .delegation\exe-local-workspace --output .delegation\exe-local-workspace\.delegation\cockpit --preview-agent exe_cli_agent
+dist\delegation.exe app-serve --workspace .delegation\exe-local-workspace --dry-run
 dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry examples\agent-passports.yaml
 dist\delegation.exe agent-gate examples\ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation\exe-smoke.jsonl --write
 dist\delegation.exe approval-inbox --ledger .delegation\exe-smoke.jsonl

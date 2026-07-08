@@ -113,6 +113,9 @@ delegation agent-run local_cli_agent --workspace . --execute --confirm LOCAL_AGE
 delegation app-state --workspace .
 delegation app-state --workspace . --json
 delegation cockpit --workspace .
+delegation approval-preview local_cli_agent --workspace .
+delegation app-export --workspace . --preview-agent local_cli_agent
+delegation app-serve --workspace . --dry-run
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml --json
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
@@ -120,10 +123,12 @@ delegation approval-inbox --ledger .delegation/demo.jsonl --json
 delegation runprint-ingest --ledger .delegation/demo.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-demo --bundle-id bundle-demo --artifact run-ledger:jsonl:.delegation/demo.jsonl --json
 ```
 
-`app-state` is the first backend slice for the local cockpit. It combines the
-app plan, doctor report, release readiness, mission dashboard, evidence bundle
-summary, approval inbox summary, recorded-evidence receipts, next safe action,
-and guardrails without launching a UI or doing live work.
+`app-state` is the first backend slice for the local cockpit. `app-export`
+writes a static local browser shell, and `app-serve` exposes the same state over
+`http://127.0.0.1` for EXE/app testing. These commands combine app plan, doctor
+report, release readiness, mission dashboard, evidence bundle summary, approval
+preview, recorded-evidence receipts, next safe action, and guardrails without
+doing live work.
 
 ## Milestones
 
@@ -134,8 +139,8 @@ and guardrails without launching a UI or doing live work.
 4. `agents` shows Harnessfile and custom registry Agent Passports.
 5. `agent-gate` previews whether an agent action should allow, warn, require
    approval, or block.
-6. A local app shell reads app-state JSON, Agent Passport JSON, and Agent Gate
-   preview JSON.
+6. A local app shell reads app-state JSON, Agent Passport JSON, and Agent
+   Approval Preview JSON.
 7. Approval Inbox previews risky actions without live execution.
 8. RunPrint ingest attaches recorded evidence to approval cards.
 9. The app is packaged from a tagged commit with checksums and release rehearsal

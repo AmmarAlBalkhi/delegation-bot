@@ -81,6 +81,9 @@ The project is currently pre-release.
   custom agents with local ledger and RunPrint-style evidence.
 - Added workspace defaults for `agent-add`, `agent-run`, and `app-state`, plus
   `delegation cockpit --workspace .` as a short local app backend entry.
+- Added `delegation approval-preview`, `delegation app-export`, and
+  `delegation app-serve` for the first local browser app shell over workspace
+  state and approval cards.
 - Added Agent Gate ledger receipts and `delegation agent-audit` for comparing
   approved intent with planned or recorded RunPrint evidence.
 - Added `delegation approval-inbox` and `delegation approval-decision` for

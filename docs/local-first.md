@@ -53,6 +53,8 @@ Run it under control:
 delegation agent-run research_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation agent-audit --ledger .delegation/agent-run.jsonl
 delegation app-state --workspace .
+delegation approval-preview research_agent --workspace .
+delegation app-export --workspace . --preview-agent research_agent
 ```
 
 The custom agent does the work. DelegationHQ controls:

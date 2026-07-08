@@ -225,6 +225,109 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Workspace:", text)
         self.assertIn("GitHub required: false", text)
 
+    def test_approval_preview_uses_workspace_agent_passport(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "preview_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('preview ok')\"",
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["approval-preview", "preview_runner", "--workspace", tmpdir, "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["schema_version"], "delegation.approval-preview.v1")
+        self.assertEqual(data["decision"], "allow")
+        self.assertEqual(data["agent_id"], "preview_runner")
+        self.assertTrue(data["can_execute"])
+        self.assertIn("command_output", data["required_evidence"])
+
+    def test_app_export_writes_static_local_app_bundle(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "cockpit"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "app_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('app ok')\"",
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "app-export",
+                        "--workspace",
+                        tmpdir,
+                        "--output",
+                        str(output_dir),
+                        "--preview-agent",
+                        "app_runner",
+                        "--json",
+                    ]
+                )
+            data = json.loads(output.getvalue())
+            index_html = Path(data["index_html"])
+            state_json = Path(data["state_json"])
+            preview_json = Path(data["approval_preview_json"])
+            html_text = index_html.read_text(encoding="utf-8")
+            index_exists = index_html.exists()
+            state_exists = state_json.exists()
+            preview_exists = preview_json.exists()
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertTrue(index_exists)
+        self.assertTrue(state_exists)
+        self.assertTrue(preview_exists)
+        self.assertIn("DelegationHQ Local App", html_text)
+        self.assertIn("Approval Preview", html_text)
+
+    def test_app_serve_dry_run_reports_local_url(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["app-serve", "--workspace", tmpdir, "--dry-run", "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertEqual(data["url"], "http://127.0.0.1:8765/")
+        self.assertEqual(data["workspace"], str(Path(tmpdir).resolve()))
+
     def test_app_state_reports_missing_ledger_without_process_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             missing = Path(tmpdir) / "missing.jsonl"
