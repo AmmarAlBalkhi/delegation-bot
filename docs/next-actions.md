@@ -44,11 +44,11 @@ Human = final yes/no for danger.
 
 ## Now
 
-1. Expand Bring Your Own Agent adapters from file-based handoff to live
+1. Add controlled request execution UX only after the guarded app first-run,
+   request, approval, and generic evidence loop has more local testing.
+2. Expand Bring Your Own Agent adapters from file-based handoff to live
    connector modes: CLI stdin/stdout, webhook callback, MCP tool call, and
    LangGraph invocation.
-2. Add controlled request execution UX only after the guarded app approval and
-   Agent Passport registration loop has more local testing.
 3. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
    designing UI until the visual direction is approved.
 4. Run `delegation release-check --strict-artifacts` on a clean Windows release
@@ -62,6 +62,10 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added guarded local cockpit forms for first-run workspace initialization,
+  action request submission, and generic evidence recording, so the local app
+  can create the real plan -> gate -> approve/block -> proof -> timeline loop
+  without executing agents or calling external services.
 - Added the first functional local cockpit controls: guarded approve/block
   buttons for pending requests, guarded Agent Passport registration, and a
   `result_summary` contract over evidence, execution, attention, and latest

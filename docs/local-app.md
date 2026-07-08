@@ -41,17 +41,20 @@ Then open:
 http://127.0.0.1:8765/
 ```
 
-By default the server is read-only. If you want the local app backend to record
-an approve/block decision for the active request, start it deliberately:
+By default the server is read-only. If you want the local app backend to create
+local workspace files, register agents, submit action requests, record
+approve/block decisions, or attach evidence receipts, start it deliberately:
 
 ```bash
 delegation app-serve --workspace . --allow-actions
 ```
 
 The browser-facing write endpoints still require the exact confirmation token
-`LOCAL_APP_WRITE`. They can register an Agent Passport or record a human
-approve/block receipt. Agent execution still requires the separate
-`LOCAL_AGENT_EXECUTION` confirmation through the controlled request-run path.
+`LOCAL_APP_WRITE`. They can initialize the local workspace, register an Agent
+Passport, submit a gated action request, record a human approve/block receipt,
+or append generic evidence from a compatible proof tool. Agent execution still
+requires the separate `LOCAL_AGENT_EXECUTION` confirmation through the
+controlled request-run path.
 
 ## What It Shows
 
@@ -62,10 +65,14 @@ approve/block receipt. Agent execution still requires the separate
 - Timeline
 - Settings
 - Mission Result
+- app-backed first-run workspace initialization
 - workspace health
 - active request from the real workspace ledger
 - app-backed Agent Passport registration for CLI/API/webhook/MCP-style workers
+- app-backed action request submission for registered agents
 - app-backed approve/block controls for active pending requests
+- app-backed generic evidence recording for RunPrint, tests, browser sessions,
+  CRM logs, API traces, workflow monitors, and future proof tools
 - guided workspace flow with the current step and one next safe command
 - one-command demo workspace with optional approval, execution, evidence, and
   cockpit export
@@ -90,8 +97,10 @@ Folder is workspace.
 Mission is the objective.
 Agents have ID cards.
 Add agent gives a worker an ID card.
+Submit request means agent asks before touching things.
 Approval card says allow, ask human, or block.
 Approve or block is the human yes/no.
+Evidence tool records proof. RunPrint is one proof tool, not the whole product.
 Action intent says what may happen before you say yes.
 Workspace flow says what to do next.
 Active request says what the agent is asking for now.
@@ -105,8 +114,10 @@ Settings keeps maintenance details out of the main loop.
 
 - `app-export` writes static files only.
 - `app-serve` is read-only unless started with `--allow-actions`.
-- `--allow-actions` can register local agents or record local approve/block
-  receipts only when the request includes `LOCAL_APP_WRITE`.
+- `--allow-actions` can initialize local workspace files, register local
+  agents, submit local action requests, record local approve/block receipts,
+  and append local evidence receipts only when the request includes
+  `LOCAL_APP_WRITE`.
 - Agent execution still requires `LOCAL_AGENT_EXECUTION`.
 - Neither app command executes agents.
 - Neither command writes to GitHub.

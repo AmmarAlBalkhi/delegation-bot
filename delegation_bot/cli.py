@@ -2172,7 +2172,7 @@ def build_parser() -> argparse.ArgumentParser:
     app_serve.add_argument(
         "--allow-actions",
         action="store_true",
-        help="Enable guarded local approval writes through POST /api/approval-decision.",
+        help="Enable guarded local workspace, agent, request, approval, and evidence writes through app POST endpoints.",
     )
     app_serve.add_argument("--dry-run", action="store_true", help="Print the local app URL without starting the server.")
     app_serve.add_argument("--json", action="store_true", help="Print the server report as JSON.")

@@ -412,8 +412,16 @@ def main() -> int:
             print("FAIL: installed package app-export index.html missing")
             return 1
         app_index_text = (workspace / ".delegation" / "cockpit" / "index.html").read_text(encoding="utf-8")
-        if "Add Agent Passport" not in app_index_text or "Mission Result" not in app_index_text:
+        app_needles = (
+            "Add Agent Passport",
+            "Submit Action Request",
+            "Record Evidence From Any Tool",
+            "Mission Result",
+        )
+        missing_app_needles = [needle for needle in app_needles if needle not in app_index_text]
+        if missing_app_needles:
             print("FAIL: installed package app-export missing functional app sections")
+            print(", ".join(missing_app_needles))
             return 1
 
         app_serve = _run(
@@ -767,7 +775,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
         print(
-            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, active request dashboard, result summary, approval-preview, app-export functional sections, app-serve, guarded app actions, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, workspace-demo, app-dashboard, active request dashboard, result summary, approval-preview, app-export functional request/evidence sections, app-serve, guarded app actions, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
         )
     return 0
 

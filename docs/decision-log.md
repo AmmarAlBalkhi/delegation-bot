@@ -1626,3 +1626,31 @@ Guardrails:
 
 Follow-up: Add controlled request execution from the app only after the first
 approval/register/result loop has more operator testing.
+
+## 2026-07-08: Make The Local Cockpit Create The Trust Loop
+
+Decision: Add guarded app-backed first-run workspace initialization, action
+request submission, and generic evidence recording.
+
+Why: The cockpit should be usable on a real local project without pretending
+GitHub, RunPrint, or a demo dashboard is the whole product. A user can now open
+the local app, initialize a workspace, add an agent, submit a request, review
+the gate, approve/block, attach proof from any compatible evidence tool, and
+see the timeline/result update.
+
+Guardrails:
+
+- app writes still require `app-serve --allow-actions`
+- each app write still requires `LOCAL_APP_WRITE`
+- first-run initialization writes only local `.delegation` workspace files
+- action request submission records gate/request receipts but does not execute
+  agents
+- generic evidence recording appends proof receipts for a prior Agent Gate
+  action
+- agent execution still requires `LOCAL_AGENT_EXECUTION`
+- RunPrint remains one evidence tool, not the whole evidence layer
+- the HTML controls are functional and replaceable so the future design can
+  change without changing the control contracts
+
+Follow-up: Add a reviewed controlled-execution UX only after the local app
+request/evidence loop has enough testing.

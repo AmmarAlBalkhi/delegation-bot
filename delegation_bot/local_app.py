@@ -12,13 +12,21 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from delegation_bot.action_request import build_action_request_events, build_action_request_report
 from delegation_bot.app_dashboard import build_app_dashboard_report
 from delegation_bot.app_state import build_app_state
 from delegation_bot.approval_inbox import build_approval_decision_events, build_approval_inbox_report
 from delegation_bot.approval_preview import ApprovalPreviewReport, build_approval_preview_report
+from delegation_bot.evidence_ingest import build_evidence_recording_events, evidence_artifacts_from_values
 from delegation_bot.evals import append_jsonl, load_jsonl
 from delegation_bot.agent_registry_writer import add_agent_to_registry
-from delegation_bot.local_workspace import DEFAULT_WORKSPACE_AGENT_RUN_LEDGER, DEFAULT_WORKSPACE_REGISTRY
+from delegation_bot.harness_manifest import load_manifest, validate_manifest
+from delegation_bot.local_workspace import (
+    DEFAULT_WORKSPACE_AGENT_RUN_LEDGER,
+    DEFAULT_WORKSPACE_HARNESS,
+    DEFAULT_WORKSPACE_REGISTRY,
+    initialize_local_workspace,
+)
 from delegation_bot.mission_timeline import build_timeline_report_from_paths
 
 
@@ -29,6 +37,9 @@ DEFAULT_APP_PORT = 8765
 LOCAL_APP_WRITE_CONFIRMATION = "LOCAL_APP_WRITE"
 LOCAL_APP_ACTION_SCHEMA_VERSION = "delegation.local-app-action.v1"
 LOCAL_APP_AGENT_SCHEMA_VERSION = "delegation.local-app-agent.v1"
+LOCAL_APP_WORKSPACE_SCHEMA_VERSION = "delegation.local-app-workspace.v1"
+LOCAL_APP_REQUEST_SCHEMA_VERSION = "delegation.local-app-request.v1"
+LOCAL_APP_EVIDENCE_SCHEMA_VERSION = "delegation.local-app-evidence.v1"
 
 
 @dataclass(frozen=True)
@@ -76,7 +87,7 @@ class LocalAppReport:
         if not self.actions_enabled:
             actions.append(
                 "Start with `delegation app-serve --workspace . --allow-actions` "
-                "only when you want guarded local approval writes."
+                "only when you want guarded local workspace, agent, request, approval, or evidence writes."
             )
         return tuple(actions)
 
@@ -156,6 +167,133 @@ class LocalAppAgentReport:
             "agent_id": self.agent_id,
             "runtime_type": self.runtime_type,
             "wrote_registry": self.wrote_registry,
+            "message": self.message,
+            "warnings": list(self.warnings),
+            "next_actions": list(self.next_actions),
+        }
+
+
+@dataclass(frozen=True)
+class LocalAppWorkspaceReport:
+    schema_version: str
+    status: str
+    action: str
+    workspace: str
+    harnessfile: str | None
+    registry: str | None
+    ledger: str | None
+    wrote_workspace: bool
+    message: str
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def next_actions(self) -> tuple[str, ...]:
+        if self.status == "recorded":
+            return (
+                f"delegation workspace-status --path {self.workspace}",
+                f"delegation app-dashboard --workspace {self.workspace}",
+                "Refresh `/api/dashboard` to load the workspace.",
+            )
+        return ("Review the workspace first-run form.",)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "schema_version": self.schema_version,
+            "status": self.status,
+            "action": self.action,
+            "workspace": self.workspace,
+            "harnessfile": self.harnessfile,
+            "registry": self.registry,
+            "ledger": self.ledger,
+            "wrote_workspace": self.wrote_workspace,
+            "message": self.message,
+            "warnings": list(self.warnings),
+            "next_actions": list(self.next_actions),
+        }
+
+
+@dataclass(frozen=True)
+class LocalAppRequestReport:
+    schema_version: str
+    status: str
+    action: str
+    workspace: str
+    ledger: str
+    action_id: str
+    agent_id: str
+    requested_action: str
+    target: str
+    wrote_ledger: bool
+    message: str
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def next_actions(self) -> tuple[str, ...]:
+        if self.status in {"pending_approval", "needs_review"}:
+            return (
+                f"delegation request-status --ledger {self.ledger} --action-id {self.action_id}",
+                "Refresh `/api/dashboard` to approve or block the request.",
+            )
+        if self.status == "ready_for_recording":
+            return (
+                f"delegation request-run --ledger {self.ledger} --action-id {self.action_id} --confirm LOCAL_AGENT_EXECUTION",
+                "Refresh `/api/dashboard` to inspect the request.",
+            )
+        return ("Review the action request form.",)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "schema_version": self.schema_version,
+            "status": self.status,
+            "action": self.action,
+            "workspace": self.workspace,
+            "ledger": self.ledger,
+            "action_id": self.action_id,
+            "agent_id": self.agent_id,
+            "requested_action": self.requested_action,
+            "target": self.target,
+            "wrote_ledger": self.wrote_ledger,
+            "message": self.message,
+            "warnings": list(self.warnings),
+            "next_actions": list(self.next_actions),
+        }
+
+
+@dataclass(frozen=True)
+class LocalAppEvidenceReport:
+    schema_version: str
+    status: str
+    action: str
+    workspace: str
+    ledger: str
+    action_id: str
+    evidence_tool: str
+    tool_kind: str
+    wrote_ledger: bool
+    message: str
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def next_actions(self) -> tuple[str, ...]:
+        if self.status == "recorded":
+            return (
+                f"delegation agent-audit --ledger {self.ledger}",
+                f"delegation timeline --ledger {self.ledger}",
+                "Refresh `/api/dashboard` to see the result summary update.",
+            )
+        return ("Review the evidence form.",)
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "schema_version": self.schema_version,
+            "status": self.status,
+            "action": self.action,
+            "workspace": self.workspace,
+            "ledger": self.ledger,
+            "action_id": self.action_id,
+            "evidence_tool": self.evidence_tool,
+            "tool_kind": self.tool_kind,
+            "wrote_ledger": self.wrote_ledger,
             "message": self.message,
             "warnings": list(self.warnings),
             "next_actions": list(self.next_actions),
@@ -489,6 +627,357 @@ def build_local_app_agent_add(
     )
 
 
+def build_local_app_workspace_init(
+    *,
+    workspace_root: Path,
+    actions_enabled: bool,
+    name: str = "",
+    owner: str = "",
+    objective: str = "",
+    plan: bool = True,
+    force: bool = False,
+    confirm: str | None = None,
+) -> LocalAppWorkspaceReport:
+    """Initialize a local workspace through the guarded local app backend."""
+
+    workspace = workspace_root.resolve()
+    if not actions_enabled:
+        return _local_app_workspace_refused(
+            workspace=workspace,
+            status="disabled",
+            message="Local app actions are disabled. Restart with --allow-actions to initialize a workspace.",
+        )
+    if confirm != LOCAL_APP_WRITE_CONFIRMATION:
+        return _local_app_workspace_refused(
+            workspace=workspace,
+            status="blocked",
+            message=f"Workspace initialization requires confirmation token {LOCAL_APP_WRITE_CONFIRMATION}.",
+        )
+    try:
+        report = initialize_local_workspace(
+            root=workspace,
+            name=_clean(name) or "Local DelegationHQ Workspace",
+            owner=_clean(owner) or "local-operator",
+            objective=_clean(objective) or "control AI work in this local workspace",
+            plan=plan,
+            force=force,
+        )
+    except (OSError, RuntimeError, ValueError, FileExistsError) as exc:
+        return _local_app_workspace_refused(
+            workspace=workspace,
+            status="blocked",
+            message=str(exc),
+        )
+    return LocalAppWorkspaceReport(
+        schema_version=LOCAL_APP_WORKSPACE_SCHEMA_VERSION,
+        status="recorded",
+        action="workspace-init",
+        workspace=report.root,
+        harnessfile=report.harnessfile,
+        registry=report.registry,
+        ledger=report.ledger,
+        wrote_workspace=True,
+        message="Local workspace initialized for DelegationHQ control.",
+        warnings=report.warnings,
+    )
+
+
+def _local_app_workspace_refused(
+    *,
+    workspace: Path,
+    status: str,
+    message: str,
+    warnings: tuple[str, ...] = (),
+) -> LocalAppWorkspaceReport:
+    return LocalAppWorkspaceReport(
+        schema_version=LOCAL_APP_WORKSPACE_SCHEMA_VERSION,
+        status=status,
+        action="workspace-init",
+        workspace=str(workspace),
+        harnessfile=None,
+        registry=None,
+        ledger=None,
+        wrote_workspace=False,
+        message=message,
+        warnings=warnings,
+    )
+
+
+def build_local_app_action_request(
+    *,
+    workspace_root: Path,
+    actions_enabled: bool,
+    agent_id: str = "",
+    action: str = "",
+    target: str = "",
+    summary: str = "",
+    requested_by: str = "",
+    risk: str = "",
+    evidence: T.Sequence[str] = (),
+    approvals: T.Sequence[str] = (),
+    confirm: str | None = None,
+) -> LocalAppRequestReport:
+    """Submit an action request through the guarded local app backend."""
+
+    workspace = workspace_root.resolve()
+    ledger = workspace / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+    clean_agent_id = _clean(agent_id)
+    clean_action = _clean(action)
+    clean_target = _clean(target) or "workspace"
+    if not actions_enabled:
+        return _local_app_request_refused(
+            workspace=workspace,
+            ledger=ledger,
+            agent_id=clean_agent_id,
+            requested_action=clean_action,
+            target=clean_target,
+            status="disabled",
+            message="Local app actions are disabled. Restart with --allow-actions to submit requests.",
+        )
+    if confirm != LOCAL_APP_WRITE_CONFIRMATION:
+        return _local_app_request_refused(
+            workspace=workspace,
+            ledger=ledger,
+            agent_id=clean_agent_id,
+            requested_action=clean_action,
+            target=clean_target,
+            status="blocked",
+            message=f"Action requests require confirmation token {LOCAL_APP_WRITE_CONFIRMATION}.",
+        )
+    if not clean_agent_id or not clean_action:
+        return _local_app_request_refused(
+            workspace=workspace,
+            ledger=ledger,
+            agent_id=clean_agent_id,
+            requested_action=clean_action,
+            target=clean_target,
+            status="blocked",
+            message="Agent id and requested action are required.",
+        )
+
+    manifest = None
+    harnessfile = workspace / DEFAULT_WORKSPACE_HARNESS
+    if harnessfile.exists():
+        try:
+            manifest = load_manifest(harnessfile)
+            errors = validate_manifest(manifest)
+        except Exception as exc:  # noqa: BLE001 - user-facing local app refusal.
+            return _local_app_request_refused(
+                workspace=workspace,
+                ledger=ledger,
+                agent_id=clean_agent_id,
+                requested_action=clean_action,
+                target=clean_target,
+                status="blocked",
+                message=f"Harnessfile could not be read: {exc}",
+            )
+        if errors:
+            return _local_app_request_refused(
+                workspace=workspace,
+                ledger=ledger,
+                agent_id=clean_agent_id,
+                requested_action=clean_action,
+                target=clean_target,
+                status="blocked",
+                message="Harnessfile is invalid: " + "; ".join(errors),
+            )
+
+    registry = workspace / DEFAULT_WORKSPACE_REGISTRY
+    try:
+        existing_events = load_jsonl(ledger) if ledger.exists() else []
+        report = build_action_request_report(
+            agent_id=clean_agent_id,
+            action=clean_action,
+            target=clean_target,
+            ledger_source=str(ledger),
+            manifest=manifest,
+            manifest_source=str(harnessfile) if harnessfile.exists() else None,
+            registry_paths=(registry,) if registry.exists() else (),
+            requested_risk=_clean(risk) or None,
+            provided_evidence=tuple(_clean_list_values(evidence)),
+            provided_approvals=tuple(_clean_list_values(approvals)),
+            requested_by=_clean(requested_by) or clean_agent_id,
+            summary=_clean(summary) or None,
+            wrote_ledger=True,
+        )
+        run_id = str(existing_events[0].get("run_id")) if existing_events else f"action-request-{clean_agent_id}"
+        events = build_action_request_events(
+            report,
+            run_id=run_id,
+            start_sequence=len(existing_events) + 1,
+        )
+        ledger.parent.mkdir(parents=True, exist_ok=True)
+        append_jsonl(events, ledger)
+    except (OSError, ValueError) as exc:
+        return _local_app_request_refused(
+            workspace=workspace,
+            ledger=ledger,
+            agent_id=clean_agent_id,
+            requested_action=clean_action,
+            target=clean_target,
+            status="blocked",
+            message=str(exc),
+        )
+    return LocalAppRequestReport(
+        schema_version=LOCAL_APP_REQUEST_SCHEMA_VERSION,
+        status=report.status,
+        action="action-request",
+        workspace=str(workspace),
+        ledger=str(ledger),
+        action_id=report.action_id,
+        agent_id=report.agent_id,
+        requested_action=report.action,
+        target=report.target,
+        wrote_ledger=True,
+        message=f"Action request `{report.action_id}` submitted for `{report.agent_id}`.",
+    )
+
+
+def _local_app_request_refused(
+    *,
+    workspace: Path,
+    ledger: Path,
+    agent_id: str,
+    requested_action: str,
+    target: str,
+    status: str,
+    message: str,
+    warnings: tuple[str, ...] = (),
+) -> LocalAppRequestReport:
+    return LocalAppRequestReport(
+        schema_version=LOCAL_APP_REQUEST_SCHEMA_VERSION,
+        status=status,
+        action="action-request",
+        workspace=str(workspace),
+        ledger=str(ledger),
+        action_id="",
+        agent_id=agent_id,
+        requested_action=requested_action,
+        target=target,
+        wrote_ledger=False,
+        message=message,
+        warnings=warnings,
+    )
+
+
+def build_local_app_evidence_record(
+    *,
+    workspace_root: Path,
+    actions_enabled: bool,
+    action_id: str = "",
+    evidence_tool: str = "",
+    tool_kind: str = "",
+    recording_id: str = "",
+    bundle_id: str = "",
+    artifacts: T.Sequence[str] = (),
+    summary: str = "",
+    source: str = "",
+    confirm: str | None = None,
+) -> LocalAppEvidenceReport:
+    """Append a generic evidence receipt through the guarded local app backend."""
+
+    workspace = workspace_root.resolve()
+    ledger = workspace / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+    clean_action_id = _clean(action_id)
+    clean_tool = _clean(evidence_tool) or "manual"
+    clean_tool_kind = _clean(tool_kind) or "recorder"
+    if not actions_enabled:
+        return _local_app_evidence_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            evidence_tool=clean_tool,
+            tool_kind=clean_tool_kind,
+            status="disabled",
+            message="Local app actions are disabled. Restart with --allow-actions to record evidence.",
+        )
+    if confirm != LOCAL_APP_WRITE_CONFIRMATION:
+        return _local_app_evidence_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            evidence_tool=clean_tool,
+            tool_kind=clean_tool_kind,
+            status="blocked",
+            message=f"Evidence recording requires confirmation token {LOCAL_APP_WRITE_CONFIRMATION}.",
+        )
+    if not ledger.exists():
+        return _local_app_evidence_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            evidence_tool=clean_tool,
+            tool_kind=clean_tool_kind,
+            status="missing",
+            message="No workspace request ledger exists yet.",
+        )
+    try:
+        existing_events = load_jsonl(ledger)
+        selected_action_id = clean_action_id or _active_request_action_id(existing_events, ledger_source=str(ledger))
+        if not selected_action_id:
+            raise ValueError("No active request card is available for evidence.")
+        evidence_events = build_evidence_recording_events(
+            existing_events,
+            action_id=selected_action_id,
+            evidence_tool=clean_tool,
+            tool_kind=clean_tool_kind,
+            recording_id=_clean(recording_id) or f"{clean_tool}-{_event_id_part(selected_action_id)}",
+            evidence_bundle_id=_clean(bundle_id) or f"bundle-{_event_id_part(selected_action_id)}",
+            artifacts=evidence_artifacts_from_values(tuple(_clean_list_values(artifacts))),
+            summary=_clean(summary) or f"{clean_tool} recorded evidence.",
+            source=_clean(source) or "local-app",
+        )
+        append_jsonl(evidence_events, ledger)
+    except (OSError, ValueError) as exc:
+        return _local_app_evidence_refused(
+            workspace=workspace,
+            ledger=ledger,
+            action_id=clean_action_id,
+            evidence_tool=clean_tool,
+            tool_kind=clean_tool_kind,
+            status="blocked",
+            message=str(exc),
+        )
+    return LocalAppEvidenceReport(
+        schema_version=LOCAL_APP_EVIDENCE_SCHEMA_VERSION,
+        status="recorded",
+        action="evidence-record",
+        workspace=str(workspace),
+        ledger=str(ledger),
+        action_id=evidence_events[0].action_id or clean_action_id,
+        evidence_tool=clean_tool,
+        tool_kind=clean_tool_kind,
+        wrote_ledger=True,
+        message=f"Evidence from `{clean_tool}` recorded.",
+    )
+
+
+def _local_app_evidence_refused(
+    *,
+    workspace: Path,
+    ledger: Path,
+    action_id: str,
+    evidence_tool: str,
+    tool_kind: str,
+    status: str,
+    message: str,
+    warnings: tuple[str, ...] = (),
+) -> LocalAppEvidenceReport:
+    return LocalAppEvidenceReport(
+        schema_version=LOCAL_APP_EVIDENCE_SCHEMA_VERSION,
+        status=status,
+        action="evidence-record",
+        workspace=str(workspace),
+        ledger=str(ledger),
+        action_id=action_id,
+        evidence_tool=evidence_tool,
+        tool_kind=tool_kind,
+        wrote_ledger=False,
+        message=message,
+        warnings=warnings,
+    )
+
+
 def _local_app_agent_refused(
     *,
     workspace: Path,
@@ -523,6 +1012,11 @@ def _clean_list_values(values: T.Sequence[str]) -> list[str]:
         seen.add(cleaned)
         result.append(cleaned)
     return result
+
+
+def _event_id_part(value: str) -> str:
+    cleaned = "".join(char.lower() if char.isalnum() else "-" for char in value.strip())
+    return "-".join(part for part in cleaned.split("-") if part) or "action"
 
 
 def _payload_list(value: T.Any) -> tuple[str, ...]:
@@ -619,10 +1113,30 @@ def serve_local_app(
 
         def do_POST(self) -> None:  # noqa: N802 - stdlib handler API.
             parsed = urlparse(self.path)
-            if parsed.path not in {"/api/approval-decision", "/api/agent-add"}:
+            if parsed.path not in {
+                "/api/workspace-init",
+                "/api/agent-add",
+                "/api/action-request",
+                "/api/approval-decision",
+                "/api/evidence-record",
+            }:
                 self._send_json({"status": "missing", "path": parsed.path}, status=404)
                 return
             payload = self._read_json()
+            if parsed.path == "/api/workspace-init":
+                report = build_local_app_workspace_init(
+                    workspace_root=workspace,
+                    actions_enabled=allow_actions,
+                    name=_clean(payload.get("name")),
+                    owner=_clean(payload.get("owner")),
+                    objective=_clean(payload.get("objective")),
+                    plan=not (payload.get("plan") is False),
+                    force=bool(payload.get("force")),
+                    confirm=_clean(payload.get("confirm")),
+                )
+                status = 200 if report.status == "recorded" else 403 if report.status == "disabled" else 400
+                self._send_json(report.to_dict(), status=status)
+                return
             if parsed.path == "/api/approval-decision":
                 report = build_local_app_approval_decision(
                     workspace_root=workspace,
@@ -631,6 +1145,40 @@ def serve_local_app(
                     decision=_clean(payload.get("decision")),
                     approver=_clean(payload.get("approver")),
                     reason=_clean(payload.get("reason")),
+                    confirm=_clean(payload.get("confirm")),
+                )
+                status = 200 if report.status == "recorded" else 403 if report.status == "disabled" else 400
+                self._send_json(report.to_dict(), status=status)
+                return
+            if parsed.path == "/api/action-request":
+                report = build_local_app_action_request(
+                    workspace_root=workspace,
+                    actions_enabled=allow_actions,
+                    agent_id=_clean(payload.get("agent_id")),
+                    action=_clean(payload.get("action")),
+                    target=_clean(payload.get("target")),
+                    summary=_clean(payload.get("summary")),
+                    requested_by=_clean(payload.get("requested_by")),
+                    risk=_clean(payload.get("risk")),
+                    evidence=_payload_list(payload.get("evidence")),
+                    approvals=_payload_list(payload.get("approvals")),
+                    confirm=_clean(payload.get("confirm")),
+                )
+                status = 200 if report.wrote_ledger else 403 if report.status == "disabled" else 400
+                self._send_json(report.to_dict(), status=status)
+                return
+            if parsed.path == "/api/evidence-record":
+                report = build_local_app_evidence_record(
+                    workspace_root=workspace,
+                    actions_enabled=allow_actions,
+                    action_id=_clean(payload.get("action_id")),
+                    evidence_tool=_clean(payload.get("evidence_tool")),
+                    tool_kind=_clean(payload.get("tool_kind")),
+                    recording_id=_clean(payload.get("recording_id")),
+                    bundle_id=_clean(payload.get("bundle_id")),
+                    artifacts=_payload_list(payload.get("artifacts")),
+                    summary=_clean(payload.get("summary")),
+                    source=_clean(payload.get("source")),
                     confirm=_clean(payload.get("confirm")),
                 )
                 status = 200 if report.status == "recorded" else 403 if report.status == "disabled" else 400
@@ -748,7 +1296,7 @@ def render_local_app_report(report: LocalAppReport) -> str:
             "Plain language:",
             "- This is a local app shell over the DelegationHQ control plane.",
             "- It is read-only by default.",
-            f"- Approval writes require `--allow-actions` and `{LOCAL_APP_WRITE_CONFIRMATION}`.",
+            f"- Local app writes require `--allow-actions` and `{LOCAL_APP_WRITE_CONFIRMATION}`.",
             "- Agent execution still requires the separate `LOCAL_AGENT_EXECUTION` confirmation.",
         ]
     )
@@ -1039,12 +1587,14 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       {_area_metric_panel(areas.get("agents"), "Agents", agents.get("status", "unknown"))}
       {_area_metric_panel(areas.get("evidence"), "Evidence", "not_started")}
     </section>
+    {_workspace_first_run_html(workspace)}
     <section class="panel">
       <h2>Workspace Flow</h2>
       {_workspace_flow_html(workspace_flow)}
     </section>
     <section class="panel">
       <h2>Active Request</h2>
+      {_action_request_form(passports)}
       {_active_request_html(active_request, request_cards, command_center)}
     </section>
     <section class="panel">
@@ -1075,6 +1625,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     <section class="panel">
       <h2>Evidence</h2>
       {_area_panel_html(areas.get("evidence"))}
+      {_evidence_recording_form(active_request, approval_inbox)}
       {_agent_handoff_html(agent_packet_data, preview)}
     </section>
     <section class="panel">
@@ -1117,6 +1668,57 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
         selection.addRange(range);
         button.textContent = "Selected";
       }}
+    }});
+    document.addEventListener("click", async function (event) {{
+      const button = event.target.closest("[data-workspace-init]");
+      if (!button) return;
+      const panel = button.closest("[data-workspace-init-form]");
+      if (!panel) return;
+      const payload = {{
+        name: panel.querySelector("[data-workspace-name]")?.value || "",
+        owner: panel.querySelector("[data-workspace-owner]")?.value || "",
+        objective: panel.querySelector("[data-workspace-objective]")?.value || "",
+        plan: panel.querySelector("[data-workspace-plan]")?.checked || false,
+        force: panel.querySelector("[data-workspace-force]")?.checked || false,
+        confirm: panel.querySelector("[data-local-write-confirm]")?.value || ""
+      }};
+      await postDelegationAction("/api/workspace-init", payload, panel);
+    }});
+    document.addEventListener("click", async function (event) {{
+      const button = event.target.closest("[data-action-request-submit]");
+      if (!button) return;
+      const panel = button.closest("[data-action-request-form]");
+      if (!panel) return;
+      const payload = {{
+        agent_id: panel.querySelector("[data-request-agent]")?.value || "",
+        action: panel.querySelector("[data-request-action]")?.value || "",
+        target: panel.querySelector("[data-request-target]")?.value || "",
+        risk: panel.querySelector("[data-request-risk]")?.value || "",
+        requested_by: panel.querySelector("[data-requested-by]")?.value || "",
+        summary: panel.querySelector("[data-request-summary]")?.value || "",
+        approvals: panel.querySelector("[data-request-approvals]")?.value || "",
+        evidence: panel.querySelector("[data-request-evidence]")?.value || "",
+        confirm: panel.querySelector("[data-local-write-confirm]")?.value || ""
+      }};
+      await postDelegationAction("/api/action-request", payload, panel);
+    }});
+    document.addEventListener("click", async function (event) {{
+      const button = event.target.closest("[data-evidence-record]");
+      if (!button) return;
+      const panel = button.closest("[data-evidence-form]");
+      if (!panel) return;
+      const payload = {{
+        action_id: panel.querySelector("[data-evidence-action-id]")?.value || "",
+        evidence_tool: panel.querySelector("[data-evidence-tool]")?.value || "",
+        tool_kind: panel.querySelector("[data-evidence-tool-kind]")?.value || "",
+        recording_id: panel.querySelector("[data-evidence-recording-id]")?.value || "",
+        bundle_id: panel.querySelector("[data-evidence-bundle-id]")?.value || "",
+        artifacts: panel.querySelector("[data-evidence-artifacts]")?.value || "",
+        summary: panel.querySelector("[data-evidence-summary]")?.value || "",
+        source: panel.querySelector("[data-evidence-source]")?.value || "",
+        confirm: panel.querySelector("[data-local-write-confirm]")?.value || ""
+      }};
+      await postDelegationAction("/api/evidence-record", payload, panel);
     }});
     document.addEventListener("click", async function (event) {{
       const button = event.target.closest("[data-approval-decision]");
@@ -1219,6 +1821,100 @@ def _area_panel_html(area: JsonMap | None) -> str:
 {next_html}"""
 
 
+def _workspace_first_run_html(workspace: JsonMap) -> str:
+    status = str(workspace.get("status", "missing"))
+    root = str(workspace.get("root", "."))
+    if status not in {"missing", "unknown"}:
+        return ""
+    return f"""
+<section class="panel">
+  <h2>First Run</h2>
+  <p><strong>Turn this folder into a DelegationHQ workspace.</strong></p>
+  <p class="subtle">This creates local workspace files and a dry-run ledger. It does not call models, GitHub, or external tools.</p>
+  <div class="action-panel" data-workspace-init-form>
+    <div class="form-grid">
+      <label>Workspace name
+        <input data-workspace-name value="Local DelegationHQ Workspace">
+      </label>
+      <label>Owner
+        <input data-workspace-owner value="local-operator">
+      </label>
+      <label>Goal
+        <input data-workspace-objective value="control AI work in this local workspace">
+      </label>
+      <label>Confirmation
+        <input data-local-write-confirm placeholder="{LOCAL_APP_WRITE_CONFIRMATION}">
+      </label>
+      <label>Write dry-run plan
+        <input type="checkbox" data-workspace-plan checked>
+      </label>
+      <label>Replace existing
+        <input type="checkbox" data-workspace-force>
+      </label>
+    </div>
+    <div class="action-row">
+      <button type="button" class="action-button" data-workspace-init>Initialize Workspace</button>
+    </div>
+    <div class="app-message" data-app-message>Workspace: {_escape(root)}. Requires app-serve --allow-actions and {LOCAL_APP_WRITE_CONFIRMATION}.</div>
+  </div>
+</section>"""
+
+
+def _action_request_form(passports: list[T.Any]) -> str:
+    options: list[str] = []
+    for passport in passports:
+        if not isinstance(passport, dict):
+            continue
+        agent_id = passport.get("id")
+        if isinstance(agent_id, str) and agent_id.strip():
+            options.append(f'<option value="{_escape(agent_id)}">{_escape(agent_id)}</option>')
+    option_html = "".join(options) or '<option value="">Add an agent first</option>'
+    return f"""
+<div class="action-panel" data-action-request-form>
+  <p><strong>Submit Action Request</strong></p>
+  <p class="subtle">Ask DelegationHQ to gate an agent action before anything runs.</p>
+  <div class="form-grid">
+    <label>Agent
+      <select data-request-agent>{option_html}</select>
+    </label>
+    <label>Action
+      <input data-request-action value="read.workspace">
+    </label>
+    <label>Target
+      <input data-request-target value="workspace">
+    </label>
+    <label>Risk
+      <select data-request-risk>
+        <option value="">Passport default</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+      </select>
+    </label>
+    <label>Requested by
+      <input data-requested-by placeholder="human or agent id">
+    </label>
+    <label>Confirmation
+      <input data-local-write-confirm placeholder="{LOCAL_APP_WRITE_CONFIRMATION}">
+    </label>
+    <label>Approval evidence
+      <input data-request-approvals placeholder="write.workspace">
+    </label>
+    <label>Evidence already present
+      <input data-request-evidence placeholder="run_ledger">
+    </label>
+  </div>
+  <label>Summary
+    <textarea data-request-summary placeholder="This agent wants to inspect the workspace."></textarea>
+  </label>
+  <div class="action-row">
+    <button type="button" class="action-button" data-action-request-submit>Submit Request</button>
+  </div>
+  <div class="app-message" data-app-message>Requires app-serve --allow-actions and {LOCAL_APP_WRITE_CONFIRMATION}.</div>
+</div>"""
+
+
 def _active_request_html(
     active_request: JsonMap | None,
     request_cards: list[T.Any],
@@ -1254,6 +1950,64 @@ def _active_request_html(
 {_commands_html(relevant_commands, section_id="active-request-commands")}
 {_approval_action_controls(action_id, status, panel_id="active")}
 """
+
+
+def _evidence_recording_form(active_request: JsonMap | None, inbox: JsonMap) -> str:
+    action_id = ""
+    if active_request:
+        action_id = str(active_request.get("action_id", "") or "")
+    if not action_id:
+        items = inbox.get("items") if isinstance(inbox.get("items"), list) else []
+        for item in reversed(items):
+            if isinstance(item, dict) and isinstance(item.get("action_id"), str):
+                action_id = item["action_id"]
+                break
+    return f"""
+<div class="action-panel" data-evidence-form>
+  <p><strong>Record Evidence From Any Tool</strong></p>
+  <p class="subtle">Attach proof from RunPrint, tests, browser checks, CRM audit logs, API traces, or another local recorder.</p>
+  <div class="form-grid">
+    <label>Action id
+      <input data-evidence-action-id value="{_escape(action_id)}" placeholder="agent_gate.agent.action">
+    </label>
+    <label>Evidence tool
+      <input data-evidence-tool value="manual-recorder">
+    </label>
+    <label>Tool kind
+      <select data-evidence-tool-kind>
+        <option value="recorder">Recorder</option>
+        <option value="test">Test</option>
+        <option value="browser">Browser</option>
+        <option value="crm">CRM</option>
+        <option value="api">API</option>
+        <option value="monitor">Monitor</option>
+        <option value="workflow">Workflow</option>
+      </select>
+    </label>
+    <label>Recording id
+      <input data-evidence-recording-id placeholder="rec-001">
+    </label>
+    <label>Bundle id
+      <input data-evidence-bundle-id placeholder="bundle-001">
+    </label>
+    <label>Source
+      <input data-evidence-source value="local-app">
+    </label>
+    <label>Confirmation
+      <input data-local-write-confirm placeholder="{LOCAL_APP_WRITE_CONFIRMATION}">
+    </label>
+  </div>
+  <label>Artifacts
+    <textarea data-evidence-artifacts placeholder="summary:report:.delegation/report.json"></textarea>
+  </label>
+  <label>Summary
+    <textarea data-evidence-summary placeholder="Tool recorded what happened."></textarea>
+  </label>
+  <div class="action-row">
+    <button type="button" class="action-button" data-evidence-record>Record Evidence</button>
+  </div>
+  <div class="app-message" data-app-message>Generic evidence lane. RunPrint is one compatible tool, not the whole product.</div>
+</div>"""
 
 
 def _control_loop_html(steps: list[T.Any]) -> str:

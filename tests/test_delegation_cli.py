@@ -14,6 +14,9 @@ from delegation_bot.local_app import (
     LOCAL_APP_WRITE_CONFIRMATION,
     build_local_app_agent_add,
     build_local_app_approval_decision,
+    build_local_app_action_request,
+    build_local_app_evidence_record,
+    build_local_app_workspace_init,
 )
 from delegation_bot.model_suggest_fixtures import ModelSuggestionDraft
 from delegation_bot.suggest import build_suggestion
@@ -1048,6 +1051,124 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(recorded.agent_id, "local_form_agent")
         self.assertEqual(status, 0)
         self.assertIn("local_form_agent", [passport["id"] for passport in data["passports"]])
+
+    def test_local_app_guarded_workspace_init_creates_first_run_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            disabled = build_local_app_workspace_init(
+                workspace_root=workspace,
+                actions_enabled=False,
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            wrong_token = build_local_app_workspace_init(
+                workspace_root=workspace,
+                actions_enabled=True,
+                confirm="wrong",
+            )
+            recorded = build_local_app_workspace_init(
+                workspace_root=workspace,
+                actions_enabled=True,
+                name="App First Run Workspace",
+                owner="Ammar",
+                objective="control a real local workspace",
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            with redirect_stdout(io.StringIO()) as status_output:
+                status = main(["workspace-status", "--path", tmpdir, "--json"])
+            data = json.loads(status_output.getvalue())
+
+        self.assertEqual(disabled.status, "disabled")
+        self.assertFalse(disabled.wrote_workspace)
+        self.assertEqual(wrong_token.status, "blocked")
+        self.assertFalse(wrong_token.wrote_workspace)
+        self.assertEqual(recorded.status, "recorded")
+        self.assertTrue(recorded.wrote_workspace)
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "ready")
+        self.assertEqual(data["agent_count"], 1)
+
+    def test_local_app_guarded_request_and_evidence_complete_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            workspace = Path(tmpdir)
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+
+            disabled_request = build_local_app_action_request(
+                workspace_root=workspace,
+                actions_enabled=False,
+                agent_id="local_cli_agent",
+                action="read.workspace",
+                target="workspace",
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            wrong_request = build_local_app_action_request(
+                workspace_root=workspace,
+                actions_enabled=True,
+                agent_id="local_cli_agent",
+                action="read.workspace",
+                target="workspace",
+                confirm="wrong",
+            )
+            request = build_local_app_action_request(
+                workspace_root=workspace,
+                actions_enabled=True,
+                agent_id="local_cli_agent",
+                action="read.workspace",
+                target="workspace",
+                summary="Local app asks the default agent to inspect the workspace.",
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            disabled_evidence = build_local_app_evidence_record(
+                workspace_root=workspace,
+                actions_enabled=False,
+                action_id=request.action_id,
+                artifacts=("summary:report:.delegation/summary.json",),
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            wrong_evidence = build_local_app_evidence_record(
+                workspace_root=workspace,
+                actions_enabled=True,
+                action_id=request.action_id,
+                artifacts=("summary:report:.delegation/summary.json",),
+                confirm="wrong",
+            )
+            evidence = build_local_app_evidence_record(
+                workspace_root=workspace,
+                actions_enabled=True,
+                action_id=request.action_id,
+                evidence_tool="test-reporter",
+                tool_kind="test",
+                recording_id="rec-local-app-test",
+                bundle_id="bundle-local-app-test",
+                artifacts=("summary:report:.delegation/summary.json",),
+                summary="Local app recorded generic test evidence.",
+                confirm=LOCAL_APP_WRITE_CONFIRMATION,
+            )
+            ledger = workspace / ".delegation" / "agent-run.jsonl"
+            with redirect_stdout(io.StringIO()) as status_output:
+                status = main(["request-status", "--ledger", str(ledger), "--action-id", request.action_id, "--json"])
+            request_status = json.loads(status_output.getvalue())
+            with redirect_stdout(io.StringIO()) as evidence_output:
+                evidence_status = main(["evidence", "--ledger", str(ledger), "--json"])
+            evidence_data = json.loads(evidence_output.getvalue())
+
+        self.assertEqual(disabled_request.status, "disabled")
+        self.assertFalse(disabled_request.wrote_ledger)
+        self.assertEqual(wrong_request.status, "blocked")
+        self.assertFalse(wrong_request.wrote_ledger)
+        self.assertEqual(request.status, "ready_for_recording")
+        self.assertTrue(request.wrote_ledger)
+        self.assertEqual(disabled_evidence.status, "disabled")
+        self.assertFalse(disabled_evidence.wrote_ledger)
+        self.assertEqual(wrong_evidence.status, "blocked")
+        self.assertFalse(wrong_evidence.wrote_ledger)
+        self.assertEqual(evidence.status, "recorded")
+        self.assertTrue(evidence.wrote_ledger)
+        self.assertEqual(status, 0)
+        self.assertEqual(request_status["status"], "recorded")
+        self.assertEqual(evidence_status, 0)
+        self.assertEqual(evidence_data["recorded_count"], 1)
+        self.assertEqual(evidence_data["recordings"][0]["evidence_tool"], "test-reporter")
 
     def test_app_state_reports_missing_ledger_without_process_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

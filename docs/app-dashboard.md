@@ -11,7 +11,10 @@ It combines the pieces a user needs on one screen:
 - Timeline
 - Settings
 - Mission Result
+- first-run workspace initialization surface
 - active request card from real workspace ledger data
+- action request submission surface for registered agents
+- generic evidence recording surface for compatible proof tools
 - result summary over approval, execution, evidence, attention, and latest
   timeline events
 - workspace flow guide from workspace -> agent -> request -> approval ->
@@ -35,16 +38,17 @@ When a workspace already has submitted action requests, `app-dashboard` focuses
 the active request automatically. Use `--preview-agent` only when you want to
 inspect a specific agent before it has submitted a real request.
 
-The local app server can use that same active request to record a guarded
-approve/block receipt or register a local Agent Passport when it is started
-with:
+The local app server can create the same local control-plane receipts from the
+browser when it is started with:
 
 ```bash
 delegation app-serve --workspace . --allow-actions
 ```
 
-Those write paths only update local control-plane files. They do not execute
-the agent, call GitHub, or call models.
+Those guarded write paths can initialize workspace files, register an Agent
+Passport, submit an action request, record approve/block receipts, and append
+generic evidence receipts. They only update local control-plane files. They do
+not execute the agent, call GitHub, or call models.
 
 Simple version:
 
@@ -91,7 +95,7 @@ Top-level fields:
 
 This command is read-only. It does not execute agents, call GitHub, call models,
 or write approval decisions. The separate `app-serve --allow-actions` mode can
-record guarded local approval receipts and Agent Passport registrations.
+record guarded local workspace, agent, request, approval, and evidence receipts.
 
 Design can change later. The important product contract is the data shape.
 RunPrint is currently one evidence tool; the dashboard should keep saying

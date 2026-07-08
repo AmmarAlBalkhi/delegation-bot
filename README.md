@@ -22,7 +22,7 @@ The main workflow is intentionally short:
 ```bash
 delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
-delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
+delegation action-request hello_agent --workspace . --action read.workspace --target workspace --summary "Agent requests workspace access."
 delegation app-dashboard --workspace .
 delegation timeline --workspace .
 delegation app-export --workspace .
@@ -40,7 +40,7 @@ python -m pip install -e .
 delegation --version
 delegation workspace-init --path . --plan
 delegation agent-add hello_agent --workspace . --command "python -c \"print('hello from agent')\"" --capability read.workspace --allowed-data workspace --evidence command_output --force
-delegation agent-run hello_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
+delegation action-request hello_agent --workspace . --action read.workspace --target workspace --summary "Agent requests workspace access."
 delegation cockpit --workspace .
 delegation app-dashboard --workspace .
 delegation timeline --workspace .
@@ -49,10 +49,9 @@ delegation app-export --workspace .
 ```
 
 That makes the current folder a local AI workspace, registers a command-backed
-custom agent, gates it, runs it only after the exact confirmation token, records
-evidence, shows a dashboard-ready control view, prints a mission timeline, and
-writes a local browser app bundle under `.delegation/cockpit/`. GitHub is not
-required.
+custom agent, submits a gated request before anything runs, shows a
+dashboard-ready control view, prints a mission timeline, and writes a local
+browser app bundle under `.delegation/cockpit/`. GitHub is not required.
 
 Simple version:
 
@@ -113,9 +112,11 @@ must return.
 `state.json`, `timeline.json`, and approval preview data. `app-serve` serves the
 same workspace state at `http://127.0.0.1:8765/` for the future desktop app path.
 It is read-only by default; `--allow-actions` only enables guarded local
-Agent Passport registration and approve/block receipt writes, not agent
-execution. The dashboard also exposes a `result_summary` so the app can show
-what happened without making users read the raw ledger first.
+workspace initialization, Agent Passport registration, action request
+submission, approve/block receipt writes, and generic evidence receipt writes.
+It still does not execute agents. The dashboard also exposes a `result_summary`
+so the app can show what happened without making users read the raw ledger
+first.
 
 `agents` shows Agent Passports for built-in Harnessfile agents and custom
 Bring Your Own Agent registries.
@@ -387,6 +388,7 @@ Trust and operations:
 - [GitHub Issue apply](docs/github-issue-apply.md)
 - [GitHub Actions apply](docs/github-actions-apply.md)
 - [MCP tool risk](docs/mcp-tool-risk.md)
+- [Evidence tools](docs/evidence-tools.md)
 - [RunPrint recorder boundary](docs/runprint-recorder.md)
 - [Local classifier policy](docs/local-classifier-policy.md)
 - [Eval-to-issue feedback](docs/eval-to-issue-feedback.md)
