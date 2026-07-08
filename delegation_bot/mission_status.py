@@ -62,7 +62,9 @@ def build_mission_status_report(
         "agent_audit_status": audit.status,
         "approval_inbox_status": inbox.status,
         "gate_previews": audit.gate_count,
+        "evidence_planned_bundles": audit.runprint_bundle_count,
         "runprint_planned_bundles": audit.runprint_bundle_count,
+        "evidence_recorded_events": audit.recorded_event_count,
         "runprint_recorded_events": audit.recorded_event_count,
         "approval_cards": inbox.item_count,
         "pending_approval": inbox.pending_count,
@@ -108,7 +110,8 @@ def render_mission_status_report(report: MissionStatusReport) -> str:
         "Control loop:",
         f"- gate receipts: {control.get('gate_previews', 0)}",
         f"- approval cards: {control.get('approval_cards', 0)} total, {control.get('pending_approval', 0)} pending",
-        f"- RunPrint: {control.get('runprint_recorded_events', 0)} recorded, {control.get('runprint_planned_bundles', 0)} planned",
+        f"- Evidence: {control.get('evidence_recorded_events', control.get('runprint_recorded_events', 0))} recorded, "
+        f"{control.get('evidence_planned_bundles', control.get('runprint_planned_bundles', 0))} planned",
         f"- audit: {control.get('agent_audit_status', 'unknown')}",
     ]
     if control.get("primary_action_id"):
@@ -160,16 +163,16 @@ def _mission(dashboard: JsonMap) -> JsonMap:
 def _proof_lines(evidence: JsonMap, audit: JsonMap) -> list[str]:
     lines: list[str] = []
     recorded_count = _int(audit.get("recorded_event_count"))
-    bundle_count = _int(audit.get("runprint_bundle_count") or evidence.get("bundle_count"))
+    bundle_count = _int(audit.get("evidence_bundle_count") or audit.get("runprint_bundle_count") or evidence.get("bundle_count"))
     gate_count = _int(audit.get("gate_count"))
     if gate_count:
         lines.append(f"Agent Gate recorded {gate_count} intent receipt(s).")
     if recorded_count:
-        lines.append(f"RunPrint recorded {recorded_count} execution evidence receipt(s).")
+        lines.append(f"Evidence tools recorded {recorded_count} execution proof receipt(s).")
     elif bundle_count:
-        lines.append(f"RunPrint has {bundle_count} planned evidence bundle(s).")
+        lines.append(f"Evidence tools have {bundle_count} planned proof bundle(s).")
     if not lines:
-        lines.append("Plan evidence exists, but no Agent Gate or RunPrint receipt has been attached yet.")
+        lines.append("Plan evidence exists, but no Agent Gate or recorded proof receipt has been attached yet.")
     return lines
 
 
@@ -227,6 +230,7 @@ def _next_actions(status: str, ledger_source: str, primary_action_id: str | None
     if status == "ready_for_recording" and primary_action_id:
         return [
             f"delegation agent-result-ingest --ledger {ledger_source} --action-id {primary_action_id} --result .delegation/agent-result.json",
+            f"delegation evidence-ingest --ledger {ledger_source} --action-id {primary_action_id} --tool TOOL --recording-id REC --bundle-id BUNDLE --artifact PATH",
             f"delegation runprint-ingest --ledger {ledger_source} --action-id {primary_action_id} --recording-id REC --bundle-id BUNDLE --artifact PATH",
             f"delegation mission-status --ledger {ledger_source}",
         ]

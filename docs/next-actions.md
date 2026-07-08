@@ -52,21 +52,25 @@ Human = final yes/no for danger.
    obvious without exposing internal complexity.
 3. Expand Agent Approval Preview with proposed file/resource diffs and command
    intent previews before risky writes.
-4. Generalize evidence ingestion so RunPrint stays one recorder adapter among
-   multiple future proof tools.
-5. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
+4. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
    designing UI until the visual direction is approved.
-6. Run `delegation release-check --strict-artifacts` on a clean Windows release
+5. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-7. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+6. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-8. Test the GitHub App issue-write path against a real installed app before
+7. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-9. Decide which `delegation github-app-plan` mode should become the first
+8. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently
 
+- Added `delegation evidence-ingest` so any compatible proof tool can attach
+  recorded evidence to an Agent Gate receipt, while `runprint-ingest` remains
+  the RunPrint-specific compatibility lane.
+- Upgraded evidence reports, Agent Gate audit, Approval Inbox, Agent Packet,
+  Mission Status, App Dashboard, and package smoke checks to understand generic
+  evidence recording events, not only RunPrint events.
 - Added `delegation agent-result-ingest` so custom agents can return a result
   JSON that DelegationHQ validates against the Agent Packet before appending
   `agent.result.reported` and recorder evidence.

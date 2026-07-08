@@ -67,7 +67,7 @@ def build_agent_packet_report(
     gate = _gate_details(gate_event)
     agent = gate.get("agent") if isinstance(gate.get("agent"), dict) else {}
     approval = _latest_approval(ledger_events, clean_action_id)
-    recorded = _has_runprint_recording(ledger_events, clean_action_id)
+    recorded = _has_recorded_evidence(ledger_events, clean_action_id)
     decision = _string(gate.get("decision") or gate_event.get("status"), default="unknown")
     status = _packet_status(decision, approval, recorded)
     can_execute = status in {"ready_for_agent", "recorded"}
@@ -108,6 +108,7 @@ def build_agent_packet_report(
         },
         "current_receipts": {
             "approval": approval,
+            "evidence_recorded": recorded,
             "runprint_recorded": recorded,
             "gate_recorded": True,
         },
@@ -200,7 +201,7 @@ def render_agent_packet_report(report: AgentPacketReport) -> str:
             "",
             "Receipts:",
             f"- approval: {receipts['approval']['decision'] if receipts['approval'] else 'none'}",
-            f"- RunPrint recorded: {str(receipts['runprint_recorded']).lower()}",
+            f"- evidence recorded: {str(receipts.get('evidence_recorded', receipts['runprint_recorded'])).lower()}",
             "",
             "Instructions:",
         ]
@@ -302,10 +303,12 @@ def _latest_approval(events: T.Sequence[JsonMap], action_id: str) -> JsonMap | N
     return latest[1] if latest else None
 
 
-def _has_runprint_recording(events: T.Sequence[JsonMap], action_id: str) -> bool:
+def _has_recorded_evidence(events: T.Sequence[JsonMap], action_id: str) -> bool:
     for event in events:
         event_type = event.get("type") if isinstance(event.get("type"), str) else ""
-        if not event_type.startswith("runprint.recording.") or event_type.endswith(".planned"):
+        if not (event_type.startswith("runprint.recording.") or event_type.startswith("evidence.recording.")):
+            continue
+        if event_type.endswith(".planned"):
             continue
         details = event.get("details") if isinstance(event.get("details"), dict) else {}
         if event.get("action_id") == action_id or details.get("target_action_id") == action_id:

@@ -123,6 +123,7 @@ delegation agents examples/ai-harness-control-plane.yaml --registry examples/age
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml --json
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
 delegation approval-inbox --ledger .delegation/demo.jsonl --json
+delegation evidence-ingest --ledger .delegation/demo.jsonl --tool test-reporter --tool-kind test --action-id agent_gate.implementer.create_pull_request --recording-id rec-demo-test --bundle-id bundle-demo-test --artifact test-report:junit:artifacts/tests.xml --json
 delegation runprint-ingest --ledger .delegation/demo.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-demo --bundle-id bundle-demo --artifact run-ledger:jsonl:.delegation/demo.jsonl --json
 ```
 

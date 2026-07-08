@@ -57,7 +57,7 @@ work:
 
 ```text
 workspace-init -> agent-add -> approval-preview/agent-gate -> approval-decision
--> agent-result-ingest/runprint-ingest -> timeline -> eval/promotion
+-> agent-result-ingest/evidence-ingest/runprint-ingest -> timeline -> eval/promotion
 ```
 
 `delegation demo` should stay install-safe and useful without network access.

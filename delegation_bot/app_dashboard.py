@@ -377,6 +377,7 @@ def _product_areas(
         "summary": _evidence_area_summary(timeline, agent_packet, evidence),
         "metrics": {
             "bundles": evidence.get("bundle_count", 0),
+            "recorded": evidence.get("recorded_count", 0),
             "record_events": timeline.stage_counts.get("record", 0),
             "packet": agent_packet.status if agent_packet else "missing",
         },
@@ -420,6 +421,8 @@ def _evidence_area_status(
     packet: AgentPacketReport | None,
     evidence: JsonMap,
 ) -> str:
+    if evidence.get("recorded_count", 0):
+        return "recorded"
     if timeline.stage_counts.get("record", 0):
         return "recorded"
     if packet and packet.status in {"ready_for_agent", "needs_approval", "needs_review"}:
@@ -433,6 +436,9 @@ def _evidence_area_summary(
     evidence: JsonMap,
 ) -> str:
     record_events = timeline.stage_counts.get("record", 0)
+    recorded_count = evidence.get("recorded_count", 0)
+    if recorded_count:
+        return f"{recorded_count} recorded proof item(s) from evidence tools."
     if record_events:
         return f"{record_events} recorded proof event(s) in the mission timeline."
     if packet:

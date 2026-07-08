@@ -33,6 +33,19 @@ delegation approval-decision \
 Attach recorded evidence after the recorder runs:
 
 ```bash
+delegation evidence-ingest \
+  --ledger .delegation/demo.jsonl \
+  --tool test-reporter \
+  --tool-kind test \
+  --action-id agent_gate.implementer.create_pull_request \
+  --recording-id rec-demo-test \
+  --bundle-id bundle-demo-test \
+  --artifact test-report:junit:artifacts/tests.xml
+```
+
+Or use the RunPrint compatibility lane:
+
+```bash
 delegation runprint-ingest \
   --ledger .delegation/demo.jsonl \
   --action-id agent_gate.implementer.create_pull_request \

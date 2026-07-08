@@ -330,6 +330,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "approval-inbox",
             "approval-decision",
             "agent-result-ingest",
+            "evidence-ingest",
             "runprint-ingest",
             "Agent Passport Registry",
             "DelegationHQ Mission Status",
@@ -343,6 +344,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "Approval Inbox",
             "Approval Decision",
             "Agent Result Ingest",
+            "Evidence Recording Ingest",
             "RunPrint Recording Ingest",
             "Status: ready",
         )
@@ -358,7 +360,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -392,6 +394,7 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "approval-inbox --ledger",
         "approval-decision --ledger",
         "agent-result-ingest --ledger",
+        "evidence-ingest --ledger",
         "runprint-ingest --ledger",
         "examples\\agent-passports.yaml",
         "artifacts --dist $ResolvedDistPath",

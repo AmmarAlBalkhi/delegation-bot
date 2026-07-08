@@ -260,7 +260,7 @@ def _title(event: JsonMap) -> str:
         return "Agent execution started"
     if event_type in {"agent.execution.completed", "agent.execution.failed"}:
         return "Agent execution finished"
-    if event_type == "runprint.recording.completed":
+    if event_type in {"runprint.recording.completed", "evidence.recording.completed"}:
         return "Recorder evidence recorded"
     if event_type == "eval.result":
         details = _details(event)

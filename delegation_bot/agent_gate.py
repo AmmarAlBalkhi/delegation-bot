@@ -174,7 +174,9 @@ class AgentGateAuditReport:
             "status": self.status,
             "ledger_source": self.ledger_source,
             "gate_count": self.gate_count,
+            "evidence_bundle_count": self.runprint_bundle_count,
             "runprint_bundle_count": self.runprint_bundle_count,
+            "recorded_evidence_count": self.recorded_event_count,
             "recorded_event_count": self.recorded_event_count,
             "items": [item.to_dict() for item in self.items],
             "warnings": list(self.warnings),
@@ -425,7 +427,7 @@ def build_agent_gate_audit_report(
 ) -> AgentGateAuditReport:
     gate_events = tuple(_agent_gate_events(ledger_events))
     evidence = build_evidence_report(ledger_events, source=ledger_source)
-    recorded_events = tuple(_runprint_recorded_events(ledger_events))
+    recorded_events = tuple(_recorded_evidence_events(ledger_events))
     recorded_action_ids = _recorded_action_ids(recorded_events)
     approval_decisions = _approval_decisions_by_action(ledger_events)
 
@@ -525,8 +527,8 @@ def render_agent_gate_audit_report(report: AgentGateAuditReport) -> str:
         f"Status: {report.status}",
         f"Ledger: {report.ledger_source}",
         f"Gate previews: {report.gate_count}",
-        f"RunPrint planned bundles: {report.runprint_bundle_count}",
-        f"RunPrint recorded events: {report.recorded_event_count}",
+        f"Evidence planned bundles: {report.runprint_bundle_count}",
+        f"Evidence recorded events: {report.recorded_event_count}",
     ]
 
     if report.warnings:
@@ -572,16 +574,16 @@ def _audit_item(event: JsonMap, evidence_status: str, approval_decision: str | N
         next_action = "Change the request, agent passport, or target before trying again."
     elif decision == "approval_required" and approval_decision == "approve" and evidence_status == "recorded":
         outcome = "recorded"
-        message = "Human approval was recorded and RunPrint recorded execution evidence."
+        message = "Human approval was recorded and an evidence tool recorded execution proof."
         next_action = "Run evals and promotion checks against the ledger."
     elif decision == "approval_required" and approval_decision == "approve" and evidence_status == "planned":
         outcome = "recording_planned"
-        message = "Human approval was recorded and RunPrint has a planned evidence bundle."
+        message = "Human approval was recorded and an evidence tool has a planned bundle."
         next_action = "Execute under recorder control, then append recorded evidence."
     elif decision == "approval_required" and approval_decision == "approve":
         outcome = "evidence_missing"
         message = "Human approval was recorded, but no recorder evidence plan was found."
-        next_action = "Add a `runprint.recorder` step or provide recorded evidence before promotion."
+        next_action = "Add a recorder/evidence step or provide recorded evidence before promotion."
     elif decision == "approval_required":
         outcome = "waiting_for_approval"
         message = "The gate found allowed work, but human approval is still required."
@@ -592,16 +594,16 @@ def _audit_item(event: JsonMap, evidence_status: str, approval_decision: str | N
         next_action = "Resolve warnings or add stronger evidence before raising autonomy."
     elif evidence_status == "recorded":
         outcome = "recorded"
-        message = "The gate allowed the intent and RunPrint recorded execution evidence."
+        message = "The gate allowed the intent and an evidence tool recorded execution proof."
         next_action = "Run evals and promotion checks against the ledger."
     elif evidence_status == "planned":
         outcome = "recording_planned"
-        message = "The gate allowed the intent and RunPrint has a planned evidence bundle."
+        message = "The gate allowed the intent and an evidence tool has a planned bundle."
         next_action = "Execute under recorder control, then append recorded evidence."
     else:
         outcome = "evidence_missing"
         message = "The gate allowed the intent, but no recorder evidence plan was found."
-        next_action = "Add a `runprint.recorder` step or provide recorded evidence before promotion."
+        next_action = "Add a recorder/evidence step or provide recorded evidence before promotion."
 
     return AgentGateAuditItem(
         gate_sequence=sequence,
@@ -640,11 +642,11 @@ def _evidence_status(bundle_count: int, recorded_count: int) -> str:
     return "missing"
 
 
-def _runprint_recorded_events(events: T.Sequence[JsonMap]) -> T.Iterator[JsonMap]:
+def _recorded_evidence_events(events: T.Sequence[JsonMap]) -> T.Iterator[JsonMap]:
     for event in events:
         event_type = event.get("type") if isinstance(event.get("type"), str) else ""
         status = event.get("status") if isinstance(event.get("status"), str) else ""
-        if not event_type.startswith("runprint.recording."):
+        if not (event_type.startswith("runprint.recording.") or event_type.startswith("evidence.recording.")):
             continue
         if event_type.endswith(".planned") or status == "planned":
             continue

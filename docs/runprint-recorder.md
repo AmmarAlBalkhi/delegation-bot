@@ -65,8 +65,22 @@ recorder events will let the same audit say what actually happened.
 
 ## Ingest Recorded Evidence
 
-When RunPrint or another recorder has produced a proof bundle, append it to the
+When any compatible evidence tool has produced a proof bundle, append it to the
 DelegationHQ ledger:
+
+```bash
+delegation evidence-ingest \
+  --ledger .delegation/demo.jsonl \
+  --tool test-reporter \
+  --tool-kind test \
+  --action-id agent_gate.implementer.create_pull_request \
+  --recording-id rec-demo \
+  --bundle-id bundle-demo \
+  --artifact test-report:junit:artifacts/tests.xml \
+  --summary "Recorded test evidence."
+```
+
+RunPrint has its own compatibility command:
 
 ```bash
 delegation runprint-ingest \
@@ -90,13 +104,13 @@ Simple version:
 ```text
 Agent Gate receipt = what was allowed.
 Approval receipt = who said yes/no.
-RunPrint ingest = what was recorded.
+Evidence ingest = what was recorded.
 Agent audit = compare them.
 ```
 
-That line says RunPrint because `runprint-ingest` is the first implemented
-recorder lane. Future recorder, monitor, test, browser, CRM, API, or workflow
-evidence tools should fit the same DelegationHQ proof model.
+`runprint-ingest` is the first named recorder lane. `evidence-ingest` is the
+generic lane for future recorder, monitor, test, browser, CRM, API, or workflow
+evidence tools.
 
 `runprint-ingest` can also read a JSON bundle:
 

@@ -5,6 +5,13 @@ from pathlib import Path
 
 from delegation_bot.agent_gate import build_agent_gate_audit_report, build_agent_gate_events, build_agent_gate_report
 from delegation_bot.approval_inbox import build_approval_inbox_report
+from delegation_bot.evidence_ingest import (
+    EvidenceArtifact,
+    build_evidence_ingest_receipt,
+    build_evidence_recording_events,
+    evidence_artifacts_from_values,
+    render_evidence_ingest_receipt,
+)
 from delegation_bot.harness_manifest import load_manifest
 from delegation_bot.harness_plan import build_dry_run_ledger, compile_plan
 from delegation_bot.runprint_ingest import (
@@ -21,6 +28,70 @@ EXAMPLE = ROOT / "examples" / "ai-harness-control-plane.yaml"
 
 
 class RunPrintIngestTests(unittest.TestCase):
+    def test_generic_evidence_ingest_records_matching_gate_action(self) -> None:
+        ledger = _gate_ledger()
+        action_id = ledger[-1]["action_id"]
+
+        events = build_evidence_recording_events(
+            ledger,
+            evidence_tool="test-reporter",
+            tool_kind="test",
+            action_id=action_id,
+            recording_id="rec-test-1",
+            evidence_bundle_id="bundle-test-1",
+            artifacts=(EvidenceArtifact(id="pytest", kind="junit", path="artifacts/pytest.xml"),),
+            summary="Recorded test evidence.",
+            source="local-test-reporter",
+            timestamp="2026-01-01T00:00:00+00:00",
+        )
+        ledger.extend(event.to_dict() for event in events)
+        audit = build_agent_gate_audit_report(ledger, ledger_source="ledger.jsonl")
+        inbox = build_approval_inbox_report(ledger, ledger_source="ledger.jsonl")
+        receipt = build_evidence_ingest_receipt(events[0], ledger_source="ledger.jsonl")
+        receipt_text = render_evidence_ingest_receipt(receipt)
+
+        self.assertEqual(events[0].type, "evidence.recording.completed")
+        self.assertEqual(events[0].details["evidence_tool"], "test-reporter")
+        self.assertEqual(events[0].details["target_action_id"], action_id)
+        self.assertEqual(audit.status, "recorded")
+        self.assertEqual(audit.items[0].evidence_status, "recorded")
+        self.assertEqual(inbox.items[0].status, "recorded")
+        self.assertIn("Evidence Recording Ingest", receipt_text)
+
+    def test_generic_evidence_ingest_can_use_bundle_shape(self) -> None:
+        ledger = _gate_ledger()
+        action_id = ledger[-1]["action_id"]
+
+        events = build_evidence_recording_events(
+            ledger,
+            bundle={
+                "action_id": action_id,
+                "evidence_tool": "browser-session",
+                "tool_kind": "browser",
+                "recording_id": "rec-browser",
+                "evidence_bundle_id": "bundle-browser",
+                "summary": "Recorded browser replay.",
+                "source": "browser://session/rec-browser",
+                "artifacts": [
+                    {"id": "replay", "kind": "har", "path": "artifacts/session.har"},
+                    {"id": "screenshot", "kind": "png", "path": "artifacts/screenshot.png"},
+                ],
+            },
+        )
+
+        self.assertEqual(events[0].details["evidence_tool"], "browser-session")
+        self.assertEqual(events[0].details["tool_kind"], "browser")
+        self.assertEqual(events[0].details["recording_id"], "rec-browser")
+        self.assertEqual(events[0].details["artifact_count"], 2)
+
+    def test_generic_artifact_values_accept_simple_and_structured_forms(self) -> None:
+        artifacts = evidence_artifacts_from_values(("artifacts/log.txt", "crm:json:artifacts/crm.json"))
+
+        self.assertEqual(artifacts[0].id, "log.txt")
+        self.assertEqual(artifacts[0].kind, "artifact")
+        self.assertEqual(artifacts[1].id, "crm")
+        self.assertEqual(artifacts[1].kind, "json")
+
     def test_runprint_ingest_event_records_matching_gate_action(self) -> None:
         ledger = _gate_ledger()
         action_id = ledger[-1]["action_id"]

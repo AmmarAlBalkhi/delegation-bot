@@ -216,6 +216,11 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    & $ExecutablePath evidence-ingest --ledger (Join-Path $SmokeDir "exe-smoke.jsonl") --tool test-reporter --tool-kind test --action-id agent_gate.implementer.create_pull_request --recording-id rec-evidence-exe-smoke --bundle-id bundle-evidence-exe-smoke --artifact "test-report:junit:artifacts\tests.xml" --summary "EXE smoke recorded generic evidence."
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath runprint-ingest --ledger (Join-Path $SmokeDir "exe-smoke.jsonl") --action-id agent_gate.implementer.create_pull_request --recording-id rec-exe-smoke --bundle-id bundle-exe-smoke --artifact "run-ledger:jsonl:.delegation\exe-smoke.jsonl" --summary "EXE smoke recorded evidence."
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

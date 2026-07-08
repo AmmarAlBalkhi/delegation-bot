@@ -7,7 +7,7 @@ keep evidence, run evals, and promote agents only when trust is earned.
 
 The big idea is a **harness for AI harnesses**: a repo-native layer above Codex,
 Claude Code, Anthropic Claude, OpenAI Agents SDK, LangGraph, MCP tools, GitHub
-Actions, RunPrint evidence recording, local scripts, and human review.
+Actions, evidence recording, local scripts, and human review.
 
 ```text
 AI proposes.
@@ -115,9 +115,9 @@ keeps both together.
 `approval-inbox` turns those receipts into simple cards. `approval-decision`
 records a local human approve/block receipt without executing anything.
 
-`runprint-ingest` appends external RunPrint recording evidence to the same
-ledger. Simple version: the camera receipt lands, and `agent-audit` can say
-`recorded`.
+`evidence-ingest` appends proof from any compatible evidence tool to the same
+ledger. `runprint-ingest` stays as the RunPrint-specific lane. Simple version:
+the proof receipt lands, and `agent-audit` can say `recorded`.
 
 `mission-status` is the plain status page in the terminal: plan, gate,
 approval, proof, attention, and next command.
@@ -240,6 +240,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation agent-gate Harnessfile.yaml AGENT --action ACTION --target TARGET` | Preview allow/warn/approval/block for an agent action. |
 | `delegation approval-inbox --ledger .delegation/run.jsonl` | Show simple approval cards from Agent Gate receipts. |
 | `delegation approval-decision --ledger .delegation/run.jsonl --action-id ID --decision approve --approver NAME` | Record a local human approve/block receipt. |
+| `delegation evidence-ingest --ledger .delegation/run.jsonl --tool TOOL --action-id ID --recording-id REC --bundle-id BUNDLE --artifact PATH` | Append recorded proof from any compatible evidence tool. |
 | `delegation runprint-ingest --ledger .delegation/run.jsonl --action-id ID --recording-id REC --bundle-id BUNDLE --artifact PATH` | Append external RunPrint recording evidence. |
 | `delegation agent-audit --ledger .delegation/run.jsonl` | Compare Agent Gate intent receipts with recorder evidence. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
@@ -297,6 +298,7 @@ DelegationHQ is pre-release, but the foundation is working:
 - dry-run RunPrint recorder evidence bundle planning
 - Agent Gate receipts and `agent-audit` for intent-vs-evidence checks
 - `approval-inbox` and `approval-decision` for simple human review receipts
+- `evidence-ingest` for attaching proof from any compatible evidence tool to a gate receipt
 - `runprint-ingest` for attaching external RunPrint recording evidence to a gate receipt
 - `demo --control-loop` for the full plan, gate, approval, recording, audit,
   mission-status, and agent-packet path

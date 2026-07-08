@@ -518,6 +518,38 @@ def main() -> int:
             print(agent_result_ingest.stderr, file=sys.stderr)
             return agent_result_ingest.returncode or 1
 
+        evidence_ingest = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "evidence-ingest",
+                "--ledger",
+                str(ledger),
+                "--tool",
+                "test-reporter",
+                "--tool-kind",
+                "test",
+                "--action-id",
+                "agent_gate.smoke_cli_agent.read_run_ledger",
+                "--recording-id",
+                "rec-evidence-package-smoke",
+                "--bundle-id",
+                "bundle-evidence-package-smoke",
+                "--artifact",
+                "test-report:junit:package-smoke-tests.xml",
+                "--summary",
+                "Installed package smoke recorded generic evidence.",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if evidence_ingest.returncode != 0 or "Evidence Recording Ingest" not in evidence_ingest.stdout:
+            print("FAIL: installed package generic evidence ingest smoke")
+            print(evidence_ingest.stdout)
+            print(evidence_ingest.stderr, file=sys.stderr)
+            return evidence_ingest.returncode or 1
+
         runprint_ingest = _run(
             [
                 sys.executable,
@@ -569,7 +601,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 

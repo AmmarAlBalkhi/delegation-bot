@@ -390,7 +390,7 @@ def _item_message(status: str) -> str:
         "blocked_by_gate": "Agent Gate blocked this intent before execution.",
         "needs_evidence": "The intent passed the gate, but recorder evidence is missing.",
         "ready_for_recording": "The intent can move to recorder-controlled execution.",
-        "recorded": "RunPrint recorded execution evidence for this intent.",
+        "recorded": "An evidence tool recorded execution proof for this intent.",
         "warning": "This intent needs review before autonomy increases.",
     }.get(status, "Review this approval card before continuing.")
 

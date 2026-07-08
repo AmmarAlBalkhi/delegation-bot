@@ -52,6 +52,13 @@ from delegation_bot.dashboard import build_dashboard_snapshot, render_dashboard_
 from delegation_bot.doctor import render_doctor_report, run_doctor
 from delegation_bot.evals import EvalError, append_jsonl, eval_results_to_events, load_jsonl, render_eval_report, run_declared_evals
 from delegation_bot.evidence_report import build_evidence_report, render_evidence_report
+from delegation_bot.evidence_ingest import (
+    build_evidence_ingest_receipt,
+    build_evidence_recording_events,
+    evidence_artifacts_from_values,
+    load_evidence_bundle,
+    render_evidence_ingest_receipt,
+)
 from delegation_bot.eval_feedback import (
     append_feedback_events,
     build_feedback_issue_drafts,
@@ -738,6 +745,37 @@ def cmd_runprint_ingest(args: argparse.Namespace) -> int:
     else:
         print(render_runprint_ingest_receipt(receipt))
         print(f"\nRunPrint evidence appended: {ledger_path}")
+    return 0
+
+
+def cmd_evidence_ingest(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+        bundle = load_evidence_bundle(Path(args.bundle)) if args.bundle else None
+        events = build_evidence_recording_events(
+            ledger_events,
+            evidence_tool=args.tool,
+            tool_kind=args.tool_kind,
+            action_id=args.action_id,
+            recording_id=args.recording_id,
+            evidence_bundle_id=args.bundle_id,
+            artifacts=evidence_artifacts_from_values(tuple(args.artifact or ())),
+            summary=args.summary or "",
+            source=args.source or (str(args.bundle) if args.bundle else ""),
+            bundle=bundle,
+        )
+        append_jsonl(events, ledger_path)
+    except (EvalError, OSError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    receipt = build_evidence_ingest_receipt(events[0], ledger_source=str(ledger_path))
+    if args.json:
+        print(json.dumps(receipt.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_evidence_ingest_receipt(receipt))
+        print(f"\nEvidence appended: {ledger_path}")
     return 0
 
 
@@ -2091,7 +2129,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     agent_audit = subparsers.add_parser(
         "agent-audit",
-        help="Compare Agent Gate intent receipts with RunPrint recorder evidence in a ledger.",
+        help="Compare Agent Gate intent receipts with recorded evidence in a ledger.",
     )
     agent_audit.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
     agent_audit.add_argument("--json", action="store_true", help="Print the Agent Gate audit report as JSON.")
@@ -2116,6 +2154,27 @@ def build_parser() -> argparse.ArgumentParser:
     approval_decision.add_argument("--reason", help="Optional short reason for the decision.")
     approval_decision.add_argument("--json", action="store_true", help="Print the approval decision receipt as JSON.")
     approval_decision.set_defaults(func=cmd_approval_decision)
+
+    evidence_ingest = subparsers.add_parser(
+        "evidence-ingest",
+        help="Append recorded evidence from any compatible proof tool for an Agent Gate receipt.",
+    )
+    evidence_ingest.add_argument("--ledger", required=True, help="Append recorded evidence to this run ledger JSONL file.")
+    evidence_ingest.add_argument("--tool", help="Evidence tool id, such as runprint, browser-session, crm-audit, or test-reporter.")
+    evidence_ingest.add_argument("--tool-kind", help="Evidence tool kind, such as recorder, monitor, test, browser, crm, or api.")
+    evidence_ingest.add_argument("--action-id", help="Agent Gate action_id this evidence proves.")
+    evidence_ingest.add_argument("--recording-id", help="Evidence recording id.")
+    evidence_ingest.add_argument("--bundle-id", help="Evidence bundle id.")
+    evidence_ingest.add_argument(
+        "--artifact",
+        action="append",
+        help="Recorded artifact. Use PATH or id:kind:path. Repeatable.",
+    )
+    evidence_ingest.add_argument("--summary", help="Short summary of what the evidence tool recorded.")
+    evidence_ingest.add_argument("--source", help="Path, URL, or note identifying the evidence source.")
+    evidence_ingest.add_argument("--bundle", help="Optional evidence JSON bundle file with action/tool/recording/artifact fields.")
+    evidence_ingest.add_argument("--json", action="store_true", help="Print the evidence ingest receipt as JSON.")
+    evidence_ingest.set_defaults(func=cmd_evidence_ingest)
 
     runprint_ingest = subparsers.add_parser(
         "runprint-ingest",

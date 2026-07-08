@@ -1175,6 +1175,69 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(inbox_status, 0)
         self.assertEqual(inbox["items"][0]["status"], "recorded")
 
+    def test_evidence_ingest_marks_gate_audit_recorded_for_any_tool(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            action_id = "agent_gate.implementer.create_pull_request"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-gate",
+                            str(EXAMPLE),
+                            "implementer",
+                            "--action",
+                            "create_pull_request",
+                            "--target",
+                            "repository",
+                            "--approval",
+                            "pull_request",
+                            "--ledger",
+                            str(ledger),
+                            "--write",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as ingest_output:
+                ingest_status = main(
+                    [
+                        "evidence-ingest",
+                        "--ledger",
+                        str(ledger),
+                        "--tool",
+                        "test-reporter",
+                        "--tool-kind",
+                        "test",
+                        "--action-id",
+                        action_id,
+                        "--recording-id",
+                        "rec-cli-test",
+                        "--bundle-id",
+                        "bundle-cli-test",
+                        "--artifact",
+                        "pytest:junit:artifacts/pytest.xml",
+                        "--summary",
+                        "Recorded generic CLI evidence.",
+                    ]
+                )
+            with redirect_stdout(io.StringIO()) as audit_output:
+                audit_status = main(["agent-audit", "--ledger", str(ledger), "--json"])
+            with redirect_stdout(io.StringIO()) as evidence_output:
+                evidence_status = main(["evidence", "--ledger", str(ledger), "--json"])
+            audit = json.loads(audit_output.getvalue())
+            evidence = json.loads(evidence_output.getvalue())
+
+        self.assertEqual(ingest_status, 0)
+        self.assertIn("Evidence appended", ingest_output.getvalue())
+        self.assertEqual(audit_status, 0)
+        self.assertEqual(audit["status"], "recorded")
+        self.assertEqual(audit["recorded_evidence_count"], 1)
+        self.assertEqual(evidence_status, 0)
+        self.assertEqual(evidence["recorded_count"], 1)
+        self.assertEqual(evidence["recordings"][0]["evidence_tool"], "test-reporter")
+
     def test_agent_result_ingest_records_custom_agent_result(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             ledger = Path(tmpdir) / "ledger.jsonl"

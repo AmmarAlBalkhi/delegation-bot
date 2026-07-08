@@ -60,7 +60,7 @@ delegation agent-gate examples/ai-harness-control-plane.yaml implementer \
   --write
 ```
 
-Then compare that intent receipt with RunPrint recorder evidence:
+Then compare that intent receipt with recorder evidence:
 
 ```bash
 delegation agent-audit --ledger .delegation/demo.jsonl
@@ -74,11 +74,13 @@ delegation approval-decision --ledger .delegation/demo.jsonl \
   --action-id agent_gate.implementer.create_pull_request \
   --decision approve \
   --approver Ammar
-delegation runprint-ingest --ledger .delegation/demo.jsonl \
+delegation evidence-ingest --ledger .delegation/demo.jsonl \
+  --tool test-reporter \
+  --tool-kind test \
   --action-id agent_gate.implementer.create_pull_request \
   --recording-id rec-demo \
   --bundle-id bundle-demo \
-  --artifact run-ledger:jsonl:.delegation/demo.jsonl
+  --artifact test-report:junit:artifacts/tests.xml
 delegation mission-status --ledger .delegation/demo.jsonl
 delegation agent-packet --ledger .delegation/demo.jsonl \
   --action-id agent_gate.implementer.create_pull_request
@@ -206,12 +208,12 @@ Recorder evidence, evals, and promotion checks can share one timeline.
 - `approval_required` when the receipt still needs human approval
 - `needs_evidence` when the gate allowed work but no recorder evidence plan was found
 - `ready_for_recording` when the gate allowed work and a recorder evidence bundle is planned
-- `recorded` when live RunPrint recording events are present
+- `recorded` when live evidence recording events are present
 - `blocked` when the gate blocked the intent
 
-Today RunPrint evidence is usually planned evidence from `runprint.recorder`.
-That is honest: it says the camera has a plan. Later live RunPrint events will
-let this same audit prove what actually happened.
+Today planned evidence often comes from `runprint.recorder`. That is honest: it
+says the camera has a plan. Recorded evidence can come through the generic
+`evidence-ingest` lane or the RunPrint-specific compatibility lane.
 
 ## Approval Is Not Permission
 
