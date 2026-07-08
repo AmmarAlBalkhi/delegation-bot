@@ -62,7 +62,7 @@ def build_app_dashboard_report(
     workspace = workspace_root.resolve()
     state = build_app_state(workspace_root=workspace)
     state_data = state.to_dict()
-    timeline = build_timeline_report_from_paths(workspace_root=workspace)
+    timeline = build_timeline_report_from_paths(workspace_root=workspace, limit=0)
     preview = _build_preview(
         state_data,
         workspace_root=workspace,

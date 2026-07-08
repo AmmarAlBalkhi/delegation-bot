@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import html
+import hashlib
 import json
 import typing as T
 from dataclasses import dataclass
@@ -166,7 +167,7 @@ def serve_local_app(
                 )
                 return
             if parsed.path == "/api/timeline":
-                self._send_json(build_timeline_report_from_paths(workspace_root=workspace).to_dict())
+                self._send_json(build_timeline_report_from_paths(workspace_root=workspace, limit=0).to_dict())
                 return
             if parsed.path == "/api/approval-preview":
                 state_data = build_app_state(workspace_root=workspace).to_dict()
@@ -288,7 +289,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
     agents = state_data.get("agents") if isinstance(state_data.get("agents"), dict) else {}
     release = state_data.get("release") if isinstance(state_data.get("release"), dict) else {}
-    next_actions = state_data.get("next_actions") if isinstance(state_data.get("next_actions"), list) else []
+    next_actions = dashboard_data.get("next_actions") if isinstance(dashboard_data.get("next_actions"), list) else []
     passports = agents.get("passports") if isinstance(agents.get("passports"), list) else []
     preview = preview_data or {}
     return f"""<!doctype html>
@@ -354,6 +355,51 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       font-size: 26px;
       font-weight: 700;
       margin-top: 8px;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }}
+    .metric-long {{
+      font-size: 14px;
+      line-height: 1.35;
+      font-weight: 650;
+    }}
+    .command-block {{
+      position: relative;
+      margin-top: 8px;
+    }}
+    .copy-button, .refresh-button {{
+      border: 1px solid #a9aaa2;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #222420;
+      cursor: pointer;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 8px;
+    }}
+    .copy-button {{
+      position: absolute;
+      top: 8px;
+      right: 8px;
+    }}
+    .agent-passport {{
+      border-top: 1px solid #e2e0d8;
+      padding-top: 12px;
+      margin-top: 12px;
+    }}
+    .agent-passport:first-child {{
+      border-top: 0;
+      padding-top: 0;
+      margin-top: 0;
+    }}
+    .kv {{
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }}
+    .kv div {{
+      overflow-wrap: anywhere;
     }}
     .badge {{
       display: inline-flex;
@@ -394,7 +440,8 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
 <body>
   <header>
     <h1>DelegationHQ Local App</h1>
-    <p class="subtle">Mission control for this workspace. Functional shell, not the final visual design.</p>
+    <p class="subtle">Local mission control for agentic work.</p>
+    <p><button type="button" class="refresh-button" onclick="window.location.reload()">Refresh</button></p>
   </header>
   <main>
     <section class="grid" aria-label="Workspace status">
@@ -405,7 +452,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     </section>
     <section class="panel">
       <h2>Command Center</h2>
-      {_commands_html(command_center)}
+      {_commands_html(command_center, section_id="command-center")}
     </section>
     <section class="panel">
       <h2>Approval Preview</h2>
@@ -418,23 +465,43 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     <section class="grid">
       <div class="panel">
         <h2>Agent Passports</h2>
-        {_agents_html(passports)}
+        {_agents_html(passports, workspace.get("root", "."))}
       </div>
       <div class="panel">
         <h2>Next Actions</h2>
-        {_list_html(next_actions[:6])}
+        {_next_actions_html(next_actions)}
       </div>
     </section>
     <section class="panel">
       <h2>Local Data</h2>
-      <p class="subtle">This app shell is local-first. GitHub is an adapter, not the core.</p>
-      <code>delegation app-state --workspace {_escape(workspace.get("root", "."))} --json</code>
+      {_local_data_html(workspace.get("root", "."), has_preview=bool(preview_data))}
     </section>
   </main>
   <script id="delegation-dashboard" type="application/json">{_json_script(dashboard_data)}</script>
   <script id="delegation-state" type="application/json">{_json_script(state_data)}</script>
   <script id="delegation-timeline" type="application/json">{_json_script(timeline)}</script>
   <script id="delegation-approval-preview" type="application/json">{_json_script(preview_data or {})}</script>
+  <script>
+    document.addEventListener("click", async function (event) {{
+      const button = event.target.closest("[data-copy]");
+      if (!button) return;
+      const target = document.getElementById(button.getAttribute("data-copy"));
+      if (!target) return;
+      const text = target.textContent || "";
+      try {{
+        await navigator.clipboard.writeText(text);
+        button.textContent = "Copied";
+        window.setTimeout(function () {{ button.textContent = "Copy"; }}, 1200);
+      }} catch (error) {{
+        const selection = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(target);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        button.textContent = "Selected";
+      }}
+    }});
+  </script>
 </body>
 </html>
 """
@@ -442,10 +509,12 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
 
 def _metric_panel(title: str, value: T.Any, detail: T.Any) -> str:
     status_class = _status_class(str(value))
+    detail_text = str(detail)
+    detail_class = "metric metric-long" if len(detail_text) > 42 else "metric"
     return f"""<div class="panel">
   <h2>{_escape(title)}</h2>
   <span class="badge {status_class}">{_escape(value)}</span>
-  <div class="metric">{_escape(detail)}</div>
+  <div class="{detail_class}" title="{_escape(detail_text)}">{_escape(detail_text)}</div>
 </div>"""
 
 
@@ -465,20 +534,19 @@ def _approval_preview_html(preview: JsonMap) -> str:
 <p class="subtle">Safe next step</p>
 <p>{_escape(preview.get("safe_next_step", "Review the request before continuing."))}</p>
 <p class="subtle">Decision commands</p>
-{_commands_html(preview.get("decision_commands") if isinstance(preview.get("decision_commands"), list) else [])}
+{_commands_html(preview.get("decision_commands") if isinstance(preview.get("decision_commands"), list) else [], section_id="approval-commands")}
 """
 
 
-def _agents_html(passports: list[T.Any]) -> str:
+def _agents_html(passports: list[T.Any], workspace_root: T.Any) -> str:
     if not passports:
         return "<p class=\"subtle\">No agents registered yet.</p>"
-    items = []
+    rows = []
     for item in passports[:8]:
         if not isinstance(item, dict):
             continue
-        label = f"{item.get('id', 'unknown')} - {item.get('runtime_type', 'unknown')} - {item.get('autonomy_level', 'unknown')}"
-        items.append(label)
-    return _list_html(items)
+        rows.append(_agent_passport_html(item, workspace_root=workspace_root))
+    return "".join(rows) if rows else "<p class=\"subtle\">No readable passports found.</p>"
 
 
 def _timeline_html(timeline: JsonMap) -> str:
@@ -486,7 +554,7 @@ def _timeline_html(timeline: JsonMap) -> str:
     if not items:
         return "<p class=\"subtle\">No timeline events yet.</p>"
     rows: list[str] = []
-    for item in items[-10:]:
+    for item in items:
         if not isinstance(item, dict):
             continue
         sequence = item.get("sequence")
@@ -503,14 +571,15 @@ def _timeline_html(timeline: JsonMap) -> str:
             + (f"<p class=\"subtle\">{_escape(message)}</p>" if message else "")
             + "</li>"
         )
-    return "<ul>" + "".join(rows) + "</ul>"
+    event_count = timeline.get("event_count", len(items))
+    return f"<p class=\"subtle\">Showing {len(items)} of {_escape(event_count)} event(s).</p><ul>" + "".join(rows) + "</ul>"
 
 
-def _commands_html(commands: list[T.Any]) -> str:
+def _commands_html(commands: list[T.Any], *, section_id: str = "commands") -> str:
     if not commands:
         return "<p class=\"subtle\">none</p>"
     rows: list[str] = []
-    for item in commands[:8]:
+    for index, item in enumerate(commands[:8], start=1):
         if not isinstance(item, dict):
             continue
         label = item.get("label", "Command")
@@ -520,16 +589,149 @@ def _commands_html(commands: list[T.Any]) -> str:
             "<li>"
             f"<strong>{_escape(label)}</strong>"
             + (f"<p class=\"subtle\">{_escape(purpose)}</p>" if purpose else "")
-            + (f"<code>{_escape(command)}</code>" if command else "")
+            + (_copyable_code(command, id_hint=f"{section_id}-{index}") if command else "")
             + "</li>"
         )
     return "<ul>" + "".join(rows) + "</ul>"
+
+
+def _next_actions_html(actions: list[T.Any]) -> str:
+    if not actions:
+        return "<p class=\"subtle\">none</p>"
+    rows: list[str] = []
+    for index, action in enumerate(actions[:8], start=1):
+        if not isinstance(action, str) or not action.strip():
+            continue
+        label, purpose = _describe_next_action(action)
+        rows.append(
+            "<li>"
+            f"<strong>{_escape(label)}</strong>"
+            f"<p class=\"subtle\">{_escape(purpose)}</p>"
+            f"{_copyable_code(action, id_hint=f'next-action-{index}')}"
+            "</li>"
+        )
+    return "<ul>" + "".join(rows) + "</ul>" if rows else "<p class=\"subtle\">none</p>"
+
+
+def _agent_passport_html(passport: JsonMap, *, workspace_root: T.Any) -> str:
+    agent_id = passport.get("id", "unknown")
+    runtime = passport.get("runtime_type", "unknown")
+    autonomy = passport.get("autonomy_level", "unknown")
+    risk = passport.get("risk_level", "unknown")
+    source = passport.get("source", "unknown")
+    endpoint = _endpoint_summary(passport.get("endpoint"))
+    capabilities = _inline_list(passport.get("capabilities"))
+    allowed_tools = _inline_list(passport.get("allowed_tools"))
+    allowed_data = _inline_list(passport.get("allowed_data"))
+    approvals = _inline_list(passport.get("required_approvals")) or "none"
+    evidence = _inline_list(passport.get("evidence_requirements")) or "none"
+    outputs = _inline_list(passport.get("expected_outputs")) or "not declared"
+    promotion = _inline_list(passport.get("promotion_evals")) or "none"
+    warnings = _inline_list(passport.get("warnings"))
+    preview_command = f"delegation approval-preview {agent_id} --workspace {workspace_root}"
+    return f"""<div class="agent-passport">
+  <h3>{_escape(agent_id)}</h3>
+  <div class="kv">
+    <div><strong>Runtime:</strong> {_escape(runtime)}</div>
+    <div><strong>Endpoint:</strong> {_escape(endpoint)}</div>
+    <div><strong>Source:</strong> {_escape(source)}</div>
+    <div><strong>Trust:</strong> autonomy {_escape(autonomy)}, risk {_escape(risk)}</div>
+    <div><strong>Can do:</strong> {_escape(capabilities or "no capabilities declared")}</div>
+    <div><strong>Can use:</strong> {_escape(allowed_tools or "no tool scope declared")}</div>
+    <div><strong>Can touch:</strong> {_escape(allowed_data or "no data scope declared")}</div>
+    <div><strong>Approvals:</strong> {_escape(approvals)}</div>
+    <div><strong>Evidence:</strong> {_escape(evidence)}</div>
+    <div><strong>Outputs:</strong> {_escape(outputs)}</div>
+    <div><strong>Promotion evals:</strong> {_escape(promotion)}</div>
+    <div><strong>Warnings:</strong> {_escape(warnings or "none")}</div>
+  </div>
+  <p class="subtle">Preview this agent</p>
+  {_copyable_code(preview_command, id_hint=f"agent-preview-{agent_id}")}
+</div>"""
+
+
+def _local_data_html(workspace_root: T.Any, *, has_preview: bool) -> str:
+    command = f"delegation app-state --workspace {workspace_root} --json"
+    preview_link = (
+        '  <li><a href="approval-preview.json">approval-preview.json</a> - current human approval card.</li>'
+        if has_preview
+        else "  <li>approval-preview.json - created after an Agent Passport is selected.</li>"
+    )
+    return f"""
+<p class="subtle">This workspace runs local-first. GitHub is an adapter, not the core.</p>
+<ul>
+  <li><a href="dashboard.json">dashboard.json</a> - one-screen app brain.</li>
+  <li><a href="state.json">state.json</a> - workspace health, agents, ledger, and guardrails.</li>
+  <li><a href="timeline.json">timeline.json</a> - full mission proof trail.</li>
+{preview_link}
+</ul>
+{_copyable_code(command, id_hint="local-data-state")}
+"""
+
+
+def _copyable_code(value: T.Any, *, id_hint: str) -> str:
+    text = str(value)
+    digest = hashlib.sha256(f"{id_hint}:{text}".encode("utf-8")).hexdigest()[:10]
+    element_id = f"copy-{_dom_id(id_hint)}-{digest}"
+    return (
+        f"<div class=\"command-block\">"
+        f"<button type=\"button\" class=\"copy-button\" data-copy=\"{element_id}\">Copy</button>"
+        f"<code id=\"{element_id}\">{_escape(text)}</code>"
+        f"</div>"
+    )
 
 
 def _list_html(values: T.Sequence[T.Any]) -> str:
     if not values:
         return "<p class=\"subtle\">none</p>"
     return "<ul>" + "".join(f"<li>{_escape(value)}</li>" for value in values) + "</ul>"
+
+
+def _describe_next_action(action: str) -> tuple[str, str]:
+    lowered = action.lower()
+    command_text = lowered.strip()
+    if "app-dashboard" in command_text:
+        return "Refresh dashboard", "Reload the combined app state."
+    if "approval-preview" in command_text:
+        return "Preview approval", "Recheck the agent request before action."
+    if command_text.startswith("delegation timeline") or " delegation timeline " in command_text:
+        return "Review timeline", "Inspect the mission proof trail."
+    if command_text.startswith("delegation agent-run") or " delegation agent-run " in command_text:
+        return "Run gated agent", "Execute only after Agent Gate allows it and confirmation is present."
+    if command_text.startswith("delegation plan") or " delegation plan " in command_text:
+        return "Refresh plan", "Rebuild the dry-run mission plan."
+    if command_text.startswith("delegation agents") or " delegation agents " in command_text:
+        return "Review agents", "Inspect Agent Passports and trust settings."
+    if command_text.startswith("delegation cockpit") or " delegation cockpit " in command_text:
+        return "View cockpit state", "Print the workspace state in the terminal."
+    if "scripts/qa.py" in command_text:
+        return "Run QA", "Verify the full local quality gate."
+    if "package_smoke.py" in command_text:
+        return "Run package smoke", "Verify the installable package path."
+    if command_text.startswith("run evals"):
+        return "Run evals", "Judge the recorded evidence before promotion."
+    return "Next command", "Suggested next step from DelegationHQ."
+
+
+def _inline_list(value: T.Any) -> str:
+    if not isinstance(value, list):
+        return ""
+    return ", ".join(str(item) for item in value if isinstance(item, str) and item.strip())
+
+
+def _endpoint_summary(value: T.Any) -> str:
+    if not isinstance(value, dict):
+        return "not declared"
+    endpoint_type = value.get("type", "unknown")
+    endpoint_value = value.get("value", "")
+    if endpoint_value:
+        return f"{endpoint_type}: {endpoint_value}"
+    return str(endpoint_type)
+
+
+def _dom_id(value: str) -> str:
+    cleaned = "".join(char.lower() if char.isalnum() else "-" for char in value.strip())
+    return "-".join(part for part in cleaned.split("-") if part) or "item"
 
 
 def _status_class(value: str) -> str:

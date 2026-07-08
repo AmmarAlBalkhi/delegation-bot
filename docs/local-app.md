@@ -44,7 +44,11 @@ http://127.0.0.1:8765/
 - release readiness
 - a human approval preview card
 - a command center with safe next commands
-- a mission timeline
+- a full mission timeline
+- copy buttons for commands
+- richer Agent Passport details with endpoint, scope, trust, warnings, and
+  preview commands
+- local data links for generated JSON files
 - next safe actions
 
 Simple version:
@@ -54,7 +58,9 @@ Folder is workspace.
 Agents have ID cards.
 App shows current state.
 Approval card says allow, ask human, or block.
-Timeline shows what happened.
+Timeline shows everything that happened.
+Copy buttons make commands easy.
+Agent cards show what the worker may do before it works.
 Live actions still need guarded commands.
 ```
 

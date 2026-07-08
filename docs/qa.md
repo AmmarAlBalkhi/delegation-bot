@@ -56,6 +56,8 @@ The QA command currently checks:
 - installed package `app-dashboard`, `timeline`, `approval-preview`,
   `app-export`, and `app-serve --dry-run`
   smoke tests
+- local app operator UX regression coverage for full timelines, copy buttons,
+  labeled next actions, readable paths, and Agent Passport details
 - installed package Agent Passport smoke test
 - first-run `delegation demo` and `delegation init` flows
 - local-first `workspace-init`, `workspace-status`, workspace-aware

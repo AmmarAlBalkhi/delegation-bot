@@ -323,6 +323,81 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Approval Preview", html_text)
         self.assertIn("Timeline", html_text)
 
+    def test_app_export_renders_operator_ux_without_truncating_timeline(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "cockpit"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "ux_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            f"{sys.executable} -c \"print('ux ok')\"",
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+                for _ in range(4):
+                    self.assertEqual(
+                        main(
+                            [
+                                "agent-run",
+                                "ux_runner",
+                                "--workspace",
+                                tmpdir,
+                                "--execute",
+                                "--confirm",
+                                "LOCAL_AGENT_EXECUTION",
+                            ]
+                        ),
+                        0,
+                    )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "app-export",
+                        "--workspace",
+                        tmpdir,
+                        "--output",
+                        str(output_dir),
+                        "--preview-agent",
+                        "ux_runner",
+                        "--json",
+                    ]
+                )
+            data = json.loads(output.getvalue())
+            html_text = Path(data["index_html"]).read_text(encoding="utf-8")
+            timeline_data = json.loads(Path(data["timeline_json"]).read_text(encoding="utf-8"))
+
+        self.assertEqual(status, 0)
+        self.assertEqual(timeline_data["shown_count"], timeline_data["event_count"])
+        self.assertEqual(timeline_data["event_count"], 16)
+        self.assertIn("Showing 16 of 16 event(s).", html_text)
+        self.assertIn("1. [gate]", html_text)
+        self.assertIn("16. [record]", html_text)
+        self.assertIn("data-copy=", html_text)
+        self.assertIn("Copy</button>", html_text)
+        self.assertIn("Endpoint:", html_text)
+        self.assertIn("Can do:", html_text)
+        self.assertIn("Can use:", html_text)
+        self.assertIn("Can touch:", html_text)
+        self.assertIn("Preview this agent", html_text)
+        self.assertIn("delegation approval-preview ux_runner", html_text)
+        self.assertIn("Refresh</button>", html_text)
+        self.assertIn("<strong>Review timeline</strong>", html_text)
+        self.assertNotIn("Functional shell, not the final visual design", html_text)
+
     def test_app_dashboard_combines_state_preview_and_timeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             with redirect_stdout(io.StringIO()):

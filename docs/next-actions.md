@@ -66,6 +66,9 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Turned the local app tester report into functional UX fixes: full timeline,
+  copy buttons, labeled next actions, wrapped workspace paths, richer Agent
+  Passport cards, local JSON links, refresh control, and regression coverage.
 - Added `delegation app-dashboard` as the one-screen app brain: workspace
   state, Agent Passports, approval preview, command center, timeline, and next
   safe actions together.

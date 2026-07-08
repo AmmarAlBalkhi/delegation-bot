@@ -1426,3 +1426,24 @@ Guardrails:
 
 Follow-up: Improve approval preview with file/resource diffs, reviewer notes,
 expiration, repeated-action history, and RunPrint bundle alignment.
+
+## 2026-07-08: Treat Local App Tester Feedback As A Functional Contract
+
+Decision: Promote the first local app tester report into concrete app behavior
+and regression coverage.
+
+Why: The local app should feel useful quickly. A user should not have to read
+raw JSON or guess which command matters. The first shell can stay visually
+plain, but it must show the full mission history, clear next actions, readable
+paths, copyable commands, and real Agent Passport detail.
+
+Guardrails:
+
+- show the full timeline in app exports and the local server
+- keep every live action behind guarded commands and exact confirmations
+- make commands copyable without executing them from the page
+- show Agent Passport scope, endpoint, trust, approvals, evidence, and warnings
+- keep GitHub optional; local app data remains local-first
+
+Follow-up: Add richer approval context next: proposed files/resources, reviewer
+notes, expiration, and repeated-action history.
