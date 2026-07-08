@@ -92,6 +92,7 @@ dist\delegation.exe agents examples\ai-harness-control-plane.yaml --registry exa
 dist\delegation.exe agent-gate examples\ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation\exe-smoke.jsonl --write
 dist\delegation.exe approval-inbox --ledger .delegation\exe-smoke.jsonl
 dist\delegation.exe approval-decision --ledger .delegation\exe-smoke.jsonl --action-id agent_gate.implementer.create_pull_request --decision approve --approver exe-smoke
+dist\delegation.exe agent-result-ingest --ledger .delegation\exe-smoke.jsonl --action-id agent_gate.implementer.create_pull_request --result .delegation\agent-result.json
 dist\delegation.exe runprint-ingest --ledger .delegation\exe-smoke.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-exe-smoke --bundle-id bundle-exe-smoke --artifact run-ledger:jsonl:.delegation\exe-smoke.jsonl
 dist\delegation.exe agent-audit --ledger .delegation\exe-smoke.jsonl
 ```

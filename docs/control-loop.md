@@ -92,6 +92,16 @@ This keeps DelegationHQ provider-neutral. A LangGraph agent, Codex thread,
 Claude Code workflow, CRM agent, MCP workflow, local CLI tool, or webhook agent
 can receive the same kind of job card.
 
+The return lane is `agent-result-ingest`:
+
+```bash
+delegation agent-result-ingest --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.planner.write_issue_draft \
+  --result .delegation/agent-result.json
+```
+
+Simple version: packet out, result back, proof into the ledger.
+
 ## Product Rule
 
 Do not make users configure the whole machine before they feel value.

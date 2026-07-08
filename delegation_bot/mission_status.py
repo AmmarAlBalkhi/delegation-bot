@@ -226,6 +226,7 @@ def _next_actions(status: str, ledger_source: str, primary_action_id: str | None
         ]
     if status == "ready_for_recording" and primary_action_id:
         return [
+            f"delegation agent-result-ingest --ledger {ledger_source} --action-id {primary_action_id} --result .delegation/agent-result.json",
             f"delegation runprint-ingest --ledger {ledger_source} --action-id {primary_action_id} --recording-id REC --bundle-id BUNDLE --artifact PATH",
             f"delegation mission-status --ledger {ledger_source}",
         ]

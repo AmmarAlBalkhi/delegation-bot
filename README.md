@@ -126,6 +126,10 @@ approval, proof, attention, and next command.
 tells a custom agent its requested work, allowed tools/data, missing approvals,
 required evidence, and return contract.
 
+`agent-result-ingest` is the return lane. The custom agent sends back a small
+result JSON, DelegationHQ checks it against the packet, and the ledger records
+the agent report plus RunPrint evidence.
+
 Want to start your own repo?
 
 ```bash
@@ -218,6 +222,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation agent-run AGENT --workspace . --execute --confirm LOCAL_AGENT_EXECUTION` | Gate, execute, and record a command-backed custom agent. |
 | `delegation mission-status --ledger .delegation/run.jsonl` | Explain one ledger as plan, gate, approval, proof, and next step. |
 | `delegation agent-packet --ledger .delegation/run.jsonl --action-id ID` | Export a BYOA packet for a custom agent. |
+| `delegation agent-result-ingest --ledger .delegation/run.jsonl --action-id ID --result .delegation/agent-result.json` | Validate a custom agent result and append proof. |
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
 | `delegation app-state --workspace .` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation cockpit --workspace .` | Show the local cockpit state with workspace defaults. |
@@ -292,6 +297,7 @@ DelegationHQ is pre-release, but the foundation is working:
   mission-status, and agent-packet path
 - `mission-status` for plain terminal status over one ledger
 - `agent-packet` for Bring Your Own Agent handoff JSON
+- `agent-result-ingest` for validating custom agent results against packets
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
 - `explain-policy` for low-friction classifier explanations that do not grant authority

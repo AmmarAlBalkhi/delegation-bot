@@ -93,18 +93,22 @@ def export_local_app(
     dashboard_data = dashboard.to_dict()
     state_data = dashboard_data["state"]
     preview_data = dashboard_data.get("approval_preview")
+    agent_packet_data = dashboard_data.get("agent_packet")
     timeline_data = dashboard_data["timeline"]
 
     dashboard_path = target_dir / "dashboard.json"
     state_path = target_dir / "state.json"
     timeline_path = target_dir / "timeline.json"
     preview_path = target_dir / "approval-preview.json"
+    agent_packet_path = target_dir / "agent-packet.json"
     index_path = target_dir / "index.html"
     dashboard_path.write_text(json.dumps(dashboard_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     state_path.write_text(json.dumps(state_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     timeline_path.write_text(json.dumps(timeline_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     if preview_data:
         preview_path.write_text(json.dumps(preview_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if agent_packet_data:
+        agent_packet_path.write_text(json.dumps(agent_packet_data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     index_path.write_text(_render_app_html(dashboard_data), encoding="utf-8")
 
     return LocalAppReport(
@@ -299,6 +303,9 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     preview_data = (
         dashboard_data.get("approval_preview") if isinstance(dashboard_data.get("approval_preview"), dict) else None
     )
+    agent_packet_data = (
+        dashboard_data.get("agent_packet") if isinstance(dashboard_data.get("agent_packet"), dict) else None
+    )
     timeline = dashboard_data.get("timeline") if isinstance(dashboard_data.get("timeline"), dict) else {}
     command_center = (
         dashboard_data.get("command_center") if isinstance(dashboard_data.get("command_center"), list) else []
@@ -477,6 +484,10 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       {_approval_preview_html(preview)}
     </section>
     <section class="panel">
+      <h2>Agent Handoff</h2>
+      {_agent_handoff_html(agent_packet_data, preview)}
+    </section>
+    <section class="panel">
       <h2>Timeline</h2>
       {_timeline_html(timeline)}
     </section>
@@ -499,6 +510,7 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
   <script id="delegation-state" type="application/json">{_json_script(state_data)}</script>
   <script id="delegation-timeline" type="application/json">{_json_script(timeline)}</script>
   <script id="delegation-approval-preview" type="application/json">{_json_script(preview_data or {})}</script>
+  <script id="delegation-agent-packet" type="application/json">{_json_script(agent_packet_data or {})}</script>
   <script>
     document.addEventListener("click", async function (event) {{
       const button = event.target.closest("[data-copy]");
@@ -566,6 +578,67 @@ def _approval_preview_html(preview: JsonMap) -> str:
 <p class="subtle">Decision commands</p>
 {_commands_html(preview.get("decision_commands") if isinstance(preview.get("decision_commands"), list) else [], section_id="approval-commands")}
 """
+
+
+def _agent_handoff_html(packet_report: JsonMap | None, preview: JsonMap) -> str:
+    action_id = preview.get("action_id") if isinstance(preview.get("action_id"), str) else "ACTION_ID"
+    ledger = preview.get("ledger") if isinstance(preview.get("ledger"), str) else ".delegation/run.jsonl"
+    export_command = f"delegation agent-packet --ledger {ledger} --action-id {action_id} --output .delegation/agent-packet.json"
+    ingest_command = f"delegation agent-result-ingest --ledger {ledger} --action-id {action_id} --result .delegation/agent-result.json"
+    if not packet_report:
+        return f"""
+<p><strong>No Agent Packet is available yet.</strong></p>
+<p class="subtle">First record an Agent Gate receipt, then export the worker job card.</p>
+<div class="grid">
+  {_metric_panel("Packet", "missing", "record a gate receipt first")}
+  {_metric_panel("Return", "waiting", "agent-result.json")}
+</div>
+<p class="subtle">Export packet</p>
+{_copyable_code(export_command, id_hint="agent-handoff-export-missing")}
+<p class="subtle">Ingest result</p>
+{_copyable_code(ingest_command, id_hint="agent-handoff-ingest-missing")}
+"""
+    packet = packet_report.get("packet") if isinstance(packet_report.get("packet"), dict) else {}
+    agent = packet.get("agent") if isinstance(packet.get("agent"), dict) else {}
+    work = packet.get("requested_work") if isinstance(packet.get("requested_work"), dict) else {}
+    controls = packet.get("required_controls") if isinstance(packet.get("required_controls"), dict) else {}
+    receipts = packet.get("current_receipts") if isinstance(packet.get("current_receipts"), dict) else {}
+    return_contract = packet.get("return_contract") if isinstance(packet.get("return_contract"), dict) else {}
+    if isinstance(return_contract.get("ingest_command"), str) and return_contract["ingest_command"].strip():
+        ingest_command = return_contract["ingest_command"].strip()
+    warnings = packet_report.get("warnings") if isinstance(packet_report.get("warnings"), list) else []
+    return f"""
+<p><strong>Packet status: {_escape(packet_report.get("status", "unknown"))}</strong></p>
+<div class="grid">
+  {_metric_panel("Agent", agent.get("id", "unknown"), agent.get("runtime_type", "unknown"))}
+  {_metric_panel("Work", work.get("action", "unknown"), work.get("target", "unknown"))}
+  {_metric_panel("Execute", str(packet.get("can_execute", False)).lower(), f"gate: {work.get('gate_decision', 'unknown')}")}
+  {_metric_panel("Evidence", str(receipts.get("runprint_recorded", False)).lower(), _inline_list(controls.get("evidence")) or "none")}
+</div>
+<p class="subtle">Required approvals</p>
+{_list_html(controls.get("approvals") if isinstance(controls.get("approvals"), list) else [])}
+<p class="subtle">Return contract</p>
+{_return_contract_html(return_contract)}
+<p class="subtle">Warnings</p>
+{_list_html(warnings)}
+<p class="subtle">Export packet</p>
+{_copyable_code(export_command, id_hint="agent-handoff-export")}
+<p class="subtle">Ingest result</p>
+{_copyable_code(ingest_command, id_hint="agent-handoff-ingest")}
+"""
+
+
+def _return_contract_html(contract: JsonMap) -> str:
+    if not contract:
+        return "<p class=\"subtle\">No return contract found.</p>"
+    fields = contract.get("must_return") if isinstance(contract.get("must_return"), list) else []
+    statuses = contract.get("allowed_statuses") if isinstance(contract.get("allowed_statuses"), list) else []
+    schema = contract.get("schema_version", "unknown")
+    return f"""<div class="kv">
+  <div><strong>Schema:</strong> {_escape(schema)}</div>
+  <div><strong>Fields:</strong> {_escape(_inline_list(fields) or "none")}</div>
+  <div><strong>Statuses:</strong> {_escape(_inline_list(statuses) or "none")}</div>
+</div>"""
 
 
 def _agents_html(passports: list[T.Any], workspace_root: T.Any) -> str:
@@ -777,6 +850,10 @@ def _describe_next_action(action: str) -> tuple[str, str]:
         return "Review timeline", "Inspect the mission proof trail."
     if command_text.startswith("delegation agent-run") or " delegation agent-run " in command_text:
         return "Run gated agent", "Execute only after Agent Gate allows it and confirmation is present."
+    if command_text.startswith("delegation agent-packet") or " delegation agent-packet " in command_text:
+        return "Export agent packet", "Create the job card for a custom agent."
+    if command_text.startswith("delegation agent-result-ingest") or " delegation agent-result-ingest " in command_text:
+        return "Ingest agent result", "Check the worker result and append proof to the ledger."
     if command_text.startswith("delegation plan") or " delegation plan " in command_text:
         return "Refresh plan", "Rebuild the dry-run mission plan."
     if command_text.startswith("delegation agents") or " delegation agents " in command_text:

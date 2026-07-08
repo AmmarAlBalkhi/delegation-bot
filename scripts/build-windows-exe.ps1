@@ -194,6 +194,28 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    $AgentResultPath = Join-Path $SmokeDir "agent-result.json"
+    @{
+        schema_version = "delegation.agent-result.v1"
+        action_id = "agent_gate.implementer.create_pull_request"
+        agent_id = "implementer"
+        status = "completed"
+        summary = "EXE smoke custom agent returned controlled result evidence."
+        changed_resources = @("repository")
+        runprint_recording_id = "rec-agent-result-exe-smoke"
+        evidence_bundle_id = "bundle-agent-result-exe-smoke"
+        artifacts = @(@{
+            id = "run-ledger"
+            kind = "jsonl"
+            path = ".delegation\exe-smoke.jsonl"
+        })
+    } | ConvertTo-Json -Depth 6 | Set-Content -Path $AgentResultPath -Encoding UTF8
+
+    & $ExecutablePath agent-result-ingest --ledger (Join-Path $SmokeDir "exe-smoke.jsonl") --action-id agent_gate.implementer.create_pull_request --result $AgentResultPath
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath runprint-ingest --ledger (Join-Path $SmokeDir "exe-smoke.jsonl") --action-id agent_gate.implementer.create_pull_request --recording-id rec-exe-smoke --bundle-id bundle-exe-smoke --artifact "run-ledger:jsonl:.delegation\exe-smoke.jsonl" --summary "EXE smoke recorded evidence."
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

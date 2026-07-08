@@ -48,7 +48,8 @@ The QA command currently checks:
 - release rehearsal evidence bundle generation
 - app-ready state bundle generation for the future local cockpit
 - installed package control-loop demo, mission-status, agent-packet, and
-  app-state smoke tests
+  agent-result-ingest smoke tests
+- installed package app-state smoke tests
 - installed package local workspace init/status and `agent-add` smoke tests
 - installed package `agent-run` smoke test for controlled command-backed agent
   execution
@@ -87,6 +88,8 @@ The QA command currently checks:
   and audit receipts
 - mission-status coverage for plain ledger state over the control loop
 - agent-packet coverage for Bring Your Own Agent handoff JSON
+- agent-result-ingest coverage for custom agent return JSON, RunPrint evidence,
+  and wrong-agent blocking
 - GitHub Actions dispatch preview, gated fake-client live path, and fixture coverage
 - GitHub Actions live preflight, duplicate-run blocking, and cancellation
   evidence coverage

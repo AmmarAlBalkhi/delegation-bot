@@ -7,8 +7,10 @@ import typing as T
 from dataclasses import dataclass
 from pathlib import Path
 
+from delegation_bot.agent_packet import AgentPacketReport, build_agent_packet_report
 from delegation_bot.app_state import AppState, build_app_state
 from delegation_bot.approval_preview import ApprovalPreviewReport, build_approval_preview_report
+from delegation_bot.ledger import LedgerError, load_ledger_events
 from delegation_bot.mission_timeline import MissionTimelineReport, build_timeline_report_from_paths
 
 
@@ -24,6 +26,7 @@ class AppDashboardReport:
     state: AppState
     timeline: MissionTimelineReport
     approval_preview: ApprovalPreviewReport | None
+    agent_packet: AgentPacketReport | None
     command_center: tuple[JsonMap, ...]
     warnings: tuple[str, ...] = ()
 
@@ -43,6 +46,7 @@ class AppDashboardReport:
             "state": self.state.to_dict(),
             "timeline": self.timeline.to_dict(),
             "approval_preview": self.approval_preview.to_dict() if self.approval_preview else None,
+            "agent_packet": self.agent_packet.to_dict() if self.agent_packet else None,
             "command_center": list(self.command_center),
             "warnings": list(self.warnings),
             "next_actions": list(self.next_actions),
@@ -75,6 +79,7 @@ def build_app_dashboard_report(
         preview_note=preview_note,
         preview_expires_at=preview_expires_at,
     )
+    agent_packet = _build_agent_packet(preview)
     return AppDashboardReport(
         schema_version=APP_DASHBOARD_SCHEMA_VERSION,
         status=_dashboard_status(state.status, timeline.status, preview),
@@ -82,8 +87,9 @@ def build_app_dashboard_report(
         state=state,
         timeline=timeline,
         approval_preview=preview,
+        agent_packet=agent_packet,
         command_center=tuple(_command_center(workspace, state_data, timeline, preview)),
-        warnings=tuple(_dashboard_warnings(state_data, timeline, preview)),
+        warnings=tuple(_dashboard_warnings(state_data, timeline, preview, agent_packet)),
     )
 
 
@@ -116,6 +122,15 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
                 f"- risk: {preview.gate.effective_risk}",
             ]
         )
+    if report.agent_packet:
+        lines.extend(
+            [
+                "",
+                "Agent handoff:",
+                f"- packet: {report.agent_packet.status}",
+                f"- action: {report.agent_packet.action_id}",
+            ]
+        )
 
     lines.extend(["", "Command center:"])
     for command in report.command_center:
@@ -143,7 +158,7 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
         [
             "",
             "Plain language:",
-            "- This is the app brain: workspace, agents, approval request, timeline, and safe commands together.",
+            "- This is the app brain: workspace, agents, approval request, agent handoff, timeline, and safe commands together.",
             "- The visual design can change later without changing this control data.",
             "",
             "Next:",
@@ -190,6 +205,19 @@ def _dashboard_status(state_status: str, timeline_status: str, preview: Approval
     if timeline_status in {"recorded", "approved", "gated"}:
         return timeline_status
     return state_status
+
+
+def _build_agent_packet(preview: ApprovalPreviewReport | None) -> AgentPacketReport | None:
+    if preview is None or not preview.ledger:
+        return None
+    ledger_path = Path(preview.ledger)
+    if not ledger_path.exists():
+        return build_agent_packet_report((), action_id=preview.action_id, ledger_source=str(ledger_path))
+    try:
+        events = load_ledger_events(ledger_path)
+    except LedgerError:
+        return build_agent_packet_report((), action_id=preview.action_id, ledger_source=str(ledger_path))
+    return build_agent_packet_report(events, action_id=preview.action_id, ledger_source=str(ledger_path))
 
 
 def _command_center(
@@ -240,6 +268,27 @@ def _command_center(
                 "purpose": "Stop this request and keep a human decision receipt.",
                 "risk": preview.gate.effective_risk,
             }
+        if preview.ledger:
+            yield {
+                "id": "export_agent_packet",
+                "label": "Export agent packet",
+                "command": (
+                    f"delegation agent-packet --ledger {preview.ledger} --action-id {preview.action_id} "
+                    "--output .delegation/agent-packet.json"
+                ),
+                "purpose": "Create the job card for a custom agent after a gate receipt exists.",
+                "risk": "none",
+            }
+            yield {
+                "id": "ingest_agent_result",
+                "label": "Ingest agent result",
+                "command": (
+                    f"delegation agent-result-ingest --ledger {preview.ledger} --action-id {preview.action_id} "
+                    "--result .delegation/agent-result.json"
+                ),
+                "purpose": "Validate the worker result against the packet and append proof.",
+                "risk": preview.gate.effective_risk,
+            }
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
     ledger_path = ledger.get("path")
     if isinstance(ledger_path, str) and ledger_path:
@@ -256,6 +305,7 @@ def _dashboard_warnings(
     state_data: JsonMap,
     timeline: MissionTimelineReport,
     preview: ApprovalPreviewReport | None,
+    agent_packet: AgentPacketReport | None,
 ) -> T.Iterator[str]:
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
     for warning in ledger.get("warnings", []) if isinstance(ledger.get("warnings"), list) else []:
@@ -266,6 +316,8 @@ def _dashboard_warnings(
         yield "No agent passport is available for an approval preview."
     elif preview.warnings:
         yield from preview.warnings
+    if agent_packet and agent_packet.warnings:
+        yield from agent_packet.warnings
 
 
 def _preview_metadata_args(preview: ApprovalPreviewReport) -> str:

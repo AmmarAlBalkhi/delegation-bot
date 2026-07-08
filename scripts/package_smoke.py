@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -469,6 +470,54 @@ def main() -> int:
             print(approval_decision.stderr, file=sys.stderr)
             return approval_decision.returncode or 1
 
+        agent_result_path = tmp / "agent-result.json"
+        agent_result_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": "delegation.agent-result.v1",
+                    "action_id": "agent_gate.smoke_cli_agent.read_run_ledger",
+                    "agent_id": "smoke_cli_agent",
+                    "status": "completed",
+                    "summary": "Installed package worker returned controlled result evidence.",
+                    "changed_resources": ["run_ledger"],
+                    "runprint_recording_id": "rec-agent-result-package-smoke",
+                    "evidence_bundle_id": "bundle-agent-result-package-smoke",
+                    "artifacts": [
+                        {
+                            "id": "run-ledger",
+                            "kind": "jsonl",
+                            "path": "demo.jsonl",
+                        }
+                    ],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        agent_result_ingest = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "agent-result-ingest",
+                "--ledger",
+                str(ledger),
+                "--action-id",
+                "agent_gate.smoke_cli_agent.read_run_ledger",
+                "--result",
+                str(agent_result_path),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if agent_result_ingest.returncode != 0 or "Agent Result Ingest" not in agent_result_ingest.stdout:
+            print("FAIL: installed package agent result ingest smoke")
+            print(agent_result_ingest.stdout)
+            print(agent_result_ingest.stderr, file=sys.stderr)
+            return agent_result_ingest.returncode or 1
+
         runprint_ingest = _run(
             [
                 sys.executable,
@@ -520,7 +569,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 

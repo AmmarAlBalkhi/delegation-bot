@@ -95,6 +95,8 @@ That is the product: powerful AI work with visible control before power is used.
   audit loop in one install-safe command.
 - `mission-status` explains the ledger without requiring users to read JSONL.
 - `agent-packet` exports a Bring Your Own Agent handoff card.
+- `agent-result-ingest` records the custom agent return lane when using the
+  handoff flow in [`docs/agent-handoff.md`](agent-handoff.md).
 - `evidence` summarizes planned proof bundles without reading raw JSONL.
 - `mcp-gate` checks MCP server/tool allowlists and tool risk evidence.
 - `apply-actions` previews workflow dispatch by default and can dispatch only with explicit live gates.

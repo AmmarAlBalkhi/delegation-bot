@@ -19,6 +19,11 @@ from delegation_bot.agent_gate import (
 )
 from delegation_bot.agent_packet import build_agent_packet_report, render_agent_packet_report
 from delegation_bot.agent_passports import build_agent_passport_report, render_agent_passport_report
+from delegation_bot.agent_result import (
+    build_agent_result_ingest_report,
+    load_agent_result,
+    render_agent_result_ingest_report,
+)
 from delegation_bot.agent_registry_writer import (
     DEFAULT_REGISTRY_PATH,
     add_agent_to_registry,
@@ -776,6 +781,34 @@ def cmd_agent_packet(args: argparse.Namespace) -> int:
         print(render_agent_packet_report(report))
         if args.output:
             print(f"\nAgent packet written: {args.output}")
+    return 1 if report.blocked else 0
+
+
+def cmd_agent_result_ingest(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    result_path = Path(args.result)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+        result = load_agent_result(result_path)
+        report = build_agent_result_ingest_report(
+            ledger_events,
+            result=result,
+            result_source=str(result_path),
+            ledger_source=str(ledger_path),
+            action_id=args.action_id,
+        )
+        if report.events:
+            append_jsonl(report.events, ledger_path)
+    except (EvalError, OSError, ValueError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_agent_result_ingest_report(report))
+        if report.events:
+            print(f"\nAgent result appended: {ledger_path}")
     return 1 if report.blocked else 0
 
 
@@ -2120,6 +2153,16 @@ def build_parser() -> argparse.ArgumentParser:
     agent_packet.add_argument("--output", help="Write the packet JSON to this path.")
     agent_packet.add_argument("--json", action="store_true", help="Print packet JSON.")
     agent_packet.set_defaults(func=cmd_agent_packet)
+
+    agent_result_ingest = subparsers.add_parser(
+        "agent-result-ingest",
+        help="Validate and record a custom agent result against an Agent Packet.",
+    )
+    agent_result_ingest.add_argument("--ledger", required=True, help="Append result evidence to this run ledger JSONL file.")
+    agent_result_ingest.add_argument("--action-id", help="Agent Gate action_id this result answers.")
+    agent_result_ingest.add_argument("--result", required=True, help="Agent result JSON file returned by the worker agent.")
+    agent_result_ingest.add_argument("--json", action="store_true", help="Print the ingest report as JSON.")
+    agent_result_ingest.set_defaults(func=cmd_agent_result_ingest)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

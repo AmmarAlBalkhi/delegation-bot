@@ -42,8 +42,9 @@ Human = final yes/no for danger.
 
 ## Now
 
-1. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
-   examples for CLI agents, webhook agents, MCP workflows, and CRM agents.
+1. Expand Bring Your Own Agent adapters from file-based handoff to live
+   connector modes: CLI stdin/stdout, webhook callback, MCP tool call, and
+   LangGraph invocation.
 2. Improve the local app shell after visual direction is approved: agent list,
    approval cards, mission timeline, and evidence details should feel fast and
    obvious without exposing internal complexity.
@@ -64,6 +65,12 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added `delegation agent-result-ingest` so custom agents can return a result
+  JSON that DelegationHQ validates against the Agent Packet before appending
+  `agent.result.reported` and RunPrint evidence.
+- Hardened `agent-packet` with an explicit Agent Result return contract,
+  allowed statuses, ingest command, example payload, app rendering, smoke
+  coverage, and a copyable handoff example.
 - Expanded Approval Preview into a practical human control card with request
   packet context, resource scope, evidence status, repeated-action history,
   reviewer notes, expiration, app rendering, CLI flags, and regression tests.

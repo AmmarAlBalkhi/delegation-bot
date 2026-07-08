@@ -128,6 +128,8 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["packet"]["agent"]["id"], "planner")
         self.assertEqual(data["packet"]["requested_work"]["action"], "write.issue_draft")
         self.assertTrue(data["packet"]["current_receipts"]["runprint_recorded"])
+        self.assertEqual(data["packet"]["return_contract"]["schema_version"], "delegation.agent-result.v1")
+        self.assertIn("agent-result-ingest", data["packet"]["return_contract"]["ingest_command"])
 
     def test_app_plan_command_is_human_readable(self) -> None:
         with redirect_stdout(io.StringIO()) as output:
@@ -396,6 +398,8 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("DelegationHQ Local App", html_text)
         self.assertIn("Command Center", html_text)
         self.assertIn("Approval Preview", html_text)
+        self.assertIn("Agent Handoff", html_text)
+        self.assertIn("agent-result-ingest", html_text)
         self.assertIn("Request packet", html_text)
         self.assertIn("operator checked", html_text)
         self.assertIn('--review-note &quot;operator checked&quot;', html_text)
@@ -1165,6 +1169,143 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(audit["items"][0]["evidence_status"], "recorded")
         self.assertEqual(inbox_status, 0)
         self.assertEqual(inbox["items"][0]["status"], "recorded")
+
+    def test_agent_result_ingest_records_custom_agent_result(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            result_path = Path(tmpdir) / "agent-result.json"
+            action_id = "agent_gate.implementer.create_pull_request"
+            result_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "delegation.agent-result.v1",
+                        "action_id": action_id,
+                        "agent_id": "implementer",
+                        "status": "completed",
+                        "summary": "Custom agent opened the pull request draft under control.",
+                        "changed_resources": ["repository"],
+                        "runprint_recording_id": "rec-agent-result",
+                        "evidence_bundle_id": "bundle-agent-result",
+                        "artifacts": [{"id": "run-ledger", "kind": "jsonl", "path": ".delegation/demo.jsonl"}],
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-gate",
+                            str(EXAMPLE),
+                            "implementer",
+                            "--action",
+                            "create_pull_request",
+                            "--target",
+                            "repository",
+                            "--approval",
+                            "pull_request",
+                            "--ledger",
+                            str(ledger),
+                            "--write",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as ingest_output:
+                ingest_status = main(
+                    [
+                        "agent-result-ingest",
+                        "--ledger",
+                        str(ledger),
+                        "--action-id",
+                        action_id,
+                        "--result",
+                        str(result_path),
+                    ]
+                )
+            with redirect_stdout(io.StringIO()) as audit_output:
+                audit_status = main(["agent-audit", "--ledger", str(ledger), "--json"])
+            events = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines() if line.strip()]
+        audit = json.loads(audit_output.getvalue())
+
+        self.assertEqual(ingest_status, 0)
+        self.assertIn("Agent result appended", ingest_output.getvalue())
+        self.assertIn("agent.result.reported", [event["type"] for event in events])
+        self.assertTrue(
+            any(
+                event["type"] == "runprint.recording.completed"
+                and event["details"]["adapter"] == "runprint.agent_result"
+                for event in events
+            )
+        )
+        self.assertEqual(audit_status, 0)
+        self.assertEqual(audit["status"], "recorded")
+
+    def test_agent_result_ingest_blocks_wrong_agent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "ledger.jsonl"
+            result_path = Path(tmpdir) / "agent-result.json"
+            action_id = "agent_gate.implementer.create_pull_request"
+            result_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": "delegation.agent-result.v1",
+                        "action_id": action_id,
+                        "agent_id": "other_agent",
+                        "status": "completed",
+                        "summary": "Wrong agent tried to report work.",
+                        "changed_resources": ["repository"],
+                        "runprint_recording_id": "rec-wrong-agent",
+                        "evidence_bundle_id": "bundle-wrong-agent",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["plan", str(EXAMPLE), "--ledger", str(ledger)]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-gate",
+                            str(EXAMPLE),
+                            "implementer",
+                            "--action",
+                            "create_pull_request",
+                            "--target",
+                            "repository",
+                            "--approval",
+                            "pull_request",
+                            "--ledger",
+                            str(ledger),
+                            "--write",
+                        ]
+                    ),
+                    0,
+                )
+            before = ledger.read_text(encoding="utf-8")
+            with redirect_stdout(io.StringIO()) as ingest_output:
+                ingest_status = main(
+                    [
+                        "agent-result-ingest",
+                        "--ledger",
+                        str(ledger),
+                        "--action-id",
+                        action_id,
+                        "--result",
+                        str(result_path),
+                        "--json",
+                    ]
+                )
+            after = ledger.read_text(encoding="utf-8")
+        data = json.loads(ingest_output.getvalue())
+
+        self.assertEqual(ingest_status, 1)
+        self.assertEqual(data["status"], "invalid_result")
+        self.assertTrue(any("does not match" in warning for warning in data["warnings"]))
+        self.assertEqual(before, after)
 
     def test_app_state_can_include_agent_gate_preview(self) -> None:
         with redirect_stdout(io.StringIO()) as output:

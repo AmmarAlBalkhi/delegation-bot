@@ -374,6 +374,20 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "Agent Result ingest",
+            [
+                python,
+                "scripts/delegation.py",
+                "agent-result-ingest",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+                "--action-id",
+                "agent_gate.implementer.create_pull_request",
+                "--result",
+                "examples/agent-results/cli-agent-result.json",
+            ],
+        ),
+        Check(
             "RunPrint recording ingest",
             [
                 python,

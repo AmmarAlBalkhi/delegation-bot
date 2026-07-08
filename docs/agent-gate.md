@@ -82,6 +82,9 @@ delegation runprint-ingest --ledger .delegation/demo.jsonl \
 delegation mission-status --ledger .delegation/demo.jsonl
 delegation agent-packet --ledger .delegation/demo.jsonl \
   --action-id agent_gate.implementer.create_pull_request
+delegation agent-result-ingest --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.implementer.create_pull_request \
+  --result .delegation/agent-result.json
 ```
 
 Simple version:
@@ -93,6 +96,7 @@ RunPrint = proof of what was planned or recorded.
 Agent audit = compare receipt with proof.
 Mission Status = plain answer for what is done and what is next.
 Agent Packet = safe job card for an outside custom agent.
+Agent Result = worker comes back with proof in a shape DelegationHQ can judge.
 ```
 
 The command also supports JSON for future app/cockpit use:
@@ -163,6 +167,23 @@ allowed tools/data, missing approvals, required evidence, and a small return
 contract. This lets DelegationHQ supervise Codex, Claude Code, LangGraph, CRM
 agents, MCP workflows, webhook agents, local CLI tools, and future harnesses
 without becoming those agents.
+
+## Agent Result Ingest
+
+`delegation agent-result-ingest` is the return lane for custom agents. It reads
+the worker result JSON, checks the agent/action/packet identity, requires
+RunPrint recording ids, then appends:
+
+- `agent.result.reported`
+- `runprint.recording.completed`
+
+Simple version:
+
+```text
+Packet = job card.
+Agent result = worker's answer.
+Result ingest = bouncer checks the answer before it enters the ledger.
+```
 
 ## Ledger Receipt
 

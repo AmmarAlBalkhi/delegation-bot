@@ -113,14 +113,37 @@ def build_agent_packet_report(
         },
         "instructions": _instructions(can_execute, recorded),
         "return_contract": {
+            "schema_version": "delegation.agent-result.v1",
+            "ingest_command": (
+                f"delegation agent-result-ingest --ledger {ledger_source} "
+                f"--action-id {clean_action_id} --result .delegation/agent-result.json"
+            ),
             "must_return": [
+                "schema_version",
+                "packet_id",
+                "action_id",
+                "agent_id",
                 "status",
                 "summary",
                 "changed_resources",
                 "evidence_bundle_id",
                 "runprint_recording_id",
+                "artifacts",
             ],
+            "allowed_statuses": ["completed", "failed", "blocked", "needs_attention", "partial"],
             "must_not_return": ["secrets", "raw credentials", "unapproved external writes"],
+            "example": {
+                "schema_version": "delegation.agent-result.v1",
+                "packet_id": _packet_id(clean_action_id, gate_event),
+                "action_id": clean_action_id,
+                "agent_id": _string(gate.get("agent_id") or agent.get("id"), default="unknown-agent"),
+                "status": "completed",
+                "summary": "One short sentence describing what happened.",
+                "changed_resources": [_string(gate.get("target"), default="workspace")],
+                "runprint_recording_id": "rec-...",
+                "evidence_bundle_id": "bundle-...",
+                "artifacts": [{"id": "runprint-ledger", "kind": "jsonl", "path": ".delegation/run.jsonl"}],
+            },
         },
     }
     return AgentPacketReport(
@@ -181,7 +204,17 @@ def render_agent_packet_report(report: AgentPacketReport) -> str:
         ]
     )
     lines.extend(f"- {instruction}" for instruction in packet["instructions"])
-    lines.extend(["", "Next:", "- Send this JSON packet to the custom agent, then record its RunPrint evidence back into the ledger."])
+    lines.extend(
+        [
+            "",
+            "Return contract:",
+            f"- schema: {packet['return_contract']['schema_version']}",
+            f"- ingest: {packet['return_contract']['ingest_command']}",
+            "",
+            "Next:",
+            "- Send this JSON packet to the custom agent, then ingest its result JSON back into the ledger.",
+        ]
+    )
     return "\n".join(lines)
 
 
