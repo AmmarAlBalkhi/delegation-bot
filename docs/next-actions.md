@@ -42,23 +42,33 @@ Human = final yes/no for danger.
 
 ## Now
 
-1. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
+1. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
+   examples for CLI agents, webhook agents, MCP workflows, and CRM agents.
+2. Add a low-friction custom agent registry starter so users can register an
+   outside agent without writing a large YAML file by hand.
+3. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
    repo stabilizes.
-2. Add the next approval loop slice: optional reviewer notes, expiration, and
+4. Add the next approval loop slice: optional reviewer notes, expiration, and
    decision history summaries for repeated agent actions.
-3. Keep `app-state` aligned as the first cockpit backend without designing UI
+5. Keep `app-state` aligned as the first cockpit backend without designing UI
    until the visual direction is approved.
-4. Run `delegation release-check --strict-artifacts` on a clean Windows release
+6. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-5. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+7. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-6. Test the GitHub App issue-write path against a real installed app before
+8. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-7. Decide which `delegation github-app-plan` mode should become the first
+9. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently
 
+- Added `delegation demo --control-loop` so one install-safe command now shows
+  the plan -> gate -> approval -> RunPrint recording -> audit path.
+- Added `delegation mission-status` for a plain operator view over one ledger:
+  plan, gate, approval, proof, attention, and next action.
+- Added `delegation agent-packet` to export a Bring Your Own Agent handoff card
+  from an Agent Gate receipt.
 - Added Agent Gate ledger receipts and `delegation agent-audit` so a mission
   can compare what an agent asked to do with planned or recorded RunPrint
   evidence.

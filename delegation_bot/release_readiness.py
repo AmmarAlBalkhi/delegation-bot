@@ -307,6 +307,9 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
         for needle in (
             "--version",
             "demo",
+            "--control-loop",
+            "mission-status",
+            "agent-packet",
             "app-state",
             "agents",
             "agent-gate",
@@ -315,6 +318,8 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "approval-decision",
             "runprint-ingest",
             "Agent Passport Registry",
+            "DelegationHQ Mission Status",
+            "Agent Packet",
             "Agent Gate",
             "Agent Gate Evidence Audit",
             "Approval Inbox",
@@ -334,7 +339,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, demo, app state, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, agent packet, app state, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 

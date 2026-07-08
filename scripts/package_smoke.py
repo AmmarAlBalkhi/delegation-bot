@@ -76,6 +76,7 @@ def main() -> int:
                 "demo",
                 "--ledger",
                 str(ledger),
+                "--control-loop",
             ],
             cwd=tmp,
             env=env,
@@ -89,6 +90,44 @@ def main() -> int:
             print("FAIL: installed package demo smoke did not produce ready output and ledger")
             print(demo.stdout)
             return 1
+
+        mission_status = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "mission-status",
+                "--ledger",
+                str(ledger),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if mission_status.returncode != 0 or "DelegationHQ Mission Status" not in mission_status.stdout:
+            print("FAIL: installed package mission-status smoke")
+            print(mission_status.stdout)
+            print(mission_status.stderr, file=sys.stderr)
+            return mission_status.returncode or 1
+
+        agent_packet = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "agent-packet",
+                "--ledger",
+                str(ledger),
+                "--action-id",
+                "agent_gate.planner.write_issue_draft",
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if agent_packet.returncode != 0 or "Agent Packet" not in agent_packet.stdout:
+            print("FAIL: installed package agent-packet smoke")
+            print(agent_packet.stdout)
+            print(agent_packet.stderr, file=sys.stderr)
+            return agent_packet.returncode or 1
 
         app_state = _run(
             [
@@ -265,7 +304,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package demo, app-state, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 

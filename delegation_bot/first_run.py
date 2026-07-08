@@ -6,15 +6,24 @@ import re
 import shutil
 import subprocess
 import typing as T
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from delegation_bot.evals import EvalResult, run_declared_evals
+from delegation_bot.agent_gate import (
+    AgentGateAuditReport,
+    AgentGateReport,
+    build_agent_gate_audit_report,
+    build_agent_gate_events,
+    build_agent_gate_report,
+)
+from delegation_bot.approval_inbox import ApprovalInboxReport, build_approval_decision_events, build_approval_inbox_report
+from delegation_bot.evals import EvalResult, append_jsonl, load_jsonl, run_declared_evals
 from delegation_bot.github_actions_apply import GitHubActionsApplyReport, build_actions_apply_report
 from delegation_bot.harness_manifest import Manifest, load_manifest, validate_manifest
 from delegation_bot.harness_plan import ExecutionPlan, build_dry_run_ledger, compile_plan, write_jsonl
 from delegation_bot.ledger import LedgerFilter, build_ledger_view
 from delegation_bot.mcp_policy_gate import McpPolicyReport, build_mcp_policy_report
+from delegation_bot.runprint_ingest import RunPrintArtifact, build_runprint_recording_events
 from delegation_bot.suggest import DEFAULT_REPOSITORY, build_suggestion, manifest_to_yaml
 
 
@@ -22,6 +31,12 @@ JsonMap = dict[str, T.Any]
 DEFAULT_DEMO_LEDGER = ".delegation/demo.jsonl"
 DEFAULT_INIT_GOAL = "prepare this repository for safe AI delegation"
 DEFAULT_INIT_OUTPUT = "Harnessfile.yaml"
+DEFAULT_CONTROL_LOOP_AGENT = "planner"
+DEFAULT_CONTROL_LOOP_ACTION = "write.issue_draft"
+DEFAULT_CONTROL_LOOP_TARGET = "github.issue"
+DEFAULT_CUSTOM_CONTROL_LOOP_AGENT = "implementer"
+DEFAULT_CUSTOM_CONTROL_LOOP_ACTION = "create_pull_request"
+DEFAULT_CUSTOM_CONTROL_LOOP_TARGET = "repository"
 
 
 @dataclass(frozen=True)
@@ -45,6 +60,7 @@ class DemoReport:
     actions_report: GitHubActionsApplyReport
     eval_results: tuple[EvalResult, ...]
     steps: tuple[FirstRunStep, ...]
+    control_loop: "ControlLoopDemoReport | None" = None
 
     @property
     def blocked(self) -> bool:
@@ -61,6 +77,51 @@ class DemoReport:
             "github_actions_gate": self.actions_report.to_dict(),
             "evals": [result.to_dict() for result in self.eval_results],
             "steps": [step.to_dict() for step in self.steps],
+            "control_loop": self.control_loop.to_dict() if self.control_loop else None,
+        }
+
+
+@dataclass(frozen=True)
+class ControlLoopDemoReport:
+    status: str
+    action_id: str
+    agent_id: str
+    action: str
+    target: str
+    approver: str
+    gate: AgentGateReport
+    audit: AgentGateAuditReport
+    approval_inbox: ApprovalInboxReport
+    appended_event_count: int
+    steps: tuple[FirstRunStep, ...]
+
+    @property
+    def blocked(self) -> bool:
+        return self.status in {"blocked", "needs_attention"}
+
+    @property
+    def next_commands(self) -> tuple[str, ...]:
+        return (
+            "delegation mission-status --ledger LEDGER",
+            f"delegation agent-packet --ledger LEDGER --action-id {self.action_id}",
+            "delegation approval-inbox --ledger LEDGER",
+            "delegation agent-audit --ledger LEDGER",
+        )
+
+    def to_dict(self) -> JsonMap:
+        return {
+            "status": self.status,
+            "action_id": self.action_id,
+            "agent_id": self.agent_id,
+            "action": self.action,
+            "target": self.target,
+            "approver": self.approver,
+            "gate": self.gate.to_dict(),
+            "audit": self.audit.to_dict(),
+            "approval_inbox": self.approval_inbox.to_dict(),
+            "appended_event_count": self.appended_event_count,
+            "steps": [step.to_dict() for step in self.steps],
+            "next_commands": list(self.next_commands),
         }
 
 
@@ -357,6 +418,148 @@ def build_demo_report(
     )
 
 
+def build_control_loop_demo_report(
+    *,
+    ledger_path: Path,
+    harnessfile: Path | None = None,
+    repository: str = DEFAULT_REPOSITORY,
+    owner: str = "maintainer",
+    agent_id: str | None = None,
+    action: str | None = None,
+    target: str | None = None,
+    approver: str | None = None,
+) -> DemoReport:
+    """Run the install-safe demo and append a full control-loop receipt chain."""
+
+    base = build_demo_report(
+        ledger_path=ledger_path,
+        harnessfile=harnessfile,
+        repository=repository,
+        owner=owner,
+    )
+    if harnessfile:
+        manifest = load_manifest(harnessfile)
+        harness_source = str(harnessfile)
+        default_agent = DEFAULT_CUSTOM_CONTROL_LOOP_AGENT
+        default_action = DEFAULT_CUSTOM_CONTROL_LOOP_ACTION
+        default_target = DEFAULT_CUSTOM_CONTROL_LOOP_TARGET
+    else:
+        manifest = build_demo_manifest(repository=repository, owner=owner)
+        harness_source = "built-in demo"
+        default_agent = DEFAULT_CONTROL_LOOP_AGENT
+        default_action = DEFAULT_CONTROL_LOOP_ACTION
+        default_target = DEFAULT_CONTROL_LOOP_TARGET
+
+    selected_agent = agent_id or default_agent
+    selected_action = action or default_action
+    selected_target = target or default_target
+    selected_approver = approver or owner
+
+    existing_events = load_jsonl(ledger_path)
+    run_id = _run_id(existing_events) or f"demo-control-loop-{selected_agent}"
+    gate = build_agent_gate_report(
+        manifest=manifest,
+        manifest_source=harness_source,
+        agent_id=selected_agent,
+        action=selected_action,
+        target=selected_target,
+    )
+    gate_events = build_agent_gate_events(
+        gate,
+        run_id=run_id,
+        start_sequence=len(existing_events) + 1,
+    )
+    if not gate_events or not gate_events[0].action_id:
+        raise ValueError("Agent Gate did not produce an action id")
+
+    appended_events = list(gate_events)
+    event_dicts = [*existing_events, *(event.to_dict() for event in gate_events)]
+    action_id = gate_events[0].action_id
+
+    approval_events = []
+    if gate.decision == "approval_required":
+        approval_events = build_approval_decision_events(
+            event_dicts,
+            action_id=action_id,
+            decision="approve",
+            approver=selected_approver,
+            reason="Control-loop demo approval for scoped, recorder-backed work.",
+            run_id=run_id,
+            start_sequence=len(event_dicts) + 1,
+        )
+        appended_events.extend(approval_events)
+        event_dicts.extend(event.to_dict() for event in approval_events)
+
+    recording_events = []
+    if not gate.blocked:
+        recording_events = build_runprint_recording_events(
+            event_dicts,
+            action_id=action_id,
+            recording_id="demo-recording-001",
+            evidence_bundle_id="demo-evidence-bundle-001",
+            artifacts=(
+                RunPrintArtifact("run-ledger", "jsonl", str(ledger_path)),
+                RunPrintArtifact("approval-receipt", "ledger-event", action_id),
+                RunPrintArtifact("agent-gate-receipt", "ledger-event", action_id),
+            ),
+            summary="Control-loop demo evidence: gate receipt, human approval, and recorder proof are tied to one action.",
+            source="delegation demo --control-loop",
+            run_id=run_id,
+            start_sequence=len(event_dicts) + 1,
+        )
+        appended_events.extend(recording_events)
+        event_dicts.extend(event.to_dict() for event in recording_events)
+
+    append_jsonl(appended_events, ledger_path)
+    final_events = load_jsonl(ledger_path)
+    audit = build_agent_gate_audit_report(final_events, ledger_source=str(ledger_path))
+    inbox = build_approval_inbox_report(final_events, ledger_source=str(ledger_path))
+
+    control_steps = (
+        FirstRunStep("agent-request", "passed", f"{selected_agent} asked to `{selected_action}` on `{selected_target}`."),
+        FirstRunStep("gate", "blocked" if gate.blocked else "passed", f"Agent Gate returned `{gate.decision}`."),
+        FirstRunStep(
+            "approval",
+            "passed" if approval_events or gate.decision != "approval_required" else "attention",
+            f"{selected_approver} approval was recorded." if approval_events else "No approval was required.",
+        ),
+        FirstRunStep(
+            "runprint",
+            "passed" if recording_events else "blocked",
+            "RunPrint evidence was recorded for the exact gate action." if recording_events else "RunPrint evidence was not recorded.",
+        ),
+        FirstRunStep("audit", "passed" if audit.status == "recorded" else "attention", f"Agent audit is `{audit.status}`."),
+    )
+    control_status = "recorded" if audit.status == "recorded" and not gate.blocked else "needs_attention"
+    control_loop = ControlLoopDemoReport(
+        status=control_status,
+        action_id=action_id,
+        agent_id=selected_agent,
+        action=selected_action,
+        target=selected_target,
+        approver=selected_approver,
+        gate=gate,
+        audit=audit,
+        approval_inbox=inbox,
+        appended_event_count=len(appended_events),
+        steps=control_steps,
+    )
+    return replace(
+        base,
+        status="ready" if base.status == "ready" and not control_loop.blocked else "blocked",
+        ledger_event_count=len(final_events),
+        steps=(
+            *base.steps,
+            FirstRunStep(
+                "control-loop",
+                "passed" if control_loop.status == "recorded" else "attention",
+                f"{len(appended_events)} control receipts appended; audit is `{control_loop.status}`.",
+            ),
+        ),
+        control_loop=control_loop,
+    )
+
+
 def render_demo_report(report: DemoReport) -> str:
     lines = [
         "DelegationHQ Demo",
@@ -371,6 +574,27 @@ def render_demo_report(report: DemoReport) -> str:
         label = "PASS" if step.status == "passed" else "BLOCKED" if step.status == "blocked" else "CHECK"
         lines.append(f"- [{label}] {step.name}: {step.message}")
 
+    if report.control_loop:
+        control = report.control_loop
+        lines.extend(
+            [
+                "",
+                "Control loop:",
+                f"- agent asked: {control.agent_id} -> {control.action} on {control.target}",
+                f"- gate decision: {control.gate.decision}",
+                f"- approval cards: {control.approval_inbox.item_count} total, {control.approval_inbox.pending_count} pending",
+                f"- RunPrint audit: {control.audit.status}",
+                f"- action id: {control.action_id}",
+                "",
+                "Plain language:",
+                "- Agent asked for power.",
+                "- DelegationHQ checked the passport and risk.",
+                "- Human approval was recorded when needed.",
+                "- RunPrint evidence was attached to the same action.",
+                "- The audit can now say whether the mission is recorded.",
+            ]
+        )
+
     lines.extend(
         [
             "",
@@ -383,7 +607,14 @@ def render_demo_report(report: DemoReport) -> str:
             "",
             "Next:",
             f"delegation ledger {report.ledger_path}",
+            f"delegation mission-status --ledger {report.ledger_path}",
             f"delegation dashboard {report.ledger_path}",
+            (
+                f"delegation agent-packet --ledger {report.ledger_path} "
+                f"--action-id {report.control_loop.action_id}"
+                if report.control_loop
+                else "delegation demo --control-loop"
+            ),
             'delegation init --goal "prepare this repo for safe AI delegation"',
         ]
     )
@@ -504,3 +735,11 @@ def _parse_github_remote(remote: str) -> str | None:
 def _owner_from_repository(repository: str) -> str:
     owner = repository.split("/", 1)[0].strip()
     return owner or "maintainer"
+
+
+def _run_id(events: T.Sequence[JsonMap]) -> str | None:
+    for event in events:
+        value = event.get("run_id")
+        if isinstance(value, str) and value.strip():
+            return value
+    return None

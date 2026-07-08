@@ -18,17 +18,38 @@ Evals decide what earns trust.
 From the repository root:
 
 ```bash
-python scripts/delegation.py demo
+python scripts/delegation.py demo --control-loop
 ```
 
 Expected first signal:
 
 ```text
 Status: ready
+RunPrint audit: recorded
 ```
 
 That one command writes `.delegation/demo.jsonl`, checks the MCP gate, previews
-GitHub Actions dispatch, plans a RunPrint-style evidence bundle, and runs evals.
+GitHub Actions dispatch, records an Agent Gate receipt, records a local approval
+receipt, records a RunPrint evidence receipt, audits intent against proof, and
+runs evals.
+
+Then inspect the result:
+
+```bash
+python scripts/delegation.py mission-status --ledger .delegation/demo.jsonl
+python scripts/delegation.py agent-packet --ledger .delegation/demo.jsonl --action-id agent_gate.planner.write_issue_draft
+```
+
+Simple version:
+
+```text
+Agent asks.
+DelegationHQ checks.
+Human approval is attached.
+RunPrint proof is attached.
+Mission Status says what is next.
+Agent Packet gives custom agents a safe job card.
+```
 
 ## Run The Full Flagship Flow
 
@@ -53,8 +74,8 @@ Status: ready
 ```
 
 That proves the mission did not only create a plan. It also declared which MCP
-server and tool are allowed, planned recorder evidence, checked the ledger, and
-confirmed the tool risk gate before anything live ran.
+server and tool are allowed, checked the gate, attached approval/proof receipts,
+and confirmed the tool risk gate before anything live ran.
 
 After `apply-actions`, the important idea is preview-first execution:
 
@@ -70,6 +91,10 @@ That is the product: powerful AI work with visible control before power is used.
 - The plan shows agents, models, workflows, tools, policies, outputs, and evals.
 - The ledger records evidence without running live agents or tools.
 - The recorder step plans the proof bundle before any evidence capture happens.
+- `demo --control-loop` shows the full plan, gate, approval, recording, and
+  audit loop in one install-safe command.
+- `mission-status` explains the ledger without requiring users to read JSONL.
+- `agent-packet` exports a Bring Your Own Agent handoff card.
 - `evidence` summarizes planned proof bundles without reading raw JSONL.
 - `mcp-gate` checks MCP server/tool allowlists and tool risk evidence.
 - `apply-actions` previews workflow dispatch by default and can dispatch only with explicit live gates.

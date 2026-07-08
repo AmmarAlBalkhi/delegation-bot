@@ -17,6 +17,7 @@ from delegation_bot.agent_gate import (
     render_agent_gate_audit_report,
     render_agent_gate_report,
 )
+from delegation_bot.agent_packet import build_agent_packet_report, render_agent_packet_report
 from delegation_bot.agent_passports import build_agent_passport_report, render_agent_passport_report
 from delegation_bot.app_plan import build_app_plan, render_app_plan
 from delegation_bot.app_state import build_app_state, render_app_state
@@ -45,6 +46,7 @@ from delegation_bot.first_run import (
     DEFAULT_DEMO_LEDGER,
     DEFAULT_INIT_GOAL,
     DEFAULT_INIT_OUTPUT,
+    build_control_loop_demo_report,
     build_demo_report,
     render_demo_report,
     render_init_report,
@@ -91,6 +93,7 @@ from delegation_bot.harness_manifest import ManifestError, load_manifest, summar
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
 from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_policy_report
+from delegation_bot.mission_status import build_mission_status_report, render_mission_status_report
 from delegation_bot.model_suggest_fixtures import (
     FIXTURE_PROVIDERS,
     ModelSuggestionFixtureError,
@@ -198,12 +201,24 @@ def cmd_plan(args: argparse.Namespace) -> int:
 
 def cmd_demo(args: argparse.Namespace) -> int:
     try:
-        report = build_demo_report(
-            ledger_path=Path(args.ledger),
-            harnessfile=Path(args.harnessfile) if args.harnessfile else None,
-            repository=args.repository,
-            owner=args.owner,
-        )
+        if args.control_loop:
+            report = build_control_loop_demo_report(
+                ledger_path=Path(args.ledger),
+                harnessfile=Path(args.harnessfile) if args.harnessfile else None,
+                repository=args.repository,
+                owner=args.owner,
+                agent_id=args.control_agent,
+                action=args.control_action,
+                target=args.control_target,
+                approver=args.approver,
+            )
+        else:
+            report = build_demo_report(
+                ledger_path=Path(args.ledger),
+                harnessfile=Path(args.harnessfile) if args.harnessfile else None,
+                repository=args.repository,
+                owner=args.owner,
+            )
     except (OSError, json.JSONDecodeError, ManifestError, PlanError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
@@ -422,6 +437,49 @@ def cmd_runprint_ingest(args: argparse.Namespace) -> int:
         print(render_runprint_ingest_receipt(receipt))
         print(f"\nRunPrint evidence appended: {ledger_path}")
     return 0
+
+
+def cmd_mission_status(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    report = build_mission_status_report(ledger_events, ledger_source=str(ledger_path))
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_mission_status_report(report))
+    return 1 if report.blocked else 0
+
+
+def cmd_agent_packet(args: argparse.Namespace) -> int:
+    ledger_path = Path(args.ledger)
+    try:
+        ledger_events = load_jsonl(ledger_path)
+    except EvalError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    report = build_agent_packet_report(
+        ledger_events,
+        action_id=args.action_id,
+        ledger_source=str(ledger_path),
+    )
+    data = report.to_dict()
+    if args.output:
+        output_path = Path(args.output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    if args.json:
+        print(json.dumps(data, indent=2, sort_keys=True))
+    else:
+        print(render_agent_packet_report(report))
+        if args.output:
+            print(f"\nAgent packet written: {args.output}")
+    return 1 if report.blocked else 0
 
 
 def _resolve_agent_gate_positionals(first: str | None, second: str | None) -> tuple[str | None, str | None]:
@@ -1366,6 +1424,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Repository owner/name to use in the built-in demo.",
     )
     demo.add_argument("--owner", default="maintainer", help="Accountable owner/reviewer for the built-in demo.")
+    demo.add_argument(
+        "--control-loop",
+        action="store_true",
+        help="Append a full Agent Gate -> approval -> RunPrint -> audit receipt chain.",
+    )
+    demo.add_argument("--control-agent", help="Agent id for --control-loop. Defaults to the built-in demo agent.")
+    demo.add_argument("--control-action", help="Requested action for --control-loop.")
+    demo.add_argument("--control-target", help="Target resource for --control-loop.")
+    demo.add_argument("--approver", help="Approver name for the demo approval receipt. Defaults to --owner.")
     demo.add_argument("--json", action="store_true", help="Print the demo report as JSON.")
     demo.set_defaults(func=cmd_demo)
 
@@ -1539,6 +1606,24 @@ def build_parser() -> argparse.ArgumentParser:
     runprint_ingest.add_argument("--bundle", help="Optional RunPrint JSON bundle file with action/recording/artifact fields.")
     runprint_ingest.add_argument("--json", action="store_true", help="Print the RunPrint ingest receipt as JSON.")
     runprint_ingest.set_defaults(func=cmd_runprint_ingest)
+
+    mission_status = subparsers.add_parser(
+        "mission-status",
+        help="Explain one ledger as plan, gate, approval, proof, and next action.",
+    )
+    mission_status.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
+    mission_status.add_argument("--json", action="store_true", help="Print mission status as JSON.")
+    mission_status.set_defaults(func=cmd_mission_status)
+
+    agent_packet = subparsers.add_parser(
+        "agent-packet",
+        help="Export a BYOA handoff packet from an Agent Gate receipt.",
+    )
+    agent_packet.add_argument("--ledger", required=True, help="Read run ledger JSONL evidence.")
+    agent_packet.add_argument("--action-id", required=True, help="Agent Gate action_id to export.")
+    agent_packet.add_argument("--output", help="Write the packet JSON to this path.")
+    agent_packet.add_argument("--json", action="store_true", help="Print packet JSON.")
+    agent_packet.set_defaults(func=cmd_agent_packet)
 
     validate = subparsers.add_parser("validate", help="Validate a Harnessfile.")
     validate.add_argument("harnessfile")

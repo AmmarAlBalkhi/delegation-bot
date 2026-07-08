@@ -47,7 +47,8 @@ The QA command currently checks:
 - release-readiness report smoke test
 - release rehearsal evidence bundle generation
 - app-ready state bundle generation for the future local cockpit
-- installed package demo and app-state smoke test
+- installed package control-loop demo, mission-status, agent-packet, and
+  app-state smoke tests
 - installed package Agent Passport smoke test
 - first-run `delegation demo` and `delegation init` flows
 - example Harnessfile validation
@@ -68,6 +69,10 @@ The QA command currently checks:
 - dashboard snapshot generation from fixture ledgers
 - Agent Passport registry generation from Harnessfiles and custom BYOA
   registry files
+- control-loop demo coverage for Agent Gate, local approval, RunPrint ingest,
+  and audit receipts
+- mission-status coverage for plain ledger state over the control loop
+- agent-packet coverage for Bring Your Own Agent handoff JSON
 - GitHub Actions dispatch preview, gated fake-client live path, and fixture coverage
 - GitHub Actions live preflight, duplicate-run blocking, and cancellation
   evidence coverage

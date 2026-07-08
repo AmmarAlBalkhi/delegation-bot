@@ -139,7 +139,29 @@ def build_checks(python: str) -> list[Check]:
         ),
         Check(
             "first-run demo",
-            [python, "scripts/delegation.py", "demo", "--ledger", ".delegation/qa-demo.jsonl"],
+            [python, "scripts/delegation.py", "demo", "--ledger", ".delegation/qa-demo.jsonl", "--control-loop"],
+        ),
+        Check(
+            "mission status",
+            [
+                python,
+                "scripts/delegation.py",
+                "mission-status",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+            ],
+        ),
+        Check(
+            "agent packet",
+            [
+                python,
+                "scripts/delegation.py",
+                "agent-packet",
+                "--ledger",
+                ".delegation/qa-demo.jsonl",
+                "--action-id",
+                "agent_gate.planner.write_issue_draft",
+            ],
         ),
         Check(
             "EXE app plan",

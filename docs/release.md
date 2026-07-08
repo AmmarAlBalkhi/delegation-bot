@@ -38,7 +38,8 @@ From the repository root:
 python -m pip install -e .
 delegation --version
 delegation --help
-delegation demo
+delegation demo --control-loop
+delegation mission-status --ledger .delegation/demo.jsonl
 delegation init --goal "prepare this repo for safe AI delegation" --output Harnessfile.yaml
 python -m delegation_bot adapters codex.thread
 ```
@@ -130,7 +131,9 @@ Before a public package release:
 - run a source install smoke test
 - confirm `delegation --version` matches `pyproject.toml`
 - confirm `delegation --help` works after install
-- confirm `delegation demo` works outside the source checkout
+- confirm `delegation demo --control-loop` works outside the source checkout
+- confirm `delegation mission-status --ledger .delegation/demo.jsonl` works
+  after the demo
 - confirm README examples use the package command where appropriate
 - confirm `LICENSE`, `NOTICE`, and `pyproject.toml` agree
 - confirm GitHub Actions uploads ledgers, generated adapter fixtures, QA logs,

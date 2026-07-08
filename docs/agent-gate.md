@@ -79,6 +79,9 @@ delegation runprint-ingest --ledger .delegation/demo.jsonl \
   --recording-id rec-demo \
   --bundle-id bundle-demo \
   --artifact run-ledger:jsonl:.delegation/demo.jsonl
+delegation mission-status --ledger .delegation/demo.jsonl
+delegation agent-packet --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.implementer.create_pull_request
 ```
 
 Simple version:
@@ -88,6 +91,8 @@ Agent Gate = receipt for what the agent wanted to do.
 Approval Inbox = card for the human.
 RunPrint = proof of what was planned or recorded.
 Agent audit = compare receipt with proof.
+Mission Status = plain answer for what is done and what is next.
+Agent Packet = safe job card for an outside custom agent.
 ```
 
 The command also supports JSON for future app/cockpit use:
@@ -138,6 +143,26 @@ Next:
 ```
 
 JSON output should carry the same fields for `app-state` and future UI work.
+
+## Agent Packet
+
+`delegation agent-packet` turns a gate receipt into a Bring Your Own Agent
+handoff packet.
+
+Simple version:
+
+```text
+The gate decides.
+The packet explains the decision to the worker agent.
+The worker agent stays inside that packet.
+RunPrint records what happened.
+```
+
+The packet includes agent identity, runtime type, requested action, target,
+allowed tools/data, missing approvals, required evidence, and a small return
+contract. This lets DelegationHQ supervise Codex, Claude Code, LangGraph, CRM
+agents, MCP workflows, webhook agents, local CLI tools, and future harnesses
+without becoming those agents.
 
 ## Ledger Receipt
 

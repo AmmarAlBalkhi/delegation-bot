@@ -155,3 +155,9 @@ The project is currently pre-release.
   snapshot, evidence bundles, next action, and guardrails.
 - Added `delegation agents` for Agent Passport registry reports across
   Harnessfile agents and custom Bring Your Own Agent registry files.
+- Added `delegation demo --control-loop` for the full install-safe plan, gate,
+  approval, RunPrint recording, and audit path.
+- Added `delegation mission-status` for plain ledger status across plan, gate,
+  approval, proof, attention, and next action.
+- Added `delegation agent-packet` to export Bring Your Own Agent handoff JSON
+  from Agent Gate receipts.

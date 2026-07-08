@@ -21,6 +21,7 @@ The command stays intentionally short:
 
 ```bash
 delegation demo
+delegation demo --control-loop
 delegation plan Harnessfile.yaml --ledger .delegation/latest.jsonl
 ```
 
@@ -34,20 +35,26 @@ From a source checkout:
 ```bash
 python -m pip install -e .
 delegation --version
-delegation demo
-delegation app-plan
-delegation app-state --ledger .delegation/demo.jsonl
-delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
-delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository
-delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository --approval pull_request --ledger .delegation/demo.jsonl --write
-delegation approval-inbox --ledger .delegation/demo.jsonl
-delegation runprint-ingest --ledger .delegation/demo.jsonl --action-id agent_gate.implementer.create_pull_request --recording-id rec-demo --bundle-id bundle-demo --artifact run-ledger:jsonl:.delegation/demo.jsonl
-delegation agent-audit --ledger .delegation/demo.jsonl
+delegation demo --control-loop
+delegation mission-status --ledger .delegation/demo.jsonl
+delegation agent-packet --ledger .delegation/demo.jsonl --action-id agent_gate.planner.write_issue_draft
 ```
 
 That runs an install-safe demo: dry-run plan, ledger, MCP tool policy gate,
-GitHub Actions preview, recorder evidence, and evals. It does not write to
-GitHub, call a model, run an agent, or capture files.
+GitHub Actions preview, Agent Gate receipt, human approval receipt, RunPrint
+recording receipt, mission status, and an agent handoff packet. It does not
+write to GitHub, call a model, run an agent, or capture files.
+
+Simple version:
+
+```text
+Agent asks.
+DelegationHQ checks.
+Human approves.
+RunPrint proof is attached.
+Mission status says what is next.
+Agent packet tells custom agents what they may do.
+```
 
 `app-state` gives the future app and a first-time user one compact health view:
 local readiness, release readiness, ledger snapshot, evidence bundles, next
@@ -70,6 +77,13 @@ records a local human approve/block receipt without executing anything.
 `runprint-ingest` appends external RunPrint recording evidence to the same
 ledger. Simple version: the camera receipt lands, and `agent-audit` can say
 `recorded`.
+
+`mission-status` is the plain status page in the terminal: plan, gate,
+approval, proof, attention, and next command.
+
+`agent-packet` exports a JSON job card for Bring Your Own Agent workflows. It
+tells a custom agent its requested work, allowed tools/data, missing approvals,
+required evidence, and return contract.
 
 Want to start your own repo?
 
@@ -155,6 +169,9 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | --- | --- |
 | `delegation --version` | Show the installed DelegationHQ version. |
 | `delegation demo` | Run the install-safe mission-control demo in one command. |
+| `delegation demo --control-loop` | Show the full plan -> gate -> approve -> record -> audit loop. |
+| `delegation mission-status --ledger .delegation/run.jsonl` | Explain one ledger as plan, gate, approval, proof, and next step. |
+| `delegation agent-packet --ledger .delegation/run.jsonl --action-id ID` | Export a BYOA packet for a custom agent. |
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
 | `delegation app-state --ledger .delegation/run.jsonl` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation agents Harnessfile.yaml --registry examples/agent-passports.yaml` | Show Agent Passports for built-in and custom agents. |
@@ -219,6 +236,10 @@ DelegationHQ is pre-release, but the foundation is working:
 - Agent Gate receipts and `agent-audit` for intent-vs-evidence checks
 - `approval-inbox` and `approval-decision` for simple human review receipts
 - `runprint-ingest` for attaching external RunPrint recording evidence to a gate receipt
+- `demo --control-loop` for the full plan, gate, approval, recording, audit,
+  mission-status, and agent-packet path
+- `mission-status` for plain terminal status over one ledger
+- `agent-packet` for Bring Your Own Agent handoff JSON
 - MCP tool permission and prompt-injection risk evidence
 - deterministic local-classifier policy profiles
 - `explain-policy` for low-friction classifier explanations that do not grant authority
@@ -241,6 +262,7 @@ user experience that feels useful quickly.
 Start here:
 
 - [60-second demo](docs/demo.md)
+- [Control loop](docs/control-loop.md)
 - [Vision](docs/vision.md)
 - [Architecture](docs/architecture.md)
 - [Positioning](docs/positioning.md)

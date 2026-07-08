@@ -69,6 +69,65 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["mcp_gate"]["status"], "ready")
         self.assertTrue(data["ledger_event_count"])
 
+    def test_demo_control_loop_records_gate_approval_and_runprint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "demo.jsonl"
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["demo", "--ledger", str(ledger), "--control-loop", "--approver", "Ammar"])
+            events = [json.loads(line) for line in ledger.read_text(encoding="utf-8").splitlines()]
+            event_types = [event["type"] for event in events]
+
+        self.assertEqual(status, 0)
+        self.assertIn("Control loop:", output.getvalue())
+        self.assertIn("RunPrint audit: recorded", output.getvalue())
+        self.assertIn("agent.gate.previewed", event_types)
+        self.assertIn("approval.granted", event_types)
+        self.assertIn("runprint.recording.completed", event_types)
+
+    def test_mission_status_command_explains_control_loop(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "demo.jsonl"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["demo", "--ledger", str(ledger), "--control-loop", "--approver", "Ammar"]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["mission-status", "--ledger", str(ledger), "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "recorded")
+        self.assertEqual(data["control_loop"]["gate_previews"], 1)
+        self.assertEqual(data["control_loop"]["runprint_recorded_events"], 1)
+        self.assertEqual(data["control_loop"]["pending_approval"], 0)
+        self.assertIn("agent_gate.planner.write_issue_draft", data["control_loop"]["primary_action_id"])
+
+    def test_agent_packet_command_exports_byoa_packet(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ledger = Path(tmpdir) / "demo.jsonl"
+            packet_path = Path(tmpdir) / "packet.json"
+            action_id = "agent_gate.planner.write_issue_draft"
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["demo", "--ledger", str(ledger), "--control-loop", "--approver", "Ammar"]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "agent-packet",
+                        "--ledger",
+                        str(ledger),
+                        "--action-id",
+                        action_id,
+                        "--output",
+                        str(packet_path),
+                    ]
+                )
+            data = json.loads(packet_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(status, 0)
+        self.assertIn("Agent Packet", output.getvalue())
+        self.assertEqual(data["status"], "recorded")
+        self.assertEqual(data["packet"]["agent"]["id"], "planner")
+        self.assertEqual(data["packet"]["requested_work"]["action"], "write.issue_draft")
+        self.assertTrue(data["packet"]["current_receipts"]["runprint_recorded"])
+
     def test_app_plan_command_is_human_readable(self) -> None:
         with redirect_stdout(io.StringIO()) as output:
             status = main(["app-plan"])

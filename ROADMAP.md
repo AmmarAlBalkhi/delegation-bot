@@ -93,6 +93,8 @@ Deliverables:
 - agent passports
 - Agent Passport registry for Bring Your Own Agent
 - agent gate previews for requested actions
+- mission status over the plan/gate/approval/proof loop
+- agent packets for custom agent handoff
 - autonomy ladder
 - capability packs
 - promotion rules based on evals and ledger evidence
@@ -211,14 +213,14 @@ The active queue lives in `docs/next-actions.md`.
 
 Current focus:
 
-1. Add `delegation agent-gate` as the core decision engine for Agent Passport
-   action previews.
-2. Keep the output simple: agent, requested action, target, risk, decision,
-   approval requirement, evidence requirement, and next step.
-3. Connect Agent Gate decisions to `app-state` so the future cockpit can show
-   approval inbox data without designing UI yet.
-4. Compare allowed intent with RunPrint-recorded reality after the first gate
-   path is stable.
+1. Make Bring Your Own Agent practical: agent packets, starter registries, and
+   examples for CLI, API/webhook, MCP, CRM, LangGraph, Codex, and Claude-style
+   workers.
+2. Keep the visible loop simple: plan, gate, approve, record, status, packet.
+3. Connect Mission Status and Agent Packet data to `app-state` so the future
+   cockpit can show useful state without designing UI yet.
+4. Align RunPrint ingest with the standalone RunPrint bundle schema as it
+   stabilizes.
 5. Run the Windows `.exe` build script on a clean Windows release host and
    record the executable smoke evidence.
 
