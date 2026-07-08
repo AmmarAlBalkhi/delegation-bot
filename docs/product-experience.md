@@ -17,6 +17,16 @@ Users should not have to understand the whole control plane before getting
 value. The first run should show a clear plan, a ledger, and eval results with
 safe defaults.
 
+DelegationHQ is not a generic agent launcher, a personal assistant, or a fake
+demo dashboard. It is a working trust cockpit for agentic work.
+
+The first product slice should work on real local projects:
+
+```text
+open DelegationHQ -> add agent -> assign workspace -> define scope -> preview risk
+-> approve/block -> record evidence -> ingest ledger -> review timeline/status
+```
+
 The product should feel like:
 
 - "I can see what the AI would do before it does it."
@@ -42,20 +52,12 @@ The product should feel like:
 
 ## First-Run Path
 
-The public experience should move toward this:
+The public experience should move toward fewer visible flows that actually
+work:
 
 ```text
-delegation demo
-delegation init --goal "prepare this repo for safe AI delegation"
-delegation plan Harnessfile.yaml
-delegation agents Harnessfile.yaml
-delegation agent-gate Harnessfile.yaml implementer --action create_pull_request --target repository
-delegation mcp-gate Harnessfile.yaml --ledger .delegation/latest.jsonl
-delegation explain-policy --ledger .delegation/latest.jsonl
-delegation eval Harnessfile.yaml --ledger .delegation/latest.jsonl --write
-delegation promote Harnessfile.yaml --ledger .delegation/latest.jsonl
-delegation apply-issues Harnessfile.yaml --ledger .delegation/latest.jsonl
-delegation apply-actions Harnessfile.yaml --ledger .delegation/latest.jsonl
+workspace-init -> agent-add -> approval-preview/agent-gate -> approval-decision
+-> agent-result-ingest/runprint-ingest -> timeline -> eval/promotion
 ```
 
 `delegation demo` should stay install-safe and useful without network access.
@@ -90,8 +92,27 @@ Avoid:
 - hiding simple outcomes behind abstract terminology
 - making safe dry-runs feel like compliance work
 - adding dashboards before the CLI loop feels clear
+- showing app panels that are not backed by real local state
+- over-compressing the product into GitHub/code only
+- making RunPrint feel like the whole product instead of one evidence tool
 - treating every action as equally risky
 - making people install Python packaging tools before they understand the demo
+
+## Product Areas
+
+The app/cockpit should stay focused on real, functional areas:
+
+- Agents
+- Missions
+- Approval Inbox
+- Evidence
+- Timeline
+- Settings
+
+Evidence tools are plural. RunPrint is the current recorder/evidence agent, but
+DelegationHQ is bigger: future tools can record diffs, tests, CRM changes,
+research artifacts, browser sessions, API calls, logs, or business workflow
+proof under the same control loop.
 
 ## Product Test
 

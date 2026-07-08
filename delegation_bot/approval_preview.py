@@ -83,7 +83,7 @@ class ApprovalPreviewReport:
             actions.append(self.gate.next_action)
         else:
             actions.append("Review warnings before execution or promotion.")
-        actions.append("Keep RunPrint/evidence recording attached to this action.")
+        actions.append("Keep recorder/evidence attached to this action.")
         return tuple(_dedupe(actions))
 
     @property
@@ -490,7 +490,7 @@ def _history_summary(events: T.Sequence[JsonMap]) -> str:
     block_count = sum(1 for event in events if _event_type(event) == "approval.denied")
     parts = [f"{len(events)} matching event(s)", f"{gate_count} gate receipt(s)"]
     if recorded_count:
-        parts.append(f"{recorded_count} recorded RunPrint proof event(s)")
+        parts.append(f"{recorded_count} recorded proof event(s)")
     if approval_count:
         parts.append(f"{approval_count} approval(s)")
     if block_count:

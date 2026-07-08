@@ -30,7 +30,7 @@ RunPrint audit: recorded
 
 That one command writes `.delegation/demo.jsonl`, checks the MCP gate, previews
 GitHub Actions dispatch, records an Agent Gate receipt, records a local approval
-receipt, records a RunPrint evidence receipt, audits intent against proof, and
+receipt, records an evidence receipt, audits intent against proof, and
 runs evals.
 
 Then inspect the result:
@@ -46,7 +46,7 @@ Simple version:
 Agent asks.
 DelegationHQ checks.
 Human approval is attached.
-RunPrint proof is attached.
+Recorder proof is attached.
 Mission Status says what is next.
 Agent Packet gives custom agents a safe job card.
 ```

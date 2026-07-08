@@ -577,10 +577,10 @@ def _audit_item(event: JsonMap, evidence_status: str, approval_decision: str | N
     elif decision == "approval_required" and approval_decision == "approve" and evidence_status == "planned":
         outcome = "recording_planned"
         message = "Human approval was recorded and RunPrint has a planned evidence bundle."
-        next_action = "Execute under recorder control, then append recorded RunPrint evidence."
+        next_action = "Execute under recorder control, then append recorded evidence."
     elif decision == "approval_required" and approval_decision == "approve":
         outcome = "evidence_missing"
-        message = "Human approval was recorded, but no RunPrint evidence plan was found."
+        message = "Human approval was recorded, but no recorder evidence plan was found."
         next_action = "Add a `runprint.recorder` step or provide recorded evidence before promotion."
     elif decision == "approval_required":
         outcome = "waiting_for_approval"
@@ -597,10 +597,10 @@ def _audit_item(event: JsonMap, evidence_status: str, approval_decision: str | N
     elif evidence_status == "planned":
         outcome = "recording_planned"
         message = "The gate allowed the intent and RunPrint has a planned evidence bundle."
-        next_action = "Execute under recorder control, then append recorded RunPrint evidence."
+        next_action = "Execute under recorder control, then append recorded evidence."
     else:
         outcome = "evidence_missing"
-        message = "The gate allowed the intent, but no RunPrint evidence plan was found."
+        message = "The gate allowed the intent, but no recorder evidence plan was found."
         next_action = "Add a `runprint.recorder` step or provide recorded evidence before promotion."
 
     return AgentGateAuditItem(

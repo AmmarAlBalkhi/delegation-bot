@@ -92,7 +92,7 @@ Simple version:
 ```text
 Agent Gate = receipt for what the agent wanted to do.
 Approval Inbox = card for the human.
-RunPrint = proof of what was planned or recorded.
+RunPrint = current proof recorder, not the whole evidence layer.
 Agent audit = compare receipt with proof.
 Mission Status = plain answer for what is done and what is next.
 Agent Packet = safe job card for an outside custom agent.
@@ -159,7 +159,7 @@ Simple version:
 The gate decides.
 The packet explains the decision to the worker agent.
 The worker agent stays inside that packet.
-RunPrint records what happened.
+An evidence recorder captures what happened.
 ```
 
 The packet includes agent identity, runtime type, requested action, target,
@@ -196,7 +196,7 @@ details.agent_gate: full Agent Gate report
 ```
 
 This does not execute the agent. It records the decision so approval evidence,
-RunPrint evidence, evals, and promotion checks can share one timeline.
+Recorder evidence, evals, and promotion checks can share one timeline.
 
 ## Evidence Audit
 
@@ -204,8 +204,8 @@ RunPrint evidence, evals, and promotion checks can share one timeline.
 
 - `missing_gate` when no Agent Gate receipt exists
 - `approval_required` when the receipt still needs human approval
-- `needs_evidence` when the gate allowed work but no RunPrint evidence plan was found
-- `ready_for_recording` when the gate allowed work and a RunPrint evidence bundle is planned
+- `needs_evidence` when the gate allowed work but no recorder evidence plan was found
+- `ready_for_recording` when the gate allowed work and a recorder evidence bundle is planned
 - `recorded` when live RunPrint recording events are present
 - `blocked` when the gate blocked the intent
 
@@ -255,7 +255,7 @@ The first implementation should be deterministic:
 - Harnessfile agents and custom registry agents both work
 - focused tests cover allow, warn, approval required, block
 - `--write --ledger` records Agent Gate preview receipts
-- `delegation agent-audit` compares gate intent with RunPrint evidence
+- `delegation agent-audit` compares gate intent with recorder evidence
 - `app-state` can include gate-ready data
 - docs show simple examples without asking users to write many rules
 - full QA passes

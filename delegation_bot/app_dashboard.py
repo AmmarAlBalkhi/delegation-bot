@@ -27,6 +27,7 @@ class AppDashboardReport:
     timeline: MissionTimelineReport
     approval_preview: ApprovalPreviewReport | None
     agent_packet: AgentPacketReport | None
+    product_areas: tuple[JsonMap, ...]
     command_center: tuple[JsonMap, ...]
     warnings: tuple[str, ...] = ()
 
@@ -47,6 +48,7 @@ class AppDashboardReport:
             "timeline": self.timeline.to_dict(),
             "approval_preview": self.approval_preview.to_dict() if self.approval_preview else None,
             "agent_packet": self.agent_packet.to_dict() if self.agent_packet else None,
+            "product_areas": list(self.product_areas),
             "command_center": list(self.command_center),
             "warnings": list(self.warnings),
             "next_actions": list(self.next_actions),
@@ -80,6 +82,7 @@ def build_app_dashboard_report(
         preview_expires_at=preview_expires_at,
     )
     agent_packet = _build_agent_packet(preview)
+    command_center = tuple(_command_center(workspace, state_data, timeline, preview))
     return AppDashboardReport(
         schema_version=APP_DASHBOARD_SCHEMA_VERSION,
         status=_dashboard_status(state.status, timeline.status, preview),
@@ -88,7 +91,8 @@ def build_app_dashboard_report(
         timeline=timeline,
         approval_preview=preview,
         agent_packet=agent_packet,
-        command_center=tuple(_command_center(workspace, state_data, timeline, preview)),
+        product_areas=tuple(_product_areas(state_data, timeline, preview, agent_packet, command_center)),
+        command_center=command_center,
         warnings=tuple(_dashboard_warnings(state_data, timeline, preview, agent_packet)),
     )
 
@@ -132,6 +136,13 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
             ]
         )
 
+    lines.extend(["", "Product areas:"])
+    for area in report.product_areas:
+        lines.append(f"- {area.get('title', 'Area')}: {area.get('status', 'unknown')}")
+        summary = area.get("summary")
+        if isinstance(summary, str) and summary:
+            lines.append(f"  {summary}")
+
     lines.extend(["", "Command center:"])
     for command in report.command_center:
         label = command.get("label", "command")
@@ -158,7 +169,7 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
         [
             "",
             "Plain language:",
-            "- This is the app brain: workspace, agents, approval request, agent handoff, timeline, and safe commands together.",
+            "- This is the app brain for the real trust loop: mission, agents, approvals, evidence, timeline, and settings.",
             "- The visual design can change later without changing this control data.",
             "",
             "Next:",
@@ -301,6 +312,152 @@ def _command_center(
         }
 
 
+def _product_areas(
+    state_data: JsonMap,
+    timeline: MissionTimelineReport,
+    preview: ApprovalPreviewReport | None,
+    agent_packet: AgentPacketReport | None,
+    command_center: T.Sequence[JsonMap],
+) -> T.Iterator[JsonMap]:
+    ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
+    dashboard = ledger.get("dashboard") if isinstance(ledger.get("dashboard"), dict) else {}
+    mission = dashboard.get("mission") if isinstance(dashboard.get("mission"), dict) else {}
+    agents = state_data.get("agents") if isinstance(state_data.get("agents"), dict) else {}
+    approval_inbox = ledger.get("approval_inbox") if isinstance(ledger.get("approval_inbox"), dict) else {}
+    evidence = ledger.get("evidence") if isinstance(ledger.get("evidence"), dict) else {}
+    doctor = state_data.get("doctor") if isinstance(state_data.get("doctor"), dict) else {}
+    release = state_data.get("release") if isinstance(state_data.get("release"), dict) else {}
+    workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
+
+    yield {
+        "id": "missions",
+        "title": "Missions",
+        "status": _string(mission.get("status") or ledger.get("status"), default="not_started"),
+        "summary": _string(mission.get("objective"), default="Create or select a workspace mission."),
+        "metrics": {
+            "ledger_events": ledger.get("event_count", 0),
+            "timeline_events": timeline.event_count,
+            "attention": timeline.attention_count,
+        },
+        "next_action": timeline.next_action,
+        "functional": True,
+    }
+    yield {
+        "id": "agents",
+        "title": "Agents",
+        "status": _string(agents.get("status"), default="not_started"),
+        "summary": f"{agents.get('passport_count', 0)} registered Agent Passport(s).",
+        "metrics": {
+            "passports": agents.get("passport_count", 0),
+            "workspace_bound": bool(workspace),
+        },
+        "next_action": _first_command(command_center, "preview_request") or "Register or preview an agent passport.",
+        "functional": True,
+    }
+    yield {
+        "id": "approval_inbox",
+        "title": "Approval Inbox",
+        "status": _approval_area_status(preview, approval_inbox),
+        "summary": _approval_area_summary(preview, approval_inbox),
+        "metrics": {
+            "pending": approval_inbox.get("pending_count", 0),
+            "approved": approval_inbox.get("approved_count", 0),
+            "blocked": approval_inbox.get("blocked_count", 0),
+        },
+        "next_action": _first_command(command_center, "approve_request")
+        or _first_command(command_center, "preview_request")
+        or approval_inbox.get("next_action")
+        or "Create an Agent Gate receipt before approvals.",
+        "functional": True,
+    }
+    yield {
+        "id": "evidence",
+        "title": "Evidence",
+        "status": _evidence_area_status(timeline, agent_packet, evidence),
+        "summary": _evidence_area_summary(timeline, agent_packet, evidence),
+        "metrics": {
+            "bundles": evidence.get("bundle_count", 0),
+            "record_events": timeline.stage_counts.get("record", 0),
+            "packet": agent_packet.status if agent_packet else "missing",
+        },
+        "next_action": _first_command(command_center, "ingest_agent_result")
+        or _first_command(command_center, "export_agent_packet")
+        or "Attach recorder evidence after execution.",
+        "functional": True,
+    }
+    yield {
+        "id": "settings",
+        "title": "Settings",
+        "status": _settings_status(doctor, release),
+        "summary": "Local-first mode. GitHub, models, and live actions stay optional adapters.",
+        "metrics": {
+            "doctor": doctor.get("status", "unknown"),
+            "release": release.get("status", "unknown"),
+            "read_only": state_data.get("read_only", True),
+        },
+        "next_action": _first_command(command_center, "refresh_dashboard") or "Refresh dashboard.",
+        "functional": True,
+    }
+
+
+def _approval_area_status(preview: ApprovalPreviewReport | None, inbox: JsonMap) -> str:
+    if preview:
+        return preview.gate.decision
+    return _string(inbox.get("status"), default="empty")
+
+
+def _approval_area_summary(preview: ApprovalPreviewReport | None, inbox: JsonMap) -> str:
+    if preview:
+        return f"{preview.agent_id} wants `{preview.action}` on `{preview.target}`. Risk: {preview.gate.effective_risk}."
+    pending = inbox.get("pending_count", 0)
+    if pending:
+        return f"{pending} approval card(s) need a human decision."
+    return "No active approval card yet."
+
+
+def _evidence_area_status(
+    timeline: MissionTimelineReport,
+    packet: AgentPacketReport | None,
+    evidence: JsonMap,
+) -> str:
+    if timeline.stage_counts.get("record", 0):
+        return "recorded"
+    if packet and packet.status in {"ready_for_agent", "needs_approval", "needs_review"}:
+        return "waiting"
+    return _string(evidence.get("status"), default="not_started")
+
+
+def _evidence_area_summary(
+    timeline: MissionTimelineReport,
+    packet: AgentPacketReport | None,
+    evidence: JsonMap,
+) -> str:
+    record_events = timeline.stage_counts.get("record", 0)
+    if record_events:
+        return f"{record_events} recorded proof event(s) in the mission timeline."
+    if packet:
+        return f"Agent Packet is `{packet.status}`; result ingest is the evidence return lane."
+    bundle_count = evidence.get("bundle_count", 0)
+    if bundle_count:
+        return f"{bundle_count} planned evidence bundle(s)."
+    return "No recorder evidence has been recorded yet."
+
+
+def _settings_status(doctor: JsonMap, release: JsonMap) -> str:
+    if doctor.get("status") == "blocked" or release.get("status") == "failed":
+        return "needs_attention"
+    if doctor.get("status") == "ready":
+        return "ready"
+    return _string(doctor.get("status"), default="unknown")
+
+
+def _first_command(commands: T.Sequence[JsonMap], command_id: str) -> str | None:
+    for command in commands:
+        if command.get("id") == command_id and isinstance(command.get("command"), str):
+            return command["command"]
+    return None
+
+
 def _dashboard_warnings(
     state_data: JsonMap,
     timeline: MissionTimelineReport,
@@ -360,3 +517,7 @@ def _dedupe(values: T.Iterable[str]) -> list[str]:
         seen.add(value)
         result.append(value)
     return result
+
+
+def _string(value: T.Any, *, default: str = "") -> str:
+    return value.strip() if isinstance(value, str) and value.strip() else default

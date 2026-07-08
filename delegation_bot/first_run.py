@@ -526,7 +526,7 @@ def build_control_loop_demo_report(
         FirstRunStep(
             "runprint",
             "passed" if recording_events else "blocked",
-            "RunPrint evidence was recorded for the exact gate action." if recording_events else "RunPrint evidence was not recorded.",
+            "Recorder evidence was recorded for the exact gate action." if recording_events else "Recorder evidence was not recorded.",
         ),
         FirstRunStep("audit", "passed" if audit.status == "recorded" else "attention", f"Agent audit is `{audit.status}`."),
     )
@@ -590,7 +590,7 @@ def render_demo_report(report: DemoReport) -> str:
                 "- Agent asked for power.",
                 "- DelegationHQ checked the passport and risk.",
                 "- Human approval was recorded when needed.",
-                "- RunPrint evidence was attached to the same action.",
+                "- Recorder evidence was attached to the same action.",
                 "- The audit can now say whether the mission is recorded.",
             ]
         )

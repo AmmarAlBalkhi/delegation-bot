@@ -4,7 +4,8 @@ DelegationHQ now has a functional local app shell over the control plane.
 
 This is not the final visual design. The interface direction still waits for
 maintainer approval. The goal of this slice is to prove the app can turn on,
-read a workspace, show agents, show approval previews, and stay local-first.
+read a real workspace, show agents, show approval previews, show evidence, and
+stay local-first.
 
 ## Commands
 
@@ -38,33 +39,33 @@ http://127.0.0.1:8765/
 
 ## What It Shows
 
+- Missions
+- Agents
+- Approval Inbox
+- Evidence
+- Timeline
+- Settings
 - workspace health
-- ledger status
 - registered Agent Passports
-- release readiness
 - a human approval preview card with request context, resource scope, evidence
   gaps, history, reviewer notes, and expiration
-- a command center with safe next commands
 - a full mission timeline
 - copy buttons for commands
 - richer Agent Passport details with endpoint, scope, trust, warnings, and
   preview commands
-- local data links for generated JSON files
+- local data links for generated JSON files in Settings
 - next safe actions
 
 Simple version:
 
 ```text
 Folder is workspace.
+Mission is the objective.
 Agents have ID cards.
-App shows current state.
 Approval card says allow, ask human, or block.
-Approval card says what the agent wants and what it can touch.
-History says if this action happened before.
+Evidence says what was recorded.
 Timeline shows everything that happened.
-Copy buttons make commands easy.
-Agent cards show what the worker may do before it works.
-Live actions still need guarded commands.
+Settings keeps maintenance details out of the main loop.
 ```
 
 ## Boundaries
@@ -73,6 +74,8 @@ Live actions still need guarded commands.
 - `app-serve` serves local state only.
 - Neither command executes agents.
 - Neither command writes to GitHub.
+- RunPrint is the current recorder path, not the whole product. Future evidence
+  tools should fit behind the same Evidence area.
 - Visual design can change later because the app reads `dashboard.json`,
   `state.json`, `timeline.json`, and approval preview JSON.
 - Final visual/interface design should be approved before styling this into the

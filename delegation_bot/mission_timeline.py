@@ -73,7 +73,7 @@ class MissionTimelineReport:
         if any(item.stage == "record" for item in self.items):
             return "Run evals and promotion checks against the recorded evidence."
         if any(item.stage == "approval" and item.status == "approved" for item in self.items):
-            return "Execute under recorder control, then attach RunPrint evidence."
+            return "Execute under recorder control, then attach evidence."
         if any(item.stage == "gate" for item in self.items):
             return "Record approval if required, then execute under recorder control."
         return "Create an Agent Gate receipt before real work."
@@ -261,7 +261,7 @@ def _title(event: JsonMap) -> str:
     if event_type in {"agent.execution.completed", "agent.execution.failed"}:
         return "Agent execution finished"
     if event_type == "runprint.recording.completed":
-        return "RunPrint evidence recorded"
+        return "Recorder evidence recorded"
     if event_type == "eval.result":
         details = _details(event)
         return f"Eval {_string(details.get('eval_id'), default='unknown')} completed"

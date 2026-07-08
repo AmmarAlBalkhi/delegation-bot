@@ -1,13 +1,14 @@
 # RunPrint Recorder Boundary
 
-RunPrint is the recorder/evidence agent in the DelegationHQ ecosystem.
+RunPrint is the current recorder/evidence tool in the DelegationHQ ecosystem.
+It is important, but it is not the whole product.
 
 Simple version:
 
 ```text
 DelegationHQ controls the mission.
 Agents do the work.
-RunPrint records the proof.
+Evidence tools record the proof.
 Evals judge the proof.
 ```
 
@@ -17,7 +18,7 @@ DelegationHQ should not trust an agent just because the agent says a task is
 done. A mission needs proof: ledgers, diffs, screenshots, check links, reports,
 approvals, and other artifacts that can be reviewed later.
 
-The `runprint.recorder` adapter is the dry-run contract for that proof capture.
+The `runprint.recorder` adapter is the first dry-run contract for that proof capture.
 It lets a Harnessfile say what evidence should be recorded before any recorder
 runs live.
 
@@ -59,8 +60,8 @@ delegation agent-gate examples/ai-harness-control-plane.yaml implementer \
 delegation agent-audit --ledger .delegation/demo.jsonl
 ```
 
-Today that usually means "gate approved, RunPrint evidence bundle planned."
-Later live RunPrint events will let the same audit say what actually happened.
+Today that usually means "gate approved, evidence bundle planned." Later live
+recorder events will let the same audit say what actually happened.
 
 ## Ingest Recorded Evidence
 
@@ -92,6 +93,10 @@ Approval receipt = who said yes/no.
 RunPrint ingest = what was recorded.
 Agent audit = compare them.
 ```
+
+That line says RunPrint because `runprint-ingest` is the first implemented
+recorder lane. Future recorder, monitor, test, browser, CRM, API, or workflow
+evidence tools should fit the same DelegationHQ proof model.
 
 `runprint-ingest` can also read a JSON bundle:
 

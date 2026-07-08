@@ -120,7 +120,7 @@ class ApprovalInboxReport:
         if self.pending_count:
             return "Record a human decision with `delegation approval-decision --ledger LEDGER --action-id ACTION_ID --decision approve|block --approver NAME`."
         if self.needs_evidence_count:
-            return "Add RunPrint evidence or request more evidence before promotion."
+            return "Add recorder evidence or request more evidence before promotion."
         if self.item_count:
             return "Execute under recorder control, then run evals before promotion."
         return "Run `delegation agent-gate ... --ledger LEDGER --write` to create approval cards."
@@ -403,7 +403,7 @@ def _item_next_action(status: str, action_id: str) -> str:
     if status in {"blocked_by_human", "blocked_by_gate"}:
         return "Change the request, passport, target, or approval decision before retrying."
     if status == "needs_evidence":
-        return "Add RunPrint evidence before promotion."
+        return "Add recorder evidence before promotion."
     if status == "recorded":
         return "Run evals and promotion checks against the ledger."
     if status == "warning":

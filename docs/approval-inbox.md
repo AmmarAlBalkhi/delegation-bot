@@ -63,7 +63,7 @@ grant new powers. They only write local ledger evidence.
 - `blocked_by_gate`: Agent Gate blocked the intent
 - `needs_evidence`: gate passed, but recorder evidence is missing
 - `ready_for_recording`: gate and evidence plan are ready
-- `recorded`: RunPrint recorded execution evidence for this card
+- `recorded`: an evidence tool recorded execution proof for this card
 - `warning`: review before increasing autonomy
 
 ## Why It Matters

@@ -42,7 +42,7 @@ The control loop makes the passport practical:
 Agent wants power.
 DelegationHQ checks if that power is allowed.
 Human approves risky work.
-RunPrint records what happened.
+Evidence tools record what happened.
 Evals decide if trust can increase.
 ```
 
@@ -62,7 +62,7 @@ It answers:
 - is there a plan?
 - did an agent request an action?
 - is approval missing?
-- is RunPrint proof planned or recorded?
+- is proof planned or recorded?
 - what should the user do next?
 
 The output is intentionally plain. Users should not need to understand raw JSONL

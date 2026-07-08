@@ -310,10 +310,13 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     command_center = (
         dashboard_data.get("command_center") if isinstance(dashboard_data.get("command_center"), list) else []
     )
+    product_areas = (
+        dashboard_data.get("product_areas") if isinstance(dashboard_data.get("product_areas"), list) else []
+    )
+    areas = _areas_by_id(product_areas)
     workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
     agents = state_data.get("agents") if isinstance(state_data.get("agents"), dict) else {}
-    release = state_data.get("release") if isinstance(state_data.get("release"), dict) else {}
     next_actions = dashboard_data.get("next_actions") if isinstance(dashboard_data.get("next_actions"), list) else []
     passports = agents.get("passports") if isinstance(agents.get("passports"), list) else []
     preview = preview_data or {}
@@ -469,22 +472,30 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     <p><button type="button" class="refresh-button" onclick="window.location.reload()">Refresh</button></p>
   </header>
   <main>
-    <section class="grid" aria-label="Workspace status">
+    <section class="grid" aria-label="Trust cockpit status">
       {_metric_panel("Workspace", workspace.get("status", "unknown"), workspace.get("root", "No workspace loaded"))}
-      {_metric_panel("Ledger", ledger.get("status", "unknown"), f"{ledger.get('event_count', 0)} events")}
-      {_metric_panel("Agents", str(agents.get("passport_count", 0)), agents.get("status", "unknown"))}
-      {_metric_panel("Release", release.get("status", "unknown"), f"{release.get('ready_count', 0)}/{release.get('ready_count', 0) + release.get('warning_count', 0) + release.get('failed_count', 0)} checks ready")}
+      {_area_metric_panel(areas.get("missions"), "Missions", ledger.get("status", "unknown"))}
+      {_area_metric_panel(areas.get("agents"), "Agents", agents.get("status", "unknown"))}
+      {_area_metric_panel(areas.get("evidence"), "Evidence", "not_started")}
     </section>
     <section class="panel">
-      <h2>Command Center</h2>
-      {_commands_html(command_center, section_id="command-center")}
+      <h2>Missions</h2>
+      {_area_panel_html(areas.get("missions"))}
+    </section>
+    <section class="grid">
+      <div class="panel">
+        <h2>Agents</h2>
+        {_agents_html(passports, workspace.get("root", "."))}
+      </div>
+      <div class="panel">
+        <h2>Approval Inbox</h2>
+        {_area_panel_html(areas.get("approval_inbox"))}
+        {_approval_preview_html(preview)}
+      </div>
     </section>
     <section class="panel">
-      <h2>Approval Preview</h2>
-      {_approval_preview_html(preview)}
-    </section>
-    <section class="panel">
-      <h2>Agent Handoff</h2>
+      <h2>Evidence</h2>
+      {_area_panel_html(areas.get("evidence"))}
       {_agent_handoff_html(agent_packet_data, preview)}
     </section>
     <section class="panel">
@@ -493,17 +504,13 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     </section>
     <section class="grid">
       <div class="panel">
-        <h2>Agent Passports</h2>
-        {_agents_html(passports, workspace.get("root", "."))}
+        <h2>Settings</h2>
+        {_settings_html(areas.get("settings"), command_center, workspace.get("root", "."), has_preview=bool(preview_data))}
       </div>
       <div class="panel">
         <h2>Next Actions</h2>
         {_next_actions_html(next_actions)}
       </div>
-    </section>
-    <section class="panel">
-      <h2>Local Data</h2>
-      {_local_data_html(workspace.get("root", "."), has_preview=bool(preview_data))}
     </section>
   </main>
   <script id="delegation-dashboard" type="application/json">{_json_script(dashboard_data)}</script>
@@ -546,6 +553,35 @@ def _metric_panel(title: str, value: T.Any, detail: T.Any) -> str:
   <span class="badge {status_class}">{_escape(value)}</span>
   <div class="{detail_class}" title="{_escape(detail_text)}">{_escape(detail_text)}</div>
 </div>"""
+
+
+def _area_metric_panel(area: JsonMap | None, title: str, fallback_status: T.Any) -> str:
+    if not area:
+        return _metric_panel(title, fallback_status, "No live data yet")
+    return _metric_panel(area.get("title", title), area.get("status", fallback_status), area.get("summary", ""))
+
+
+def _area_panel_html(area: JsonMap | None) -> str:
+    if not area:
+        return "<p class=\"subtle\">No live data yet.</p>"
+    metrics = area.get("metrics") if isinstance(area.get("metrics"), dict) else {}
+    metric_rows = "".join(
+        f"<div><strong>{_escape(_labelize(key))}:</strong> {_escape(value)}</div>"
+        for key, value in metrics.items()
+    )
+    next_action = area.get("next_action")
+    next_html = (
+        '<p class="subtle">Next</p>'
+        + _copyable_code(next_action, id_hint=f"area-{area.get('id', 'next')}")
+        if isinstance(next_action, str) and next_action.strip()
+        else ""
+    )
+    return f"""<p><strong>{_escape(area.get("summary", "No summary available."))}</strong></p>
+<div class="kv">
+  <div><strong>Status:</strong> {_escape(area.get("status", "unknown"))}</div>
+  {metric_rows}
+</div>
+{next_html}"""
 
 
 def _approval_preview_html(preview: JsonMap) -> str:
@@ -748,7 +784,7 @@ def _approval_history_html(history: JsonMap) -> str:
         f"<div><strong>Status:</strong> {_escape(history.get('status', 'unknown'))}</div>",
         f"<div><strong>Summary:</strong> {_escape(history.get('summary', 'No history loaded.'))}</div>",
         f"<div><strong>Gate receipts:</strong> {_escape(history.get('gate_count', 0))}</div>",
-        f"<div><strong>RunPrint proof:</strong> {_escape(history.get('recorded_count', 0))}</div>",
+        f"<div><strong>Recorded proof:</strong> {_escape(history.get('recorded_count', 0))}</div>",
         f"<div><strong>Approvals:</strong> {_escape(history.get('approval_count', 0))}</div>",
         f"<div><strong>Blocks:</strong> {_escape(history.get('block_count', 0))}</div>",
     ]
@@ -802,6 +838,25 @@ def _agent_passport_html(passport: JsonMap, *, workspace_root: T.Any) -> str:
 </div>"""
 
 
+def _settings_html(
+    settings: JsonMap | None,
+    commands: list[T.Any],
+    workspace_root: T.Any,
+    *,
+    has_preview: bool,
+) -> str:
+    rows = [_area_panel_html(settings)]
+    refresh = _command_by_id(commands, "refresh_dashboard")
+    timeline = _command_by_id(commands, "timeline")
+    settings_commands = [command for command in (refresh, timeline) if command]
+    if settings_commands:
+        rows.append("<p class=\"subtle\">Safe commands</p>")
+        rows.append(_commands_html(settings_commands, section_id="settings-commands"))
+    rows.append("<p class=\"subtle\">Local data</p>")
+    rows.append(_local_data_html(workspace_root, has_preview=has_preview))
+    return "".join(rows)
+
+
 def _local_data_html(workspace_root: T.Any, *, has_preview: bool) -> str:
     command = f"delegation app-state --workspace {workspace_root} --json"
     preview_link = (
@@ -819,6 +874,26 @@ def _local_data_html(workspace_root: T.Any, *, has_preview: bool) -> str:
 </ul>
 {_copyable_code(command, id_hint="local-data-state")}
 """
+
+
+def _areas_by_id(areas: list[T.Any]) -> dict[str, JsonMap]:
+    result: dict[str, JsonMap] = {}
+    for area in areas:
+        if isinstance(area, dict) and isinstance(area.get("id"), str) and area["id"].strip():
+            result[area["id"].strip()] = area
+    return result
+
+
+def _command_by_id(commands: list[T.Any], command_id: str) -> JsonMap | None:
+    for command in commands:
+        if isinstance(command, dict) and command.get("id") == command_id:
+            return command
+    return None
+
+
+def _labelize(value: T.Any) -> str:
+    text = str(value).replace("_", " ").strip()
+    return text[:1].upper() + text[1:] if text else ""
 
 
 def _copyable_code(value: T.Any, *, id_hint: str) -> str:

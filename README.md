@@ -60,7 +60,7 @@ Simple version:
 Agent asks.
 DelegationHQ checks.
 Human approves.
-RunPrint proof is attached.
+Recorder proof is attached.
 Mission status says what is next.
 Agent packet tells custom agents what they may do.
 ```
@@ -108,7 +108,7 @@ Bring Your Own Agent registries.
 this action on this target, so should DelegationHQ allow, warn, ask for
 approval, or block?
 
-`agent-audit` compares the Agent Gate receipt with RunPrint evidence. Simple
+`agent-audit` compares the Agent Gate receipt with recorder evidence. Simple
 version: the guard wrote a receipt, the camera has a proof plan, and the ledger
 keeps both together.
 
@@ -128,7 +128,12 @@ required evidence, and return contract.
 
 `agent-result-ingest` is the return lane. The custom agent sends back a small
 result JSON, DelegationHQ checks it against the packet, and the ledger records
-the agent report plus RunPrint evidence.
+the agent report plus recorder evidence.
+
+RunPrint is the current recorder/evidence tool in this ecosystem. DelegationHQ
+is bigger than one recorder: future tools can record tests, diffs, browser
+sessions, CRM changes, API calls, logs, research artifacts, or business workflow
+proof under the same control loop.
 
 Want to start your own repo?
 
@@ -236,7 +241,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation approval-inbox --ledger .delegation/run.jsonl` | Show simple approval cards from Agent Gate receipts. |
 | `delegation approval-decision --ledger .delegation/run.jsonl --action-id ID --decision approve --approver NAME` | Record a local human approve/block receipt. |
 | `delegation runprint-ingest --ledger .delegation/run.jsonl --action-id ID --recording-id REC --bundle-id BUNDLE --artifact PATH` | Append external RunPrint recording evidence. |
-| `delegation agent-audit --ledger .delegation/run.jsonl` | Compare Agent Gate intent receipts with RunPrint evidence. |
+| `delegation agent-audit --ledger .delegation/run.jsonl` | Compare Agent Gate intent receipts with recorder evidence. |
 | `delegation init --goal "goal"` | Create a starter Harnessfile for a repository. |
 | `delegation doctor --skip-github` | Check local readiness and show the next useful command. |
 | `delegation release-check` | Check local alpha release readiness without publishing anything. |

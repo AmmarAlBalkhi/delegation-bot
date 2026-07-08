@@ -25,7 +25,7 @@ What happened?
 Who asked?
 Who approved?
 Did it run?
-Did RunPrint record proof?
+Was proof recorded?
 What needs attention?
 ```
 

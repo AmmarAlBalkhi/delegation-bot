@@ -329,7 +329,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["history"]["gate_count"], 2)
         self.assertEqual(data["history"]["recorded_count"], 2)
         self.assertEqual(data["history"]["matching_event_count"], 8)
-        self.assertIn("recorded RunPrint proof", data["history"]["summary"])
+        self.assertIn("recorded proof", data["history"]["summary"])
         self.assertEqual(data["request_context"]["reviewer_note"], "tests passed locally")
         self.assertIn("workspace", data["resource_summary"]["touches"])
 
@@ -396,9 +396,10 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(timeline_exists)
         self.assertTrue(preview_exists)
         self.assertIn("DelegationHQ Local App", html_text)
-        self.assertIn("Command Center", html_text)
-        self.assertIn("Approval Preview", html_text)
-        self.assertIn("Agent Handoff", html_text)
+        self.assertIn("Missions", html_text)
+        self.assertIn("Approval Inbox", html_text)
+        self.assertIn("Evidence", html_text)
+        self.assertIn("Settings", html_text)
         self.assertIn("agent-result-ingest", html_text)
         self.assertIn("Request packet", html_text)
         self.assertIn("operator checked", html_text)
@@ -530,6 +531,10 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["state"]["workspace"]["status"], "ready")
         self.assertEqual(data["approval_preview"]["agent_id"], "dashboard_runner")
         self.assertTrue(data["command_center"])
+        self.assertEqual(
+            [area["id"] for area in data["product_areas"]],
+            ["missions", "agents", "approval_inbox", "evidence", "settings"],
+        )
         self.assertGreaterEqual(data["timeline"]["stage_counts"]["gate"], 1)
         self.assertGreaterEqual(data["timeline"]["stage_counts"]["record"], 1)
 

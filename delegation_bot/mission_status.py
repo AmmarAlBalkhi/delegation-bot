@@ -183,7 +183,7 @@ def _attention_lines(inbox: JsonMap, audit: JsonMap) -> list[str]:
     if blocked:
         lines.append(f"{blocked} action(s) are blocked.")
     if needs_evidence or audit.get("status") == "needs_evidence":
-        lines.append("RunPrint evidence is missing for at least one gate receipt.")
+        lines.append("Recorder evidence is missing for at least one gate receipt.")
     if audit.get("status") == "missing_gate":
         lines.append("No Agent Gate receipt exists yet.")
     return lines
@@ -194,7 +194,7 @@ def _plain_language(report: MissionStatusReport) -> tuple[str, ...]:
         return (
             "Agent asked for power.",
             "DelegationHQ checked the passport.",
-            "Human approval and RunPrint proof are in the ledger.",
+            "Human approval and recorder proof are in the ledger.",
         )
     if report.status == "ready_for_recording":
         return (

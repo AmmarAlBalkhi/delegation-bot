@@ -12,6 +12,8 @@
     "repository"
   ],
   "evidence_bundle_id": "bundle-demo",
+  "evidence_recording_id": "rec-demo",
+  "evidence_tool": "runprint",
   "runprint_recording_id": "rec-demo",
   "schema_version": "delegation.agent-result.v1",
   "status": "completed",

@@ -35,7 +35,9 @@ The simple mental model:
 ```text
 Passport = agent ID card.
 Agent Gate = guard at the door.
-RunPrint = camera/proof.
+RunPrint = current camera/proof tool, not the whole product.
+Evidence tools = future cameras, test reporters, monitors, logs, CRM recorders,
+browser/session recorders, and business workflow proof collectors.
 Evals = judges.
 Human = final yes/no for danger.
 ```
@@ -50,8 +52,8 @@ Human = final yes/no for danger.
    obvious without exposing internal complexity.
 3. Expand Agent Approval Preview with proposed file/resource diffs and command
    intent previews before risky writes.
-4. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
-   repo stabilizes.
+4. Generalize evidence ingestion so RunPrint stays one recorder adapter among
+   multiple future proof tools.
 5. Keep `app-state` and `app-dashboard` aligned as cockpit backends without
    designing UI until the visual direction is approved.
 6. Run `delegation release-check --strict-artifacts` on a clean Windows release
@@ -67,7 +69,7 @@ Human = final yes/no for danger.
 
 - Added `delegation agent-result-ingest` so custom agents can return a result
   JSON that DelegationHQ validates against the Agent Packet before appending
-  `agent.result.reported` and RunPrint evidence.
+  `agent.result.reported` and recorder evidence.
 - Hardened `agent-packet` with an explicit Agent Result return contract,
   allowed statuses, ingest command, example payload, app rendering, smoke
   coverage, and a copyable handoff example.
@@ -81,7 +83,7 @@ Human = final yes/no for danger.
   state, Agent Passports, approval preview, command center, timeline, and next
   safe actions together.
 - Added `delegation timeline` so a workspace ledger reads as plan -> gate ->
-  approval -> execution -> RunPrint proof -> eval -> feedback -> promotion.
+  approval -> execution -> recorded proof -> eval -> feedback -> promotion.
 - Upgraded `app-export` and `app-serve` to expose `dashboard.json`,
   `timeline.json`, `/api/dashboard`, and `/api/timeline` for the future EXE UI.
 - Upgraded approval preview cards with safe next steps and exact approve,

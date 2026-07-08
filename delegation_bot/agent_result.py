@@ -31,8 +31,10 @@ class AgentResultIngestReport:
     agent_id: str | None
     result_status: str | None
     changed_resources: tuple[str, ...] = ()
+    evidence_recording_id: str | None = None
     runprint_recording_id: str | None = None
     evidence_bundle_id: str | None = None
+    evidence_tool: str = "runprint"
     artifact_count: int = 0
     warnings: tuple[str, ...] = ()
     next_action: str = ""
@@ -62,8 +64,10 @@ class AgentResultIngestReport:
             "agent_id": self.agent_id,
             "result_status": self.result_status,
             "changed_resources": list(self.changed_resources),
+            "evidence_recording_id": self.evidence_recording_id,
             "runprint_recording_id": self.runprint_recording_id,
             "evidence_bundle_id": self.evidence_bundle_id,
+            "evidence_tool": self.evidence_tool,
             "artifact_count": self.artifact_count,
             "warnings": list(self.warnings),
             "next_action": self.next_action,
@@ -131,13 +135,19 @@ def build_agent_result_ingest_report(
     result_agent_id = _string(result.get("agent_id") or result.get("agent"))
     result_packet_id = _string(result.get("packet_id"))
     changed_resources = tuple(_string_list(result.get("changed_resources")))
-    recording_id = _string(result.get("runprint_recording_id") or _nested_string(result, "runprint", "recording_id"))
+    evidence_tool = _string(result.get("evidence_tool") or result.get("recorder") or "runprint", default="runprint")
+    recording_id = _string(
+        result.get("evidence_recording_id")
+        or result.get("runprint_recording_id")
+        or _nested_string(result, "evidence", "recording_id")
+        or _nested_string(result, "runprint", "recording_id")
+    )
     bundle_id = _string(result.get("evidence_bundle_id") or _nested_string(result, "evidence", "bundle_id"))
     artifacts = tuple(_artifacts_from_result(result, result_source=result_source))
     warnings: list[str] = []
 
     if packet_report.status == "recorded":
-        warnings.append("This action already has recorded RunPrint evidence.")
+        warnings.append("This action already has recorded evidence.")
         return _blocked_report(
             status="duplicate_recording",
             ledger_source=ledger_source,
@@ -147,8 +157,10 @@ def build_agent_result_ingest_report(
             agent_id=expected_agent_id or result_agent_id or None,
             result_status=result_status or None,
             changed_resources=changed_resources,
+            evidence_recording_id=recording_id or None,
             runprint_recording_id=recording_id or None,
             evidence_bundle_id=bundle_id or None,
+            evidence_tool=evidence_tool,
             artifact_count=len(artifacts),
             extra_warnings=tuple(warnings),
             next_action="Open a new Agent Gate receipt if this work must run again.",
@@ -165,8 +177,10 @@ def build_agent_result_ingest_report(
             agent_id=expected_agent_id or result_agent_id or None,
             result_status=result_status or None,
             changed_resources=changed_resources,
+            evidence_recording_id=recording_id or None,
             runprint_recording_id=recording_id or None,
             evidence_bundle_id=bundle_id or None,
+            evidence_tool=evidence_tool,
             artifact_count=len(artifacts),
             extra_warnings=tuple(warnings),
             next_action="Approve, review, or unblock the Agent Packet before ingesting a worker result.",
@@ -189,7 +203,7 @@ def build_agent_result_ingest_report(
     if "changed_resources" not in result or not isinstance(result.get("changed_resources"), list):
         warnings.append("Result must include `changed_resources` as a list.")
     if not recording_id:
-        warnings.append("Result must include `runprint_recording_id`.")
+        warnings.append("Result must include `evidence_recording_id` or `runprint_recording_id`.")
     if not bundle_id:
         warnings.append("Result must include `evidence_bundle_id`.")
 
@@ -205,7 +219,7 @@ def build_agent_result_ingest_report(
     )
     if blocking_warnings:
         return _blocked_report(
-            status="needs_evidence" if any("runprint" in warning or "evidence_bundle" in warning for warning in blocking_warnings) else "invalid_result",
+            status="needs_evidence" if any("evidence" in warning or "recording" in warning for warning in blocking_warnings) else "invalid_result",
             ledger_source=ledger_source,
             result_source=result_source,
             action_id=clean_action_id,
@@ -213,8 +227,10 @@ def build_agent_result_ingest_report(
             agent_id=expected_agent_id or result_agent_id or None,
             result_status=result_status or None,
             changed_resources=changed_resources,
+            evidence_recording_id=recording_id or None,
             runprint_recording_id=recording_id or None,
             evidence_bundle_id=bundle_id or None,
+            evidence_tool=evidence_tool,
             artifact_count=len(artifacts),
             extra_warnings=tuple(warnings),
             next_action="Fix the agent result JSON, then run `delegation agent-result-ingest` again.",
@@ -250,6 +266,8 @@ def build_agent_result_ingest_report(
             "used_tools": used_tools,
             "touched_data": touched_data,
             "artifacts": artifacts,
+            "evidence_recording_id": recording_id,
+            "evidence_tool": evidence_tool,
             "runprint_recording_id": recording_id,
             "evidence_bundle_id": bundle_id,
             "source": result_source,
@@ -262,16 +280,18 @@ def build_agent_result_ingest_report(
         timestamp=event_time,
         type="runprint.recording.completed",
         status="completed" if result_status in {"completed", "partial"} else result_status,
-        message=f"RunPrint evidence from agent result ingested for `{clean_action_id}`.",
+        message=f"Recorder evidence from agent result ingested for `{clean_action_id}`.",
         action_id=clean_action_id,
         details={
             "schema_version": RUNPRINT_INGEST_SCHEMA_VERSION,
-            "adapter": "runprint.agent_result",
-            "recorder": "runprint",
+            "adapter": f"{evidence_tool}.agent_result",
+            "recorder": evidence_tool,
             "target_action_id": clean_action_id,
             "agent_id": agent_id,
             "packet_id": packet_id,
             "recording_id": recording_id,
+            "evidence_recording_id": recording_id,
+            "evidence_tool": evidence_tool,
             "evidence_bundle_id": bundle_id,
             "artifact_manifest": artifacts,
             "artifact_count": len(artifacts),
@@ -291,8 +311,10 @@ def build_agent_result_ingest_report(
         agent_id=agent_id,
         result_status=result_status,
         changed_resources=changed_resources,
+        evidence_recording_id=recording_id,
         runprint_recording_id=recording_id,
         evidence_bundle_id=bundle_id,
+        evidence_tool=evidence_tool,
         artifact_count=len(artifacts),
         warnings=tuple(warnings),
         next_action="Run `delegation agent-audit --ledger LEDGER` and evals before increasing this agent's autonomy.",
@@ -312,7 +334,8 @@ def render_agent_result_ingest_report(report: AgentResultIngestReport) -> str:
         f"Packet: {report.packet_id or 'unknown'}",
         f"Result status: {report.result_status or 'unknown'}",
         f"Changed resources: {_join_or_none(report.changed_resources)}",
-        f"Recording: {report.runprint_recording_id or 'missing'}",
+        f"Evidence tool: {report.evidence_tool}",
+        f"Recording: {report.evidence_recording_id or report.runprint_recording_id or 'missing'}",
         f"Bundle: {report.evidence_bundle_id or 'missing'}",
         f"Artifacts: {report.artifact_count}",
     ]
@@ -434,8 +457,10 @@ def _blocked_report(
     agent_id: str | None = None,
     result_status: str | None = None,
     changed_resources: tuple[str, ...] = (),
+    evidence_recording_id: str | None = None,
     runprint_recording_id: str | None = None,
     evidence_bundle_id: str | None = None,
+    evidence_tool: str = "runprint",
     artifact_count: int = 0,
     next_action: str = "Review the Agent Packet and result JSON before retrying.",
 ) -> AgentResultIngestReport:
@@ -450,8 +475,10 @@ def _blocked_report(
         agent_id=agent_id,
         result_status=result_status,
         changed_resources=changed_resources,
+        evidence_recording_id=evidence_recording_id,
         runprint_recording_id=runprint_recording_id,
         evidence_bundle_id=evidence_bundle_id,
+        evidence_tool=evidence_tool,
         artifact_count=artifact_count,
         warnings=warnings,
         next_action=next_action,

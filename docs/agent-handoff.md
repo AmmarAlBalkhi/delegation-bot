@@ -7,7 +7,7 @@ Simple version:
 ```text
 DelegationHQ gives the worker a job card.
 The worker does the work.
-RunPrint records what happened.
+An evidence tool records what happened.
 The worker returns a result.
 DelegationHQ checks the result before trust increases.
 ```
@@ -48,7 +48,8 @@ contract is the same.
   "status": "completed",
   "summary": "Opened a pull request draft under DelegationHQ control.",
   "changed_resources": ["repository"],
-  "runprint_recording_id": "rec-123",
+  "evidence_tool": "runprint",
+  "evidence_recording_id": "rec-123",
   "evidence_bundle_id": "bundle-123",
   "artifacts": [
     {
@@ -74,7 +75,7 @@ An Agent Passport alone is only an ID card. The handoff loop makes it real:
 
 - packet says what the agent is allowed to do
 - result says what the agent claims it did
-- RunPrint evidence says what actually happened
+- evidence says what actually happened
 - evals decide whether the agent earned more trust
 
 This keeps the user experience simple:
@@ -82,3 +83,7 @@ This keeps the user experience simple:
 ```text
 Add agent -> give mission -> preview risk -> approve -> record proof -> review result.
 ```
+
+RunPrint is the current recorder path, not the whole product. Future evidence
+tools can use the same handoff shape as long as they return recording ids,
+artifacts, and evidence bundles that DelegationHQ can judge.

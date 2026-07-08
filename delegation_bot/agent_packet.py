@@ -126,8 +126,9 @@ def build_agent_packet_report(
                 "status",
                 "summary",
                 "changed_resources",
+                "evidence_recording_id",
                 "evidence_bundle_id",
-                "runprint_recording_id",
+                "evidence_tool",
                 "artifacts",
             ],
             "allowed_statuses": ["completed", "failed", "blocked", "needs_attention", "partial"],
@@ -140,9 +141,10 @@ def build_agent_packet_report(
                 "status": "completed",
                 "summary": "One short sentence describing what happened.",
                 "changed_resources": [_string(gate.get("target"), default="workspace")],
-                "runprint_recording_id": "rec-...",
+                "evidence_recording_id": "rec-...",
                 "evidence_bundle_id": "bundle-...",
-                "artifacts": [{"id": "runprint-ledger", "kind": "jsonl", "path": ".delegation/run.jsonl"}],
+                "evidence_tool": "runprint",
+                "artifacts": [{"id": "evidence-ledger", "kind": "jsonl", "path": ".delegation/run.jsonl"}],
             },
         },
     }
@@ -235,7 +237,7 @@ def _packet_status(decision: str, approval: JsonMap | None, recorded: bool) -> s
 def _instructions(can_execute: bool, recorded: bool) -> list[str]:
     if recorded:
         return [
-            "This action already has recorded RunPrint evidence.",
+            "This action already has recorded evidence.",
             "Do not repeat execution unless DelegationHQ issues a new Agent Gate receipt.",
             "Use the packet for review, replay, or eval context.",
         ]
@@ -243,7 +245,7 @@ def _instructions(can_execute: bool, recorded: bool) -> list[str]:
         return [
             "Do only the requested work.",
             "Stay inside allowed tools, data, and expected outputs.",
-            "Record execution with RunPrint and return the recording ids.",
+            "Record execution with an approved evidence tool and return the recording ids.",
             "Do not promote your own autonomy.",
         ]
     return [

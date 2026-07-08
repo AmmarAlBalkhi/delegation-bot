@@ -86,9 +86,9 @@ def build_app_plan() -> AppPlan:
             AppSurface(
                 id="evidence",
                 title="Evidence",
-                purpose="Show planned proof bundles and what still needs to be captured.",
+                purpose="Show planned proof bundles from recorder, monitor, test, and workflow evidence tools.",
                 source="delegation evidence --json",
-                first_slice="RunPrint-style evidence bundle cards from ledger data.",
+                first_slice="Evidence bundle cards from ledger data, with RunPrint as the first recorder adapter.",
             ),
             AppSurface(
                 id="agent_passports",

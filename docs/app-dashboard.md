@@ -4,12 +4,15 @@
 
 It combines the pieces a user needs on one screen:
 
-- workspace health
+- Missions
 - Agent Passports
+- Approval Inbox
+- Evidence
+- Timeline
+- Settings
 - approval preview with reviewer note, expiration, resource scope, evidence
   gaps, and repeated-action history
-- command center
-- mission timeline
+- command center as supporting data, not the main product surface
 - next safe actions
 
 ```bash
@@ -22,12 +25,13 @@ Simple version:
 
 ```text
 Show me the workspace.
+Show me the mission.
 Show me the agent request.
 Show me if it is safe.
 Show me what it can touch.
 Show me if it happened before.
-Show me the next command.
-Show me the proof trail.
+Show me the evidence.
+Show me the timeline.
 ```
 
 ## JSON Contract
@@ -41,6 +45,10 @@ Top-level fields:
 - `approval_preview`: human card for the current agent request, including
   request context, resource summary, evidence status, note/expiration, and
   decision history
+- `agent_packet`: Bring Your Own Agent handoff packet when a matching Agent Gate
+  receipt exists
+- `product_areas`: stable app areas for Missions, Agents, Approval Inbox,
+  Evidence, and Settings
 - `timeline`: ordered proof/history over the ledger
 - `command_center`: safe commands the UI can show without guessing
 - `next_actions`: deduped next useful actions
@@ -51,3 +59,6 @@ This command is read-only. It does not execute agents, call GitHub, call models,
 or write approval decisions.
 
 Design can change later. The important product contract is the data shape.
+RunPrint is currently one evidence tool; the dashboard should keep saying
+Evidence so more recorder, eval, monitoring, and business-workflow tools can
+fit later.
