@@ -1381,3 +1381,25 @@ Guardrails:
 
 Follow-up: Feed `agent-run` status into `app-state`, then design the future app
 approval/run surface with maintainer-approved visuals.
+
+## 2026-07-08: Make Workspace The App Backend Anchor
+
+Decision: Add workspace defaults to `agent-add`, `agent-run`, and `app-state`,
+and add `delegation cockpit --workspace .` as the short local cockpit entry.
+
+Why: DelegationHQ needs to feel like a working local app soon, not a set of
+unconnected terminal recipes. A user should point at a folder, register an
+agent, run it under control, and inspect the cockpit state without memorizing
+internal ledger, registry, harness, cwd, or evidence-output paths.
+
+Guardrails:
+
+- GitHub is still optional; local workspaces stay first-class
+- `cockpit` is read-only and does not launch agents or design UI
+- command-backed execution still requires Agent Gate allow plus the exact
+  `LOCAL_AGENT_EXECUTION` confirmation token
+- workspace defaults write under `.delegation/` inside the selected folder
+- future visual interface work still waits for maintainer-approved design
+
+Follow-up: Build the first local app shell against `cockpit --workspace .` and
+`app-state --workspace . --json`, then add richer approval preview cards.

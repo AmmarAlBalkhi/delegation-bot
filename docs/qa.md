@@ -52,10 +52,11 @@ The QA command currently checks:
 - installed package local workspace init/status and `agent-add` smoke tests
 - installed package `agent-run` smoke test for controlled command-backed agent
   execution
+- installed package workspace-aware `app-state` and `cockpit` smoke tests
 - installed package Agent Passport smoke test
 - first-run `delegation demo` and `delegation init` flows
-- local-first `workspace-init`, `workspace-status`, `agent-add`, and
-  `agent-run` flows
+- local-first `workspace-init`, `workspace-status`, workspace-aware
+  `agent-add`, `agent-run`, `app-state`, and `cockpit` flows
 - example Harnessfile validation
 - example Harnessfile dry-run planning
 - local OpenTelemetry export generation

@@ -15,6 +15,7 @@ From a folder you want to control:
 ```bash
 delegation workspace-init --path . --plan
 delegation workspace-status --path .
+delegation cockpit --workspace .
 ```
 
 This creates:
@@ -37,7 +38,7 @@ Ledger keeps proof.
 Register a local CLI agent:
 
 ```bash
-delegation agent-add research_agent --command "python agents/research_agent.py" --capability read.workspace --allowed-data workspace --evidence command_output
+delegation agent-add research_agent --workspace . --command "python agents/research_agent.py" --capability read.workspace --allowed-data workspace --evidence command_output --force
 ```
 
 Preview what it may do:
@@ -49,8 +50,9 @@ delegation agent-gate --registry .delegation/agents.yaml research_agent --action
 Run it under control:
 
 ```bash
-delegation agent-run research_agent --registry .delegation/agents.yaml --ledger .delegation/agent-run.jsonl --action read.workspace --target workspace --execute --confirm LOCAL_AGENT_EXECUTION
+delegation agent-run research_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
 delegation agent-audit --ledger .delegation/agent-run.jsonl
+delegation app-state --workspace .
 ```
 
 The custom agent does the work. DelegationHQ controls:

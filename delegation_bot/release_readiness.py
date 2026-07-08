@@ -312,10 +312,12 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "mission-status",
             "agent-packet",
             "app-state",
+            "cockpit",
             "workspace-init",
             "workspace-status",
             "agent-add",
             "agent-run",
+            "--workspace",
             "agents",
             "agent-gate",
             "agent-audit",
@@ -348,7 +350,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, agent packet, app state, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, agent packet, workspace-aware app state, cockpit, local workspace init/status, agent-add, agent-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -367,9 +369,10 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "validate $SmokeHarnessfile",
         "workspace-init --path $SmokeWorkspace",
         "workspace-status --path $SmokeWorkspace",
-        "agent-add exe_cli_agent",
-        "agent-run exe_cli_agent",
-        "app-state --ledger",
+        "agent-add exe_cli_agent --workspace $SmokeWorkspace",
+        "agent-run exe_cli_agent --workspace $SmokeWorkspace",
+        "app-state --workspace $SmokeWorkspace",
+        "cockpit --workspace $SmokeWorkspace",
         "agents \"examples\\ai-harness-control-plane.yaml\"",
         "agent-gate \"examples\\ai-harness-control-plane.yaml\" implementer",
         "agent-audit --ledger",

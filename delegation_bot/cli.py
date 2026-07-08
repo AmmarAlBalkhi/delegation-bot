@@ -104,6 +104,10 @@ from delegation_bot.harness_manifest import ManifestError, load_manifest, summar
 from delegation_bot.harness_plan import PlanError, build_dry_run_ledger, compile_plan, render_plan, write_jsonl
 from delegation_bot.ledger import LedgerError, LedgerFilter, build_ledger_view, load_ledger_events, render_ledger_view
 from delegation_bot.local_workspace import (
+    DEFAULT_WORKSPACE_AGENT_RUN_LEDGER,
+    DEFAULT_WORKSPACE_AGENT_RUNS_DIR,
+    DEFAULT_WORKSPACE_HARNESS,
+    DEFAULT_WORKSPACE_REGISTRY,
     build_workspace_status,
     initialize_local_workspace,
     render_workspace_init_report,
@@ -322,6 +326,7 @@ def cmd_app_state(args: argparse.Namespace) -> int:
     state = build_app_state(
         ledger_path=Path(args.ledger) if args.ledger else None,
         harnessfile=Path(args.harnessfile) if args.harnessfile else None,
+        workspace_root=Path(args.workspace) if args.workspace else None,
         agent_registries=tuple(Path(path) for path in args.agent_registry or ()),
         include_github=args.github_checks,
         include_github_app=args.github_app,
@@ -333,6 +338,15 @@ def cmd_app_state(args: argparse.Namespace) -> int:
         gate_approvals=tuple(args.gate_approval or ()),
         gate_evidence=tuple(args.gate_evidence or ()),
     )
+    if args.json:
+        print(json.dumps(state.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_app_state(state))
+    return 0
+
+
+def cmd_cockpit(args: argparse.Namespace) -> int:
+    state = build_app_state(workspace_root=Path(args.workspace))
     if args.json:
         print(json.dumps(state.to_dict(), indent=2, sort_keys=True))
     else:
@@ -360,9 +374,13 @@ def cmd_agents(args: argparse.Namespace) -> int:
 
 
 def cmd_agent_add(args: argparse.Namespace) -> int:
+    registry_path = Path(args.registry)
+    if args.workspace and args.registry == DEFAULT_REGISTRY_PATH:
+        registry_path = Path(args.workspace).resolve() / DEFAULT_WORKSPACE_REGISTRY
+
     try:
         report = add_agent_to_registry(
-            registry_path=Path(args.registry),
+            registry_path=registry_path,
             agent_id=args.agent_id,
             name=args.name,
             runtime_type=args.runtime_type,
@@ -393,9 +411,34 @@ def cmd_agent_add(args: argparse.Namespace) -> int:
 
 
 def cmd_agent_run(args: argparse.Namespace) -> int:
+    workspace_root = Path(args.workspace).resolve() if args.workspace else None
+    harnessfile = Path(args.harnessfile) if args.harnessfile else None
+    registry_paths = [Path(path) for path in args.registry or ()]
+    ledger_path = Path(args.ledger) if args.ledger else None
+    cwd = Path(args.cwd) if args.cwd else None
+    output_dir = Path(args.output_dir) if args.output_dir else None
+
+    if workspace_root is not None:
+        workspace_harnessfile = workspace_root / DEFAULT_WORKSPACE_HARNESS
+        workspace_registry = workspace_root / DEFAULT_WORKSPACE_REGISTRY
+        if harnessfile is None and workspace_harnessfile.exists():
+            harnessfile = workspace_harnessfile
+        if not registry_paths and workspace_registry.exists():
+            registry_paths.append(workspace_registry)
+        if ledger_path is None:
+            ledger_path = workspace_root / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER
+        if cwd is None:
+            cwd = workspace_root
+        if output_dir is None:
+            output_dir = workspace_root / DEFAULT_WORKSPACE_AGENT_RUNS_DIR
+
+    if ledger_path is None:
+        print("ERROR: --ledger is required unless --workspace is provided.", file=sys.stderr)
+        return 1
+
     manifest = None
-    if args.harnessfile:
-        manifest, status = _load_valid_manifest(Path(args.harnessfile))
+    if harnessfile:
+        manifest, status = _load_valid_manifest(harnessfile)
         if status != 0 or manifest is None:
             return status
 
@@ -404,17 +447,17 @@ def cmd_agent_run(args: argparse.Namespace) -> int:
             agent_id=args.agent_id,
             action=args.action,
             target=args.target,
-            ledger_path=Path(args.ledger),
-            registry_paths=tuple(Path(path) for path in args.registry or ()),
+            ledger_path=ledger_path,
+            registry_paths=tuple(registry_paths),
             manifest=manifest,
-            manifest_source=args.harnessfile,
+            manifest_source=str(harnessfile) if harnessfile else None,
             requested_risk=args.risk,
             approvals=tuple(args.approval or ()),
             evidence=tuple(args.evidence or ()),
             execute=args.execute,
             confirm=args.confirm,
-            cwd=Path(args.cwd) if args.cwd else None,
-            output_dir=Path(args.output_dir) if args.output_dir else None,
+            cwd=cwd,
+            output_dir=output_dir,
             timeout_seconds=args.timeout_seconds,
         )
     except (OSError, ValueError, json.JSONDecodeError, PlanError) as exc:
@@ -1615,6 +1658,7 @@ def build_parser() -> argparse.ArgumentParser:
         "app-state",
         help="Show one read-only app-ready state bundle for the future local cockpit.",
     )
+    app_state.add_argument("--workspace", help="Optional local workspace folder. Defaults registry and ledger paths from .delegation.")
     app_state.add_argument("--ledger", help="Optional run ledger JSONL path for mission/evidence state.")
     app_state.add_argument("--harnessfile", help="Optional Harnessfile for agent and owner context.")
     app_state.add_argument(
@@ -1658,6 +1702,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     app_state.set_defaults(func=cmd_app_state)
 
+    cockpit = subparsers.add_parser(
+        "cockpit",
+        help="Show the local workspace cockpit state with app-ready defaults.",
+    )
+    cockpit.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
+    cockpit.add_argument("--json", action="store_true", help="Print the cockpit state as JSON.")
+    cockpit.set_defaults(func=cmd_cockpit)
+
     agents = subparsers.add_parser(
         "agents",
         help="Show Agent Passports from a Harnessfile and optional BYOA registry files.",
@@ -1676,6 +1728,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Register a custom Bring Your Own Agent passport without hand-editing YAML.",
     )
     agent_add.add_argument("agent_id", help="Stable agent id, such as research_agent.")
+    agent_add.add_argument("--workspace", help="Optional local workspace folder. Defaults --registry into .delegation/agents.yaml.")
     agent_add.add_argument("--registry", default=DEFAULT_REGISTRY_PATH, help="Agent registry path to create or update.")
     agent_add.add_argument("--name", help="Human-readable agent name.")
     agent_add.add_argument("--runtime-type", default="cli.command", help="Runtime type, such as cli.command, api, webhook, mcp, or langgraph.graph.")
@@ -1711,15 +1764,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Gate and optionally execute a command-backed custom agent with ledger evidence.",
     )
     agent_run.add_argument("agent_id", help="Agent id from a Harnessfile or Agent Passport registry.")
+    agent_run.add_argument("--workspace", help="Optional local workspace folder. Defaults registry, ledger, cwd, and evidence output paths.")
     agent_run.add_argument("--harnessfile", help="Optional Harnessfile with `agents:` declarations.")
     agent_run.add_argument(
         "--registry",
         action="append",
         help="Optional Agent Passport registry file. Repeatable.",
     )
-    agent_run.add_argument("--ledger", required=True, help="Read and append run ledger JSONL evidence.")
-    agent_run.add_argument("--action", required=True, help="Requested action, such as read.workspace.")
-    agent_run.add_argument("--target", required=True, help="Target resource, file, tool, or data scope.")
+    agent_run.add_argument("--ledger", help="Read and append run ledger JSONL evidence. Defaults to workspace .delegation/agent-run.jsonl.")
+    agent_run.add_argument("--action", default="read.workspace", help="Requested action. Defaults to read.workspace.")
+    agent_run.add_argument("--target", default="workspace", help="Target resource, file, tool, or data scope. Defaults to workspace.")
     agent_run.add_argument(
         "--risk",
         choices=("low", "medium", "high", "critical"),

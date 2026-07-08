@@ -44,21 +44,25 @@ Human = final yes/no for danger.
 
 1. Harden `agent-packet` as the Bring Your Own Agent handoff contract with more
    examples for CLI agents, webhook agents, MCP workflows, and CRM agents.
-2. Add `workspace-init` and `workspace-status` output to the future local app
-   state so the EXE can open on a real workspace, not a generic screen.
-3. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
+2. Build the first local app shell against `delegation cockpit --workspace .`
+   and `delegation app-state --workspace . --json` after visual direction is
+   approved.
+3. Add the next Agent Approval Preview slice so an agent request can summarize
+   proposed changes, risk, missing approvals, evidence, and the exact approve
+   or block choice.
+4. Align `runprint-ingest` with the standalone RunPrint bundle schema as that
    repo stabilizes.
-4. Add the next approval loop slice: optional reviewer notes, expiration, and
+5. Add the next approval loop slice: optional reviewer notes, expiration, and
    decision history summaries for repeated agent actions.
-5. Keep `app-state` aligned as the first cockpit backend without designing UI
+6. Keep `app-state` aligned as the first cockpit backend without designing UI
    until the visual direction is approved.
-6. Run `delegation release-check --strict-artifacts` on a clean Windows release
+7. Run `delegation release-check --strict-artifacts` on a clean Windows release
    host after building the `.exe`, checksum file, and artifact manifest.
-7. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
+8. Run `delegation release-rehearse --strict-artifacts` on a clean Windows host
    and keep the generated evidence bundle with release notes.
-8. Test the GitHub App issue-write path against a real installed app before
+9. Test the GitHub App issue-write path against a real installed app before
    hosted auth work.
-9. Decide which `delegation github-app-plan` mode should become the first
+10. Decide which `delegation github-app-plan` mode should become the first
    hosted GitHub App implementation target.
 
 ## Completed Recently
@@ -70,6 +74,9 @@ Human = final yes/no for danger.
   custom agents without hand-editing a large YAML file.
 - Added `delegation agent-run` so command-backed custom agents can be gated,
   executed after exact confirmation, and recorded with local evidence.
+- Added workspace defaults for `agent-add`, `agent-run`, `app-state`, and
+  `cockpit` so the local app path can start from a folder instead of a pile of
+  internal ledger and registry flags.
 - Added `delegation demo --control-loop` so one install-safe command now shows
   the plan -> gate -> approval -> RunPrint recording -> audit path.
 - Added `delegation mission-status` for a plain operator view over one ledger:

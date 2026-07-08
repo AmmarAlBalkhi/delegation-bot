@@ -195,12 +195,16 @@ def main() -> int:
                 "delegation_bot",
                 "agent-add",
                 "smoke_cli_agent",
-                "--registry",
-                str(registry),
+                "--workspace",
+                str(workspace),
                 "--command",
                 f"{sys.executable} -c \"print('package agent ok')\"",
                 "--capability",
+                "read.workspace",
+                "--capability",
                 "read.run_ledger",
+                "--allowed-data",
+                "workspace",
                 "--allowed-data",
                 "run_ledger",
                 "--evidence",
@@ -216,7 +220,6 @@ def main() -> int:
             print(agent_add.stderr, file=sys.stderr)
             return agent_add.returncode or 1
 
-        agent_run_ledger = workspace / ".delegation" / "agent-run.jsonl"
         agent_run = _run(
             [
                 sys.executable,
@@ -224,14 +227,8 @@ def main() -> int:
                 "delegation_bot",
                 "agent-run",
                 "smoke_cli_agent",
-                "--registry",
-                str(registry),
-                "--ledger",
-                str(agent_run_ledger),
-                "--action",
-                "read.run_ledger",
-                "--target",
-                "run_ledger",
+                "--workspace",
+                str(workspace),
                 "--execute",
                 "--confirm",
                 "LOCAL_AGENT_EXECUTION",
@@ -244,6 +241,46 @@ def main() -> int:
             print(agent_run.stdout)
             print(agent_run.stderr, file=sys.stderr)
             return agent_run.returncode or 1
+
+        workspace_app_state = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "app-state",
+                "--workspace",
+                str(workspace),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if (
+            workspace_app_state.returncode != 0
+            or "DelegationHQ App State" not in workspace_app_state.stdout
+            or "Workspace:" not in workspace_app_state.stdout
+        ):
+            print("FAIL: installed package workspace app-state smoke")
+            print(workspace_app_state.stdout)
+            print(workspace_app_state.stderr, file=sys.stderr)
+            return workspace_app_state.returncode or 1
+
+        cockpit = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "cockpit",
+                "--workspace",
+                str(workspace),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if cockpit.returncode != 0 or "Workspace:" not in cockpit.stdout:
+            print("FAIL: installed package cockpit smoke")
+            print(cockpit.stdout)
+            print(cockpit.stderr, file=sys.stderr)
+            return cockpit.returncode or 1
 
         agents = _run(
             [
@@ -382,7 +419,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
     print(
-        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+        "PASS: installed package control-loop demo, mission-status, agent-packet, app-state, workspace app-state, cockpit, local workspace, agent-add, agent-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
     )
     return 0
 

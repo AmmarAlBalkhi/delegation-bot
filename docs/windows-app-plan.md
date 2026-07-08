@@ -107,9 +107,12 @@ delegation app-plan --json
 Inspect the app-ready state bundle:
 
 ```bash
-delegation demo --ledger .delegation/demo.jsonl
-delegation app-state --ledger .delegation/demo.jsonl
-delegation app-state --ledger .delegation/demo.jsonl --json
+delegation workspace-init --path . --plan
+delegation agent-add local_cli_agent --workspace . --command "python agent.py" --capability read.workspace --allowed-data workspace --evidence command_output
+delegation agent-run local_cli_agent --workspace . --execute --confirm LOCAL_AGENT_EXECUTION
+delegation app-state --workspace .
+delegation app-state --workspace . --json
+delegation cockpit --workspace .
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml
 delegation agents examples/ai-harness-control-plane.yaml --registry examples/agent-passports.yaml --json
 delegation agent-gate examples/ai-harness-control-plane.yaml implementer --action create_pull_request --target repository

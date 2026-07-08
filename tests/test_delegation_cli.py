@@ -197,6 +197,34 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["agents"]["passport_count"], 2)
         self.assertTrue(any(passport["id"] == "crm_update_agent" for passport in data["agents"]["passports"]))
 
+    def test_app_state_can_use_workspace_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["app-state", "--workspace", tmpdir, "--json"])
+        data = json.loads(output.getvalue())
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["workspace"]["status"], "ready")
+        self.assertEqual(data["workspace"]["agent_count"], 1)
+        self.assertEqual(data["ledger"]["status"], "planned")
+        self.assertGreaterEqual(data["agents"]["passport_count"], 1)
+        self.assertIn("delegation app-state --workspace", " ".join(data["next_actions"]))
+
+    def test_cockpit_command_uses_workspace_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(["cockpit", "--workspace", tmpdir])
+
+        self.assertEqual(status, 0)
+        text = output.getvalue()
+        self.assertIn("DelegationHQ App State", text)
+        self.assertIn("Workspace:", text)
+        self.assertIn("GitHub required: false", text)
+
     def test_app_state_reports_missing_ledger_without_process_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             missing = Path(tmpdir) / "missing.jsonl"
@@ -395,6 +423,58 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("runprint.recording.completed", event_types)
         self.assertEqual(audit_status, 0)
         self.assertEqual(audit_data["status"], "recorded")
+
+    def test_agent_add_and_run_use_workspace_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            command = f"{sys.executable} -c \"print('workspace agent ok')\""
+            with redirect_stdout(io.StringIO()):
+                self.assertEqual(main(["workspace-init", "--path", tmpdir, "--plan"]), 0)
+                self.assertEqual(
+                    main(
+                        [
+                            "agent-add",
+                            "workspace_runner",
+                            "--workspace",
+                            tmpdir,
+                            "--command",
+                            command,
+                            "--capability",
+                            "read.workspace",
+                            "--allowed-data",
+                            "workspace",
+                            "--evidence",
+                            "command_output",
+                            "--force",
+                        ]
+                    ),
+                    0,
+                )
+            with redirect_stdout(io.StringIO()) as output:
+                status = main(
+                    [
+                        "agent-run",
+                        "workspace_runner",
+                        "--workspace",
+                        tmpdir,
+                        "--execute",
+                        "--confirm",
+                        "LOCAL_AGENT_EXECUTION",
+                        "--json",
+                    ]
+                )
+            data = json.loads(output.getvalue())
+            ledger = Path(tmpdir) / ".delegation" / "agent-run.jsonl"
+            artifact = Path(data["output_artifact"])
+            ledger_exists = ledger.exists()
+            artifact_exists = artifact.exists()
+
+        self.assertEqual(status, 0)
+        self.assertEqual(data["status"], "recorded")
+        self.assertEqual(data["action"], "read.workspace")
+        self.assertEqual(data["target"], "workspace")
+        self.assertIn("workspace agent ok", data["stdout_tail"])
+        self.assertTrue(ledger_exists)
+        self.assertTrue(artifact_exists)
 
     def test_agent_run_requires_exact_confirmation_for_execution(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

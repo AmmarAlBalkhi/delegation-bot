@@ -17,6 +17,8 @@ DEFAULT_WORKSPACE_DIR = ".delegation"
 DEFAULT_WORKSPACE_HARNESS = ".delegation/Harnessfile.yaml"
 DEFAULT_WORKSPACE_REGISTRY = ".delegation/agents.yaml"
 DEFAULT_WORKSPACE_LEDGER = ".delegation/local-workspace.jsonl"
+DEFAULT_WORKSPACE_AGENT_RUN_LEDGER = ".delegation/agent-run.jsonl"
+DEFAULT_WORKSPACE_AGENT_RUNS_DIR = ".delegation/agent-runs"
 
 
 @dataclass(frozen=True)

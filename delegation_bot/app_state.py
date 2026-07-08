@@ -17,6 +17,11 @@ from delegation_bot.doctor import DoctorReport, run_doctor
 from delegation_bot.evidence_report import build_evidence_report
 from delegation_bot.harness_manifest import Manifest, ManifestError, load_manifest, validate_manifest
 from delegation_bot.ledger import LedgerError, load_ledger_events
+from delegation_bot.local_workspace import (
+    DEFAULT_WORKSPACE_AGENT_RUN_LEDGER,
+    WorkspaceStatusReport,
+    build_workspace_status,
+)
 from delegation_bot.release_readiness import ReleaseReadinessReport, build_release_readiness_report
 
 
@@ -63,6 +68,7 @@ class AppState:
     agents: JsonMap
     agent_gate: JsonMap
     ledger: AppStateLedger
+    workspace: JsonMap | None
     next_actions: tuple[str, ...]
     guardrails: tuple[str, ...]
 
@@ -81,6 +87,7 @@ class AppState:
             "agents": self.agents,
             "agent_gate": self.agent_gate,
             "ledger": self.ledger.to_dict(),
+            "workspace": self.workspace,
             "next_actions": list(self.next_actions),
             "guardrails": list(self.guardrails),
         }
@@ -94,6 +101,7 @@ def build_app_state(
     include_github: bool = False,
     include_github_app: bool = False,
     strict_artifacts: bool = False,
+    workspace_root: Path | None = None,
     agent_registries: T.Sequence[Path] = (),
     gate_agent: str | None = None,
     gate_action: str | None = None,
@@ -103,6 +111,22 @@ def build_app_state(
     gate_evidence: T.Sequence[str] = (),
 ) -> AppState:
     """Build a read-only state bundle for the future local app."""
+
+    workspace_report = build_workspace_status(root=workspace_root) if workspace_root else None
+    workspace_registry = Path(workspace_report.registry) if workspace_report and Path(workspace_report.registry).exists() else None
+    workspace_harnessfile = (
+        Path(workspace_report.harnessfile) if workspace_report and Path(workspace_report.harnessfile).exists() else None
+    )
+    workspace_agent_ledger = workspace_root.resolve() / DEFAULT_WORKSPACE_AGENT_RUN_LEDGER if workspace_root else None
+
+    if harnessfile is None and workspace_harnessfile is not None:
+        harnessfile = workspace_harnessfile
+    if ledger_path is None and workspace_report is not None:
+        ledger_path = workspace_agent_ledger if workspace_agent_ledger and workspace_agent_ledger.exists() else Path(workspace_report.ledger)
+
+    resolved_agent_registries = list(agent_registries)
+    if workspace_registry is not None and workspace_registry not in resolved_agent_registries:
+        resolved_agent_registries.append(workspace_registry)
 
     app_plan = build_app_plan()
     doctor = run_doctor(root, include_github=include_github, include_github_app=include_github_app)
@@ -116,12 +140,12 @@ def build_app_state(
     agents = build_agent_passport_report(
         manifest=manifest,
         manifest_source=str(harnessfile) if harnessfile else None,
-        registry_paths=agent_registries,
+        registry_paths=resolved_agent_registries,
     )
     agent_gate = _build_agent_gate_state(
         manifest=manifest,
         harnessfile=harnessfile,
-        registry_paths=agent_registries,
+        registry_paths=resolved_agent_registries,
         agent_id=gate_agent,
         action=gate_action,
         target=gate_target,
@@ -135,7 +159,7 @@ def build_app_state(
         app_name=app_plan.app_name,
         version=__version__,
         mode="local-read-only",
-        status=_overall_status(doctor, release, ledger, agents.to_dict(), agent_gate),
+        status=_overall_status(doctor, release, ledger, agents.to_dict(), agent_gate, workspace_report),
         read_only=True,
         live_risk="none",
         doctor=doctor.to_dict(),
@@ -144,10 +168,12 @@ def build_app_state(
         agents=agents.to_dict(),
         agent_gate=agent_gate,
         ledger=ledger,
-        next_actions=_next_actions(doctor, release, ledger),
+        workspace=workspace_report.to_dict() if workspace_report else None,
+        next_actions=_next_actions(doctor, release, ledger, workspace_report),
         guardrails=(
             "This state command is read-only.",
             "It does not call models, run agents, write to GitHub, or dispatch workflows.",
+            "A workspace can run fully local; GitHub is an adapter, not the core.",
             "Live actions still require their dedicated apply commands and exact confirmations.",
             *app_plan.guardrails,
         ),
@@ -163,6 +189,7 @@ def render_app_state(state: AppState) -> str:
     approval_inbox = state.ledger.approval_inbox or {}
     agents = state.agents
     agent_gate = state.agent_gate
+    workspace = state.workspace
 
     lines = [
         "DelegationHQ App State",
@@ -188,6 +215,20 @@ def render_app_state(state: AppState) -> str:
         f"- Agent gate: {agent_gate.get('status', 'unknown')}",
         f"- Ledger: {state.ledger.status} ({state.ledger.event_count} events)",
     ]
+
+    if workspace:
+        lines.extend(
+            [
+                "",
+                "Workspace:",
+                f"- status: {workspace.get('status', 'unknown')}",
+                f"- root: {workspace.get('root', 'unknown')}",
+                f"- harness: {workspace.get('harness_status', 'unknown')}",
+                f"- registry: {workspace.get('registry_status', 'unknown')}",
+                f"- agents: {workspace.get('agent_count', 0)}",
+                "- GitHub required: false",
+            ]
+        )
 
     if mission:
         lines.extend(
@@ -298,6 +339,7 @@ def _overall_status(
     ledger: AppStateLedger,
     agents: JsonMap,
     agent_gate: JsonMap,
+    workspace: WorkspaceStatusReport | None = None,
 ) -> str:
     approval_inbox = ledger.approval_inbox or {}
     if doctor.failed_count:
@@ -308,6 +350,7 @@ def _overall_status(
         or approval_inbox.get("status") in {"needs_attention", "blocked"}
         or agents.get("status") == "warning"
         or agent_gate.get("status") in {"blocked", "incomplete"}
+        or (workspace is not None and workspace.status in {"missing", "needs_attention"})
     ):
         return "needs_attention"
     if ledger.status == "missing":
@@ -321,10 +364,15 @@ def _next_actions(
     doctor: DoctorReport,
     release: ReleaseReadinessReport,
     ledger: AppStateLedger,
+    workspace: WorkspaceStatusReport | None = None,
 ) -> tuple[str, ...]:
     actions: list[str] = []
     if doctor.failed_count:
         actions.extend(doctor.next_commands[:2])
+    if workspace is not None:
+        actions.extend(workspace.next_actions[:2])
+        actions.append(f"delegation agent-run AGENT_ID --workspace {workspace.root} --execute --confirm LOCAL_AGENT_EXECUTION")
+        actions.append(f"delegation cockpit --workspace {workspace.root}")
     if ledger.status in {"not_loaded", "missing", "error"}:
         actions.append("delegation demo --ledger .delegation/demo.jsonl")
     elif ledger.dashboard:
@@ -333,7 +381,10 @@ def _next_actions(
             actions.append(next_safe_action)
     if release.failed_count or release.warning_count:
         actions.extend(release.next_commands[:2])
-    actions.append("delegation app-state --ledger .delegation/demo.jsonl --json")
+    if workspace is not None:
+        actions.append(f"delegation app-state --workspace {workspace.root} --json")
+    else:
+        actions.append("delegation app-state --ledger .delegation/demo.jsonl --json")
     return tuple(_dedupe(actions))
 
 

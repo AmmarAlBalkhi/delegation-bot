@@ -93,6 +93,7 @@ Deliverables:
 - agent passports
 - Agent Passport registry for Bring Your Own Agent
 - local workspace init/status so GitHub is optional instead of required
+- workspace-aware app state and local cockpit backend
 - custom agent registration without hand-editing large YAML files
 - controlled command-backed agent execution with local evidence capture
 - agent gate previews for requested actions
@@ -220,11 +221,13 @@ Current focus:
    examples for CLI, API/webhook, MCP, CRM, LangGraph, Codex, and Claude-style
    workers.
 2. Keep the visible loop simple: plan, gate, approve, record, status, packet.
-3. Connect Mission Status and Agent Packet data to `app-state` so the future
-   cockpit can show useful state without designing UI yet.
-4. Align RunPrint ingest with the standalone RunPrint bundle schema as it
+3. Build the first local app shell against `cockpit --workspace .` and
+   `app-state --workspace . --json` after visual direction is approved.
+4. Add richer Agent Approval Preview cards over passport, risk, missing
+   approvals, evidence, and proposed action details.
+5. Align RunPrint ingest with the standalone RunPrint bundle schema as it
    stabilizes.
-5. Run the Windows `.exe` build script on a clean Windows release host and
+6. Run the Windows `.exe` build script on a clean Windows release host and
    record the executable smoke evidence.
 
 The adoption path starts with one quiet miracle: a developer can understand what
