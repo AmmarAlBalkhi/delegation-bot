@@ -315,6 +315,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "agent-packet",
             "app-state",
             "cockpit",
+            "workspace-flow",
             "app-dashboard",
             "approval-preview",
             "app-export",
@@ -340,6 +341,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
             "Agent Packet",
             "Local Workspace Created",
             "Local Workspace Status",
+            "DelegationHQ Workspace Flow",
             "Agent Added",
             "Agent Run",
             "Action Request",
@@ -366,7 +368,7 @@ def _check_package_smoke(root: Path) -> ReleaseCheck:
     return _ready(
         "package_smoke",
         "Package Smoke",
-        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, action-request, request-status, request-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
+        "Installed package smoke checks version, control-loop demo, mission status, timeline, agent packet, agent result ingest, generic evidence ingest, workspace-aware app state, cockpit, workspace-flow, app dashboard, approval preview, app export, app serve, local workspace init/status, agent-add, agent-run, action-request, request-status, request-run, Agent Passports, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit.",
     )
 
 
@@ -389,6 +391,7 @@ def _check_windows_packaging(root: Path) -> ReleaseCheck:
         "agent-run exe_cli_agent --workspace $SmokeWorkspace",
         "app-state --workspace $SmokeWorkspace",
         "cockpit --workspace $SmokeWorkspace",
+        "workspace-flow --workspace $SmokeWorkspace",
         "app-dashboard --workspace $SmokeWorkspace",
         "timeline --workspace $SmokeWorkspace",
         "approval-preview exe_cli_agent --workspace $SmokeWorkspace",

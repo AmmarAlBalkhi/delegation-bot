@@ -12,6 +12,7 @@ from delegation_bot.app_state import AppState, build_app_state
 from delegation_bot.approval_preview import ApprovalPreviewReport, build_approval_preview_report
 from delegation_bot.ledger import LedgerError, load_ledger_events
 from delegation_bot.mission_timeline import MissionTimelineReport, build_timeline_report_from_paths
+from delegation_bot.workspace_flow import WorkspaceFlowReport, build_workspace_flow_report
 
 
 JsonMap = dict[str, T.Any]
@@ -27,6 +28,7 @@ class AppDashboardReport:
     timeline: MissionTimelineReport
     approval_preview: ApprovalPreviewReport | None
     agent_packet: AgentPacketReport | None
+    workspace_flow: WorkspaceFlowReport
     product_areas: tuple[JsonMap, ...]
     command_center: tuple[JsonMap, ...]
     control_loop: tuple[JsonMap, ...]
@@ -35,6 +37,7 @@ class AppDashboardReport:
     @property
     def next_actions(self) -> tuple[str, ...]:
         actions: list[str] = []
+        actions.append(self.workspace_flow.next_command)
         actions.extend(_command_values(self.command_center))
         actions.extend(self.state.next_actions[:4])
         actions.append(self.timeline.next_action)
@@ -49,6 +52,7 @@ class AppDashboardReport:
             "timeline": self.timeline.to_dict(),
             "approval_preview": self.approval_preview.to_dict() if self.approval_preview else None,
             "agent_packet": self.agent_packet.to_dict() if self.agent_packet else None,
+            "workspace_flow": self.workspace_flow.to_dict(),
             "product_areas": list(self.product_areas),
             "command_center": list(self.command_center),
             "control_loop": list(self.control_loop),
@@ -84,6 +88,7 @@ def build_app_dashboard_report(
         preview_expires_at=preview_expires_at,
     )
     agent_packet = _build_agent_packet(preview)
+    workspace_flow = build_workspace_flow_report(workspace_root=workspace, state=state, timeline=timeline)
     command_center = tuple(_command_center(workspace, state_data, timeline, preview))
     control_loop = tuple(_control_loop(state_data, timeline, preview, agent_packet, command_center))
     return AppDashboardReport(
@@ -94,6 +99,7 @@ def build_app_dashboard_report(
         timeline=timeline,
         approval_preview=preview,
         agent_packet=agent_packet,
+        workspace_flow=workspace_flow,
         product_areas=tuple(_product_areas(state_data, timeline, preview, agent_packet, command_center)),
         command_center=command_center,
         control_loop=control_loop,
@@ -141,6 +147,9 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
         )
 
     lines.extend(["", "Control loop:"])
+    lines.append(f"- Workspace flow: {report.workspace_flow.status}")
+    lines.append(f"  current step: {report.workspace_flow.current_step}")
+    lines.append(f"  next: {report.workspace_flow.next_command}")
     for step in report.control_loop:
         lines.append(f"- {step.get('title', 'Step')}: {step.get('status', 'unknown')}")
         summary = step.get("summary")

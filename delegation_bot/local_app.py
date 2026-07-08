@@ -316,6 +316,9 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     control_loop = (
         dashboard_data.get("control_loop") if isinstance(dashboard_data.get("control_loop"), list) else []
     )
+    workspace_flow = (
+        dashboard_data.get("workspace_flow") if isinstance(dashboard_data.get("workspace_flow"), dict) else {}
+    )
     areas = _areas_by_id(product_areas)
     workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
@@ -481,6 +484,10 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       {_area_metric_panel(areas.get("missions"), "Missions", ledger.get("status", "unknown"))}
       {_area_metric_panel(areas.get("agents"), "Agents", agents.get("status", "unknown"))}
       {_area_metric_panel(areas.get("evidence"), "Evidence", "not_started")}
+    </section>
+    <section class="panel">
+      <h2>Workspace Flow</h2>
+      {_workspace_flow_html(workspace_flow)}
     </section>
     <section class="panel">
       <h2>Control Loop</h2>
@@ -653,6 +660,41 @@ def _approval_preview_html(preview: JsonMap) -> str:
 <p class="subtle">Decision commands</p>
 {_commands_html(preview.get("decision_commands") if isinstance(preview.get("decision_commands"), list) else [], section_id="approval-commands")}
 """
+
+
+def _workspace_flow_html(flow: JsonMap) -> str:
+    steps = flow.get("steps") if isinstance(flow.get("steps"), list) else []
+    if not steps:
+        return "<p class=\"subtle\">No guided flow is available yet.</p>"
+    rows: list[str] = []
+    current = flow.get("current_step") if isinstance(flow.get("current_step"), str) else ""
+    for index, step in enumerate(steps, start=1):
+        if not isinstance(step, dict):
+            continue
+        step_id = step.get("id", "")
+        title = step.get("title", "Step")
+        status = step.get("status", "unknown")
+        summary = step.get("summary", "")
+        command = step.get("command", "")
+        marker = "Current" if step_id == current else "Done" if step.get("done") else "Waiting"
+        rows.append(
+            "<li>"
+            f"<strong>{_escape(index)}. {_escape(title)}</strong> "
+            f"<span class=\"badge {_status_class(str(status))}\">{_escape(status)}</span> "
+            f"<span class=\"subtle\">{_escape(marker)}</span>"
+            + (f"<p class=\"subtle\">{_escape(summary)}</p>" if summary else "")
+            + (_copyable_code(command, id_hint=f"workspace-flow-{index}") if isinstance(command, str) and command else "")
+            + "</li>"
+        )
+    next_command = flow.get("next_command") if isinstance(flow.get("next_command"), str) else ""
+    return (
+        f"<p><strong>{_escape(flow.get('status', 'unknown'))}</strong> "
+        f"<span class=\"subtle\">Current: {_escape(current or 'complete')}</span></p>"
+        "<ul>"
+        + "".join(rows)
+        + "</ul>"
+        + ("<p class=\"subtle\">Next safe command</p>" + _copyable_code(next_command, id_hint="workspace-flow-next") if next_command else "")
+    )
 
 
 def _approval_inbox_cards_html(inbox: JsonMap) -> str:
@@ -1101,7 +1143,7 @@ def _dom_id(value: str) -> str:
 
 def _status_class(value: str) -> str:
     lowered = value.lower()
-    if lowered in {"ready", "recorded", "allow"}:
+    if lowered in {"ready", "recorded", "allow", "cleared", "review_ready", "complete", "approved"}:
         return "ready"
     if lowered in {"blocked", "block", "failed"}:
         return "blocked"

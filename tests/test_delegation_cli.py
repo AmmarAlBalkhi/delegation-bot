@@ -541,6 +541,8 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["schema_version"], "delegation.app-dashboard.v1")
         self.assertEqual(data["state"]["workspace"]["status"], "ready")
         self.assertEqual(data["approval_preview"]["agent_id"], "dashboard_runner")
+        self.assertEqual(data["workspace_flow"]["schema_version"], "delegation.workspace-flow.v1")
+        self.assertIn(data["workspace_flow"]["current_step"], {"request", "review", "complete"})
         self.assertTrue(data["command_center"])
         self.assertIn("ingest_evidence", [item["id"] for item in data["command_center"]])
         self.assertEqual(
@@ -636,6 +638,10 @@ class DelegationCliTests(unittest.TestCase):
                 inbox_status = main(["approval-inbox", "--ledger", str(ledger), "--json"])
             inbox_data = json.loads(inbox_output.getvalue())
 
+            with redirect_stdout(io.StringIO()) as pending_flow_output:
+                pending_flow_status = main(["workspace-flow", "--workspace", tmpdir, "--json"])
+            pending_flow_data = json.loads(pending_flow_output.getvalue())
+
             with redirect_stdout(io.StringIO()):
                 approval_status = main(
                     [
@@ -692,6 +698,10 @@ class DelegationCliTests(unittest.TestCase):
                 )
             recorded_data = json.loads(recorded_status_output.getvalue())
 
+            with redirect_stdout(io.StringIO()) as recorded_flow_output:
+                recorded_flow_status = main(["workspace-flow", "--workspace", tmpdir, "--json"])
+            recorded_flow_data = json.loads(recorded_flow_output.getvalue())
+
             with redirect_stdout(io.StringIO()) as timeline_output:
                 timeline_status = main(["timeline", "--ledger", str(ledger), "--json"])
             timeline_data = json.loads(timeline_output.getvalue())
@@ -719,6 +729,10 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(inbox_status, 0)
         self.assertEqual(inbox_data["pending_count"], 1)
         self.assertEqual(inbox_data["items"][0]["request_summary"], "Request runner wants to update the workspace.")
+        self.assertEqual(pending_flow_status, 0)
+        self.assertEqual(pending_flow_data["schema_version"], "delegation.workspace-flow.v1")
+        self.assertEqual(pending_flow_data["current_step"], "approval")
+        self.assertIn("approval-decision", pending_flow_data["next_command"])
         self.assertEqual(pending_status, 0)
         self.assertEqual(pending_data["status"], "pending_approval")
         self.assertFalse(pending_data["ready_to_run"])
@@ -736,11 +750,15 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(recorded_status, 0)
         self.assertEqual(recorded_data["status"], "recorded")
         self.assertFalse(recorded_data["ready_to_run"])
+        self.assertEqual(recorded_flow_status, 0)
+        self.assertEqual(recorded_flow_data["current_step"], "complete")
+        self.assertEqual(recorded_flow_data["steps"][-1]["status"], "review_ready")
         self.assertEqual(timeline_status, 0)
         self.assertIn("request", timeline_data["stage_counts"])
         self.assertIn("record", timeline_data["stage_counts"])
         self.assertEqual(export_status, 0)
         self.assertIn("Submitted action requests", html_text)
+        self.assertIn("Workspace Flow", html_text)
         self.assertIn("Request runner wants to update the workspace.", html_text)
         self.assertIn("delegation request-status", html_text)
 

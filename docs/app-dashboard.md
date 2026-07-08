@@ -10,6 +10,8 @@ It combines the pieces a user needs on one screen:
 - Evidence
 - Timeline
 - Settings
+- workspace flow guide from workspace -> agent -> request -> approval ->
+  execution -> evidence -> review
 - approval preview with reviewer note, expiration, resource scope, evidence
   gaps, and repeated-action history
 - control loop checklist for workspace -> mission -> agent -> gate ->
@@ -21,6 +23,7 @@ It combines the pieces a user needs on one screen:
 delegation app-dashboard --workspace . --preview-agent local_cli_agent
 delegation app-dashboard --workspace . --preview-agent local_cli_agent --preview-note "scope checked"
 delegation app-dashboard --workspace . --preview-agent local_cli_agent --json
+delegation workspace-flow --workspace .
 ```
 
 Simple version:
@@ -50,6 +53,7 @@ Top-level fields:
   decision history
 - `agent_packet`: Bring Your Own Agent handoff packet when a matching Agent Gate
   receipt exists
+- `workspace_flow`: guided local flow stages and the next safe command
 - `product_areas`: stable app areas for Missions, Agents, Approval Inbox,
   Evidence, and Settings
 - `control_loop`: simple progress checklist for the real trust loop

@@ -63,6 +63,11 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added `delegation workspace-flow` and the matching dashboard/cockpit data
+  block so the local app can show one guided path: workspace -> agent ->
+  request -> approval -> execution -> evidence -> review.
+- Added package smoke, QA, Windows EXE smoke, release readiness, local app,
+  app-dashboard, README, and docs coverage for the guided workspace flow.
 - Added `delegation request-status` and `delegation request-run` so a submitted
   action request can move from ask -> gate -> approve -> controlled execution
   -> recorded evidence without falling back to a generic `agent-run` recipe.

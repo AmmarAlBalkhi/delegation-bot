@@ -147,6 +147,7 @@ from delegation_bot.local_app import (
 from delegation_bot.mcp_policy_gate import build_mcp_policy_report, render_mcp_policy_report
 from delegation_bot.mission_timeline import build_timeline_report_from_paths, render_timeline_report
 from delegation_bot.mission_status import build_mission_status_report, render_mission_status_report
+from delegation_bot.workspace_flow import build_workspace_flow_report, render_workspace_flow_report
 from delegation_bot.model_suggest_fixtures import (
     FIXTURE_PROVIDERS,
     ModelSuggestionFixtureError,
@@ -384,6 +385,20 @@ def cmd_cockpit(args: argparse.Namespace) -> int:
     else:
         print(render_app_state(state))
     return 0
+
+
+def cmd_workspace_flow(args: argparse.Namespace) -> int:
+    try:
+        report = build_workspace_flow_report(workspace_root=Path(args.workspace))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 1
+
+    if args.json:
+        print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
+    else:
+        print(render_workspace_flow_report(report))
+    return 1 if report.status == "blocked" else 0
 
 
 def cmd_app_dashboard(args: argparse.Namespace) -> int:
@@ -2055,6 +2070,14 @@ def build_parser() -> argparse.ArgumentParser:
     cockpit.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
     cockpit.add_argument("--json", action="store_true", help="Print the cockpit state as JSON.")
     cockpit.set_defaults(func=cmd_cockpit)
+
+    workspace_flow = subparsers.add_parser(
+        "workspace-flow",
+        help="Show the guided local flow from workspace to agent, request, approval, execution, evidence, and review.",
+    )
+    workspace_flow.add_argument("--workspace", default=".", help="Local workspace folder. Defaults to the current folder.")
+    workspace_flow.add_argument("--json", action="store_true", help="Print the workspace flow as JSON.")
+    workspace_flow.set_defaults(func=cmd_workspace_flow)
 
     app_dashboard = subparsers.add_parser(
         "app-dashboard",

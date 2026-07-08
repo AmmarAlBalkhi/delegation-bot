@@ -248,6 +248,16 @@ def build_checks(python: str) -> list[Check]:
             ],
         ),
         Check(
+            "local workspace flow",
+            [
+                python,
+                "scripts/delegation.py",
+                "workspace-flow",
+                "--workspace",
+                ".delegation/qa-local-workspace",
+            ],
+        ),
+        Check(
             "local app dashboard",
             [
                 python,

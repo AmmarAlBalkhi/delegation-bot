@@ -283,6 +283,24 @@ def main() -> int:
             print(cockpit.stderr, file=sys.stderr)
             return cockpit.returncode or 1
 
+        workspace_flow = _run(
+            [
+                sys.executable,
+                "-m",
+                "delegation_bot",
+                "workspace-flow",
+                "--workspace",
+                str(workspace),
+            ],
+            cwd=tmp,
+            env=env,
+        )
+        if workspace_flow.returncode != 0 or "DelegationHQ Workspace Flow" not in workspace_flow.stdout:
+            print("FAIL: installed package workspace-flow smoke")
+            print(workspace_flow.stdout)
+            print(workspace_flow.stderr, file=sys.stderr)
+            return workspace_flow.returncode or 1
+
         app_dashboard = _run(
             [
                 sys.executable,
@@ -668,7 +686,7 @@ def main() -> int:
             return agent_audit.returncode or 1
 
         print(
-            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
+            "PASS: installed package control-loop demo, mission-status, timeline, agent-packet, agent-result-ingest, generic evidence ingest, app-state, workspace app-state, cockpit, workspace-flow, app-dashboard, approval-preview, app-export, app-serve, local workspace, agent-add, agent-run, action-request, request-status, request-run, Agent Passport, Agent Gate, approvals, RunPrint ingest, and Agent Gate audit smoke"
         )
     return 0
 

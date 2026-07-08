@@ -149,6 +149,11 @@ if (-not $SkipSmoke) {
         exit $LASTEXITCODE
     }
 
+    & $ExecutablePath workspace-flow --workspace $SmokeWorkspace
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+
     & $ExecutablePath app-dashboard --workspace $SmokeWorkspace --preview-agent exe_cli_agent
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE

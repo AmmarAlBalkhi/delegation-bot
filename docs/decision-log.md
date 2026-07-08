@@ -1517,3 +1517,25 @@ Guardrails:
 Follow-up: Turn the cockpit Approval Inbox into a first-run guided flow:
 submit request, approve/block, run approved request, ingest/review evidence,
 then show timeline and eval outcome.
+
+## 2026-07-08: Add Guided Workspace Flow
+
+Decision: Add `delegation workspace-flow` and include its JSON contract in the
+app dashboard and exported local cockpit.
+
+Why: The product should not make users memorize internal commands. A local
+workspace needs one simple guide that says where the user is in the trust loop
+and which safe command comes next: workspace -> agent -> request -> approval ->
+execution -> evidence -> review.
+
+Guardrails:
+
+- this is a read-only guide, not an execution surface
+- live work still goes through `request-run`, `agent-run`, or explicit adapter
+  apply commands with confirmations
+- the output is design-neutral so a future futuristic UI can render it any way
+  we choose
+- RunPrint stays one evidence tool; the Evidence step remains generic
+
+Follow-up: Build the cockpit around this flow so first users see a clean path
+before advanced command/details panels.

@@ -85,6 +85,10 @@ safe action, and guardrails.
 defaults and prints the same app-ready state without making users remember
 internal ledger or registry paths.
 
+`workspace-flow` is the simple guide over the local loop. It shows the current
+stage from workspace -> agent -> request -> approval -> execution -> evidence
+-> review, plus one next safe command.
+
 `app-dashboard` is the one-screen app brain: workspace state, Agent Passports,
 approval preview, command center, timeline, and next safe actions in one bundle.
 
@@ -242,6 +246,7 @@ The table uses the packaged `delegation` command. In a source checkout, replace
 | `delegation app-plan` | Show the first visible Windows EXE app plan without launching a UI. |
 | `delegation app-state --workspace .` | Show one read-only app-ready state bundle for the future local cockpit. |
 | `delegation cockpit --workspace .` | Show the local cockpit state with workspace defaults. |
+| `delegation workspace-flow --workspace .` | Show the guided local path and one next safe command. |
 | `delegation app-dashboard --workspace . --preview-agent AGENT` | Show the combined local app brain: state, approval preview, timeline, commands. |
 | `delegation timeline --workspace .` | Show mission history as plan, gate, approval, execution, proof, eval, feedback, and promotion. |
 | `delegation approval-preview AGENT --workspace .` | Show the human approval card for one agent action. |

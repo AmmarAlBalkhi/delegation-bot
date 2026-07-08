@@ -84,6 +84,7 @@ dist\delegation.exe agent-run exe_cli_agent --workspace .delegation\exe-local-wo
 dist\delegation.exe app-plan
 dist\delegation.exe app-state --workspace .delegation\exe-local-workspace
 dist\delegation.exe cockpit --workspace .delegation\exe-local-workspace
+dist\delegation.exe workspace-flow --workspace .delegation\exe-local-workspace
 dist\delegation.exe app-dashboard --workspace .delegation\exe-local-workspace --preview-agent exe_cli_agent
 dist\delegation.exe timeline --workspace .delegation\exe-local-workspace
 dist\delegation.exe approval-preview exe_cli_agent --workspace .delegation\exe-local-workspace
