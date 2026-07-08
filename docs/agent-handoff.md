@@ -31,6 +31,14 @@ delegation agent-result-ingest \
   --ledger .delegation/demo.jsonl \
   --action-id agent_gate.implementer.create_pull_request \
   --result .delegation/agent-result.json
+
+delegation evidence-ingest \
+  --ledger .delegation/demo.jsonl \
+  --action-id agent_gate.implementer.create_pull_request \
+  --tool TOOL \
+  --recording-id REC \
+  --bundle-id BUNDLE \
+  --artifact PATH
 ```
 
 The external agent can be a CLI tool, webhook worker, LangGraph app, MCP
@@ -48,7 +56,7 @@ contract is the same.
   "status": "completed",
   "summary": "Opened a pull request draft under DelegationHQ control.",
   "changed_resources": ["repository"],
-  "evidence_tool": "runprint",
+  "evidence_tool": "evidence-tool",
   "evidence_recording_id": "rec-123",
   "evidence_bundle_id": "bundle-123",
   "artifacts": [
@@ -84,6 +92,9 @@ This keeps the user experience simple:
 Add agent -> give mission -> preview risk -> approve -> record proof -> review result.
 ```
 
-RunPrint is the current recorder path, not the whole product. Future evidence
-tools can use the same handoff shape as long as they return recording ids,
-artifacts, and evidence bundles that DelegationHQ can judge.
+`agent-result-ingest` validates what the worker claims. `evidence-ingest`
+attaches proof from any compatible evidence tool.
+
+RunPrint is one recorder path, not the whole product. Future evidence tools can
+use the same handoff shape as long as they return recording ids, artifacts, and
+evidence bundles that DelegationHQ can judge.

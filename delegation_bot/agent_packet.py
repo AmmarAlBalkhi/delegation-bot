@@ -119,6 +119,10 @@ def build_agent_packet_report(
                 f"delegation agent-result-ingest --ledger {ledger_source} "
                 f"--action-id {clean_action_id} --result .delegation/agent-result.json"
             ),
+            "evidence_ingest_command": (
+                f"delegation evidence-ingest --ledger {ledger_source} "
+                f"--action-id {clean_action_id} --tool TOOL --recording-id REC --bundle-id BUNDLE --artifact PATH"
+            ),
             "must_return": [
                 "schema_version",
                 "packet_id",
@@ -144,7 +148,7 @@ def build_agent_packet_report(
                 "changed_resources": [_string(gate.get("target"), default="workspace")],
                 "evidence_recording_id": "rec-...",
                 "evidence_bundle_id": "bundle-...",
-                "evidence_tool": "runprint",
+                "evidence_tool": "evidence-tool",
                 "artifacts": [{"id": "evidence-ledger", "kind": "jsonl", "path": ".delegation/run.jsonl"}],
             },
         },
@@ -213,6 +217,7 @@ def render_agent_packet_report(report: AgentPacketReport) -> str:
             "Return contract:",
             f"- schema: {packet['return_contract']['schema_version']}",
             f"- ingest: {packet['return_contract']['ingest_command']}",
+            f"- evidence ingest: {packet['return_contract']['evidence_ingest_command']}",
             "",
             "Next:",
             "- Send this JSON packet to the custom agent, then ingest its result JSON back into the ledger.",

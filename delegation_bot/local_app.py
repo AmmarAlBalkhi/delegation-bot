@@ -313,6 +313,9 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
     product_areas = (
         dashboard_data.get("product_areas") if isinstance(dashboard_data.get("product_areas"), list) else []
     )
+    control_loop = (
+        dashboard_data.get("control_loop") if isinstance(dashboard_data.get("control_loop"), list) else []
+    )
     areas = _areas_by_id(product_areas)
     workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
     ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
@@ -479,6 +482,10 @@ def _render_app_html(dashboard_data: JsonMap) -> str:
       {_area_metric_panel(areas.get("evidence"), "Evidence", "not_started")}
     </section>
     <section class="panel">
+      <h2>Control Loop</h2>
+      {_control_loop_html(control_loop)}
+    </section>
+    <section class="panel">
       <h2>Missions</h2>
       {_area_panel_html(areas.get("missions"))}
     </section>
@@ -584,6 +591,33 @@ def _area_panel_html(area: JsonMap | None) -> str:
 {next_html}"""
 
 
+def _control_loop_html(steps: list[T.Any]) -> str:
+    if not steps:
+        return "<p class=\"subtle\">No control loop data yet.</p>"
+    rows: list[str] = []
+    for index, step in enumerate(steps, start=1):
+        if not isinstance(step, dict):
+            continue
+        title = step.get("title", f"Step {index}")
+        status = step.get("status", "unknown")
+        summary = step.get("summary", "")
+        next_action = step.get("next_action")
+        command_html = (
+            _copyable_code(next_action, id_hint=f"control-loop-{index}")
+            if isinstance(next_action, str) and next_action.strip()
+            else ""
+        )
+        rows.append(
+            "<li>"
+            f"<strong>{_escape(index)}. {_escape(title)}</strong> "
+            f"<span class=\"badge {_status_class(str(status))}\">{_escape(status)}</span>"
+            + (f"<p class=\"subtle\">{_escape(summary)}</p>" if summary else "")
+            + command_html
+            + "</li>"
+        )
+    return "<ul>" + "".join(rows) + "</ul>" if rows else "<p class=\"subtle\">No readable control loop data.</p>"
+
+
 def _approval_preview_html(preview: JsonMap) -> str:
     if not preview:
         return "<p class=\"subtle\">No agent passport is available yet.</p>"
@@ -645,6 +679,16 @@ def _agent_handoff_html(packet_report: JsonMap | None, preview: JsonMap) -> str:
     return_contract = packet.get("return_contract") if isinstance(packet.get("return_contract"), dict) else {}
     if isinstance(return_contract.get("ingest_command"), str) and return_contract["ingest_command"].strip():
         ingest_command = return_contract["ingest_command"].strip()
+    evidence_ingest_command = (
+        return_contract.get("evidence_ingest_command")
+        if isinstance(return_contract.get("evidence_ingest_command"), str)
+        else ""
+    )
+    evidence_command_html = (
+        _copyable_code(evidence_ingest_command, id_hint="agent-handoff-evidence-ingest")
+        if evidence_ingest_command
+        else '<p class="subtle">Use evidence-ingest after a recorder or workflow produces proof.</p>'
+    )
     warnings = packet_report.get("warnings") if isinstance(packet_report.get("warnings"), list) else []
     return f"""
 <p><strong>Packet status: {_escape(packet_report.get("status", "unknown"))}</strong></p>
@@ -664,6 +708,8 @@ def _agent_handoff_html(packet_report: JsonMap | None, preview: JsonMap) -> str:
 {_copyable_code(export_command, id_hint="agent-handoff-export")}
 <p class="subtle">Ingest result</p>
 {_copyable_code(ingest_command, id_hint="agent-handoff-ingest")}
+<p class="subtle">Attach external evidence</p>
+{evidence_command_html}
 """
 
 
@@ -673,10 +719,16 @@ def _return_contract_html(contract: JsonMap) -> str:
     fields = contract.get("must_return") if isinstance(contract.get("must_return"), list) else []
     statuses = contract.get("allowed_statuses") if isinstance(contract.get("allowed_statuses"), list) else []
     schema = contract.get("schema_version", "unknown")
+    ingest = contract.get("ingest_command") if isinstance(contract.get("ingest_command"), str) else ""
+    evidence_ingest = (
+        contract.get("evidence_ingest_command") if isinstance(contract.get("evidence_ingest_command"), str) else ""
+    )
     return f"""<div class="kv">
   <div><strong>Schema:</strong> {_escape(schema)}</div>
   <div><strong>Fields:</strong> {_escape(_inline_list(fields) or "none")}</div>
   <div><strong>Statuses:</strong> {_escape(_inline_list(statuses) or "none")}</div>
+  <div><strong>Result ingest:</strong> {_escape(ingest or "not declared")}</div>
+  <div><strong>Evidence ingest:</strong> {_escape(evidence_ingest or "not declared")}</div>
 </div>"""
 
 

@@ -130,6 +130,8 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(data["packet"]["current_receipts"]["runprint_recorded"])
         self.assertEqual(data["packet"]["return_contract"]["schema_version"], "delegation.agent-result.v1")
         self.assertIn("agent-result-ingest", data["packet"]["return_contract"]["ingest_command"])
+        self.assertIn("evidence-ingest", data["packet"]["return_contract"]["evidence_ingest_command"])
+        self.assertEqual(data["packet"]["return_contract"]["example"]["evidence_tool"], "evidence-tool")
 
     def test_app_plan_command_is_human_readable(self) -> None:
         with redirect_stdout(io.StringIO()) as output:
@@ -401,6 +403,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertTrue(timeline_exists)
         self.assertTrue(preview_exists)
         self.assertIn("DelegationHQ Local App", html_text)
+        self.assertIn("Control Loop", html_text)
         self.assertIn("Missions", html_text)
         self.assertIn("Approval Inbox", html_text)
         self.assertIn("Evidence", html_text)
@@ -408,6 +411,7 @@ class DelegationCliTests(unittest.TestCase):
         self.assertIn("Action intent", html_text)
         self.assertIn("Live effect", html_text)
         self.assertIn("agent-result-ingest", html_text)
+        self.assertIn("evidence-ingest", html_text)
         self.assertIn("Request packet", html_text)
         self.assertIn("operator checked", html_text)
         self.assertIn('--review-note &quot;operator checked&quot;', html_text)
@@ -539,6 +543,12 @@ class DelegationCliTests(unittest.TestCase):
         self.assertEqual(data["approval_preview"]["agent_id"], "dashboard_runner")
         self.assertTrue(data["command_center"])
         self.assertIn("ingest_evidence", [item["id"] for item in data["command_center"]])
+        self.assertEqual(
+            [step["id"] for step in data["control_loop"]],
+            ["workspace", "mission", "agent", "gate", "approval", "execution", "evidence", "timeline_eval"],
+        )
+        self.assertEqual(data["control_loop"][0]["status"], "ready")
+        self.assertEqual(data["control_loop"][6]["status"], "recorded")
         self.assertEqual(
             [area["id"] for area in data["product_areas"]],
             ["missions", "agents", "approval_inbox", "evidence", "settings"],

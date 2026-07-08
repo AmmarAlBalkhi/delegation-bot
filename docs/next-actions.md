@@ -63,6 +63,12 @@ Human = final yes/no for danger.
 
 ## Completed Recently
 
+- Added a `control_loop` checklist to `app-dashboard` and the local cockpit so
+  users can see workspace -> mission -> agent -> gate -> approval -> execution
+  -> evidence -> timeline/eval as one practical product path.
+- Added a generic `evidence_ingest_command` to Agent Packet return contracts so
+  any recorder, test reporter, workflow monitor, or future evidence tool can
+  return proof without making DelegationHQ depend on one recorder.
 - Added an `action_intent` block to Approval Preview so the human card shows
   execution mode, likely touched resources, live effect, required confirmation,
   command preview, expected proof, and a clear human question before approval.

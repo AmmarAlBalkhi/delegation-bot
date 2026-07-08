@@ -12,6 +12,8 @@ It combines the pieces a user needs on one screen:
 - Settings
 - approval preview with reviewer note, expiration, resource scope, evidence
   gaps, and repeated-action history
+- control loop checklist for workspace -> mission -> agent -> gate ->
+  approval -> execution -> evidence -> timeline/eval
 - command center as supporting data, not the main product surface
 - next safe actions
 
@@ -32,6 +34,7 @@ Show me what it can touch.
 Show me if it happened before.
 Show me the evidence.
 Show me the timeline.
+Show me the next safe step.
 ```
 
 ## JSON Contract
@@ -49,6 +52,7 @@ Top-level fields:
   receipt exists
 - `product_areas`: stable app areas for Missions, Agents, Approval Inbox,
   Evidence, and Settings
+- `control_loop`: simple progress checklist for the real trust loop
 - `timeline`: ordered proof/history over the ledger
 - `command_center`: safe commands the UI can show without guessing
 - `next_actions`: deduped next useful actions

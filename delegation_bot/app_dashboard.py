@@ -29,6 +29,7 @@ class AppDashboardReport:
     agent_packet: AgentPacketReport | None
     product_areas: tuple[JsonMap, ...]
     command_center: tuple[JsonMap, ...]
+    control_loop: tuple[JsonMap, ...]
     warnings: tuple[str, ...] = ()
 
     @property
@@ -50,6 +51,7 @@ class AppDashboardReport:
             "agent_packet": self.agent_packet.to_dict() if self.agent_packet else None,
             "product_areas": list(self.product_areas),
             "command_center": list(self.command_center),
+            "control_loop": list(self.control_loop),
             "warnings": list(self.warnings),
             "next_actions": list(self.next_actions),
         }
@@ -83,6 +85,7 @@ def build_app_dashboard_report(
     )
     agent_packet = _build_agent_packet(preview)
     command_center = tuple(_command_center(workspace, state_data, timeline, preview))
+    control_loop = tuple(_control_loop(state_data, timeline, preview, agent_packet, command_center))
     return AppDashboardReport(
         schema_version=APP_DASHBOARD_SCHEMA_VERSION,
         status=_dashboard_status(state.status, timeline.status, preview),
@@ -93,6 +96,7 @@ def build_app_dashboard_report(
         agent_packet=agent_packet,
         product_areas=tuple(_product_areas(state_data, timeline, preview, agent_packet, command_center)),
         command_center=command_center,
+        control_loop=control_loop,
         warnings=tuple(_dashboard_warnings(state_data, timeline, preview, agent_packet)),
     )
 
@@ -135,6 +139,13 @@ def render_app_dashboard_report(report: AppDashboardReport) -> str:
                 f"- action: {report.agent_packet.action_id}",
             ]
         )
+
+    lines.extend(["", "Control loop:"])
+    for step in report.control_loop:
+        lines.append(f"- {step.get('title', 'Step')}: {step.get('status', 'unknown')}")
+        summary = step.get("summary")
+        if isinstance(summary, str) and summary:
+            lines.append(f"  {summary}")
 
     lines.extend(["", "Product areas:"])
     for area in report.product_areas:
@@ -320,6 +331,142 @@ def _command_center(
             "purpose": timeline.next_action,
             "risk": "none",
         }
+
+
+def _control_loop(
+    state_data: JsonMap,
+    timeline: MissionTimelineReport,
+    preview: ApprovalPreviewReport | None,
+    agent_packet: AgentPacketReport | None,
+    command_center: T.Sequence[JsonMap],
+) -> T.Iterator[JsonMap]:
+    workspace = state_data.get("workspace") if isinstance(state_data.get("workspace"), dict) else {}
+    ledger = state_data.get("ledger") if isinstance(state_data.get("ledger"), dict) else {}
+    agents = state_data.get("agents") if isinstance(state_data.get("agents"), dict) else {}
+    approval_inbox = ledger.get("approval_inbox") if isinstance(ledger.get("approval_inbox"), dict) else {}
+    evidence = ledger.get("evidence") if isinstance(ledger.get("evidence"), dict) else {}
+    passport_count = agents.get("passport_count", 0) if isinstance(agents.get("passport_count"), int) else 0
+    event_count = ledger.get("event_count", 0) if isinstance(ledger.get("event_count"), int) else 0
+    recorded_count = evidence.get("recorded_count", 0) if isinstance(evidence.get("recorded_count"), int) else 0
+    pending_count = approval_inbox.get("pending_count", 0) if isinstance(approval_inbox.get("pending_count"), int) else 0
+
+    yield {
+        "id": "workspace",
+        "title": "Workspace",
+        "status": _string(workspace.get("status"), default="missing") if workspace else "missing",
+        "summary": "A local workspace is ready." if workspace else "Create or select a workspace.",
+        "next_action": _first_command(command_center, "refresh_dashboard") or "delegation workspace-init --path . --plan",
+    }
+    yield {
+        "id": "mission",
+        "title": "Mission",
+        "status": _string(ledger.get("status"), default="missing") if event_count else "missing",
+        "summary": f"{event_count} ledger event(s) loaded." if event_count else "Create the first dry-run mission plan.",
+        "next_action": timeline.next_action,
+    }
+    yield {
+        "id": "agent",
+        "title": "Agent",
+        "status": _string(agents.get("status"), default="missing") if passport_count else "missing",
+        "summary": f"{passport_count} Agent Passport(s) registered." if passport_count else "Register a Bring Your Own Agent passport.",
+        "next_action": _first_command(command_center, "preview_request") or "delegation agent-add AGENT_ID --workspace . --command COMMAND --capability read.workspace",
+    }
+    yield {
+        "id": "gate",
+        "title": "Gate",
+        "status": preview.gate.decision if preview else "missing",
+        "summary": (
+            f"{preview.agent_id} wants `{preview.action}` on `{preview.target}`."
+            if preview
+            else "Preview the request before live action."
+        ),
+        "next_action": _first_command(command_center, "preview_request") or "delegation approval-preview AGENT_ID --workspace .",
+    }
+    yield {
+        "id": "approval",
+        "title": "Approval",
+        "status": _approval_loop_status(preview, pending_count),
+        "summary": _approval_loop_summary(preview, pending_count),
+        "next_action": _first_command(command_center, "approve_request")
+        or _first_command(command_center, "block_request")
+        or _first_command(command_center, "preview_request")
+        or "No human decision needed yet.",
+    }
+    yield {
+        "id": "execution",
+        "title": "Execution",
+        "status": _execution_loop_status(preview, agent_packet),
+        "summary": _execution_loop_summary(preview, agent_packet),
+        "next_action": _first_command(command_center, "execute_agent")
+        or _first_command(command_center, "export_agent_packet")
+        or "Wait until the gate allows execution.",
+    }
+    yield {
+        "id": "evidence",
+        "title": "Evidence",
+        "status": "recorded" if recorded_count or timeline.stage_counts.get("record", 0) else "missing",
+        "summary": (
+            f"{recorded_count or timeline.stage_counts.get('record', 0)} proof event(s) recorded."
+            if recorded_count or timeline.stage_counts.get("record", 0)
+            else "Attach proof from any compatible evidence tool."
+        ),
+        "next_action": _first_command(command_center, "ingest_evidence")
+        or _first_command(command_center, "ingest_agent_result")
+        or "delegation evidence-ingest --ledger .delegation/run.jsonl --tool TOOL --action-id ACTION_ID --recording-id REC --bundle-id BUNDLE --artifact PATH",
+    }
+    yield {
+        "id": "timeline_eval",
+        "title": "Timeline + Eval",
+        "status": timeline.status,
+        "summary": f"{timeline.event_count} timeline event(s), {timeline.attention_count} needing attention.",
+        "next_action": _first_command(command_center, "timeline") or "Review the timeline, then run evals before promotion.",
+    }
+
+
+def _approval_loop_status(preview: ApprovalPreviewReport | None, pending_count: int) -> str:
+    if preview is None:
+        return "missing"
+    if preview.gate.decision == "approval_required":
+        return "pending" if pending_count else "approval_required"
+    if preview.gate.decision == "allow":
+        return "not_required"
+    return preview.gate.decision
+
+
+def _approval_loop_summary(preview: ApprovalPreviewReport | None, pending_count: int) -> str:
+    if preview is None:
+        return "No approval card yet."
+    if preview.gate.decision == "approval_required":
+        return f"{pending_count} approval card(s) waiting for a human decision."
+    if preview.gate.decision == "allow":
+        return "Gate allows this request without extra human approval."
+    if preview.gate.decision == "block":
+        return "Gate blocks this request."
+    return "Review the warning before execution."
+
+
+def _execution_loop_status(preview: ApprovalPreviewReport | None, packet: AgentPacketReport | None) -> str:
+    if preview is None:
+        return "missing"
+    if preview.gate.decision == "block":
+        return "blocked"
+    if packet and packet.status == "recorded":
+        return "recorded"
+    if packet and packet.packet and packet.packet.get("can_execute"):
+        return "ready"
+    return "waiting"
+
+
+def _execution_loop_summary(preview: ApprovalPreviewReport | None, packet: AgentPacketReport | None) -> str:
+    if preview is None:
+        return "No gated request exists yet."
+    if packet and packet.status == "recorded":
+        return "Execution already has evidence recorded."
+    if packet and packet.packet and packet.packet.get("can_execute"):
+        return "Agent Packet is cleared for controlled execution."
+    if packet:
+        return f"Agent Packet is `{packet.status}`."
+    return "Create an Agent Gate receipt before handing work to an agent."
 
 
 def _product_areas(
